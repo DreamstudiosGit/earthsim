@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <title>Evolutionspunkte</title>
+  <g stroke-linecap="round" fill="none">
+    <!-- Sprossen -->
+    <g stroke="#e4d8ff" stroke-width="1.8">
+      <path d="M8.2 4.3 H15.8"/>
+      <path d="M8.6 10 H15.4"/>
+      <path d="M8.6 14 H15.4"/>
+      <path d="M8.2 19.7 H15.8"/>
+    </g>
+    <!-- hinterer Strang -->
+    <path d="M17.5 3 C17.5 6.3 6.5 8.7 6.5 12 S17.5 17.7 17.5 21" stroke="#8a62e6" stroke-width="2.6"/>
+    <!-- vorderer Strang -->
+    <path d="M6.5 3 C6.5 6.3 17.5 8.7 17.5 12 S6.5 17.7 6.5 21" stroke="#b48cff" stroke-width="2.6"/>
+  </g>
+</svg>

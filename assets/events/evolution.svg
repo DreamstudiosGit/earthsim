@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>Evolution</title>
+  <defs>
+    <linearGradient id="evolution-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f3b3f"/>
+      <stop offset="1" stop-color="#1f6f6b"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#evolution-bg)"/>
+  <g fill="none" stroke-linecap="round">
+    <!-- DNA-Stamm -->
+    <path d="M21.5 40.2 H26.5 M21.6 33 H26.4" stroke="#efe6ff" stroke-width="1.6"/>
+    <path d="M28 41.5 C28 38.5 20 37.5 20 34.5 C20 32 24 31 24 28.5" stroke="#8a62e6" stroke-width="2.4"/>
+    <path d="M20 41.5 C20 38.5 28 37.5 28 34.5 C28 32 24 31 24 28.5" stroke="#b48cff" stroke-width="2.4"/>
+    <!-- Stammbaum -->
+    <g stroke="#f6f1df" stroke-width="2.6" stroke-linejoin="round">
+      <path d="M24 28.5 V23"/>
+      <path d="M24 23 C21 22 17 20 15.5 16"/>
+      <path d="M15.5 16 C14.5 13.5 12 12 11 9.5 M15.5 16 C17 13.5 19 12 19.5 9"/>
+      <path d="M24 23 C27 21.5 31 19.5 32.5 16"/>
+      <path d="M32.5 16 C32 13.5 30 12 29 9.5 M32.5 16 C34 13.5 36.5 12 37.5 10"/>
+    </g>
+  </g>
+  <!-- Linien-Enden -->
+  <g stroke="#0c1a14" stroke-opacity="0.35" stroke-width="1">
+    <circle cx="11" cy="9.5" r="2.8" fill="#5ccfd0"/>
+    <circle cx="19.5" cy="9" r="2.8" fill="#8ad16f"/>
+    <circle cx="29" cy="9.5" r="2.8" fill="#f2a35c"/>
+    <circle cx="37.5" cy="10" r="2.8" fill="#ffd36b"/>
+  </g>
+  <rect x="2.6" y="2.6" width="42.8" height="42.8" rx="11.4" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.2"/>
+</svg>

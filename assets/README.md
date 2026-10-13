@@ -1,0 +1,33 @@
+# Grafiken (SVG)
+
+Alle Grafiken sind handgeschriebene SVG-Dateien ohne Schrift, Skripte oder externe Verweise und werden
+per `<img src="assets/…">` eingebunden (funktioniert auch direkt über `file://`). Die Kachelkarte selbst
+bleibt Pixelkunst (`src/sprites.ts`) – so behält die Spielwelt den Look des Originals von 1990, während
+Menüs, Baum und Ereignisse eine moderne Bildsprache bekommen. Seit Oktober 2026 nutzt die Pixelkunst eine
+abgestimmte Naturpalette statt reiner EGA-Farben (siehe `docs/grafik-2026-10/bericht.md`).
+
+| Ordner | Inhalt | Format | Verwendung |
+|---|---|---|---|
+| `evolution/` | 31 Knoten des Evolutionsbaums, Dateiname = Knoten-ID (`fish.svg`, `mosses.svg` …) | 64 × 64, Badge | Baumknoten, Detailansicht, Ereigniskarten, Meilensteine, Werkzeugpaletten, Chronik |
+| `ui/` | Menüs, Werkzeuge, Steuerung, Kartenebenen/-modi, Terraformer, Baum-Legende; Modell-Regler (`model-*`, `energy-*`, `alloc-*`) und Wolken-Ebene | 24 × 24, Linie | Kopfleiste, Menüs, Dock, Fenster, Buttons, Modellregler, Glossar |
+| `resources/` | Energie (Ω), Evolutionspunkte, Sauerstoff, CO₂, Temperatur, Pflanzendecke, Vielfalt, Bevölkerung | 24 × 24, gefüllt | Statusleiste, Bericht, Diagramme |
+| `habitats/` | 11 Biome + 9 Lebensraum-Bedingungen (Ufer, Süßwasser, Feuchtgebiet …) | 32 × 32, Badge | Baumknoten, Detailansicht, Untersuchen, Diagramme |
+| `events/` | 8 Katastrophen, Meilensteine und Hinweise (Leben, Intelligenz, Zeitalter, Ausgestorben, Fehler …) | 48 × 48, Badge | Ereignis-Palette, Chronik, Hinweise, Dialoge |
+
+## Bildsprache
+
+- **Farben:** Ursprung/Einzeller teal (`#5ccfd0`), Pflanzen moosgrün (`#8ad16f`), Tiere bernstein
+  (`#f2a35c`), Wasser `#4cb6d6`, Energie sonnengold (`#f6c453`), Evolutionspunkte violett (`#b48cff`),
+  Warnung `#ff7a6b`. Motive in Creme `#f6f1df`, Konturen `#0c1a14`.
+- **Badges:** abgerundetes Quadrat mit Verlauf der Kategoriefarbe und feiner heller Innenkante;
+  Licht von oben links.
+- **Lebensraum-Streifen** am unteren Rand der Evolutions-Badges: Wellen (Meer), Rippeln (Süßwasser),
+  Welle + Boden (Ufer), Bodenlinie mit Halmen (Land), Wasser + Schilf (Sumpf/Moor). So ist der
+  Lebensraum einer Gruppe schon am Symbol zu erkennen.
+- **Linien-Icons** der Oberfläche: Strich `#e9f1ec`, 1,8 px, runde Enden, höchstens ein Farbakzent.
+- **Größen:** lesbar ab 20 px (Evolution, Ereignisse), 16 px (Ressourcen, Linien-Icons) und 18 px (Lebensräume);
+  geprüft auf dunklem, mittlerem und hellem Hintergrund.
+- IDs innerhalb einer Datei tragen den Dateinamen als Präfix; jede Datei hat einen deutschen `<title>`.
+
+Neue Grafiken bitte in denselben Ordner und Stil einfügen und im Code über die Helfer
+`evoIcon`, `uiIcon`, `resIcon`, `habitatAsset` und `eventIcon` (`src/ui.ts`, `src/evolution.ts`) einbinden.

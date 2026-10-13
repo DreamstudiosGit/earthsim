@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e9f1ec" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <title>Sauerstoff-Erzeuger</title>
+  <path d="M9.5 3h5M10.5 3v5.8l-5.4 9.4a1.6 1.6 0 0 0 1.4 2.4h11a1.6 1.6 0 0 0 1.4-2.4l-5.4-9.4V3"/>
+  <g stroke="#7fe0f0">
+    <circle cx="10.6" cy="16.5" r="1.4"/>
+    <circle cx="14.2" cy="14.6" r="1"/>
+  </g>
+</svg>

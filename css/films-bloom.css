@@ -1,0 +1,5 @@
+/* Scene-specific keyframes for the seed and flower films (prefix every name with the film id). */
+
+/* Hinges for the bloom films: turn about the element's own origin (0, 0), placed with an
+   outer translate, so nested turns (close, then open) share one pivot whatever their box. */
+.evo-film .o.bloom-hinge { transform-box: view-box; transform-origin: 0 0; }

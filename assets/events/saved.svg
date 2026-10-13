@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>Gespeichert</title>
+  <defs>
+    <linearGradient id="saved-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10363d"/>
+      <stop offset="1" stop-color="#22706a"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#saved-bg)"/>
+  <!-- Archivkiste -->
+  <rect x="10" y="24" width="23" height="16" rx="2" fill="#e2d6b8"/>
+  <rect x="10" y="24" width="23" height="1.6" fill="#0c1a14" fill-opacity="0.22"/>
+  <rect x="8" y="17" width="27" height="7" rx="2" fill="#f6f1df"/>
+  <rect x="17.5" y="28.4" width="8" height="2.6" rx="1.3" fill="#0c1a14" fill-opacity="0.55"/>
+  <!-- Haken -->
+  <circle cx="35" cy="15" r="7.4" fill="#6fd38f" stroke="#133f40" stroke-width="2"/>
+  <path d="M31.6 15.2 L34 17.6 L38.4 12.6" fill="none" stroke="#0c1a14" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="2.6" y="2.6" width="42.8" height="42.8" rx="11.4" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.2"/>
+</svg>

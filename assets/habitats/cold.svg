@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Kalte Gebiete</title>
+  <defs>
+    <clipPath id="cold-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="cold-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b4a7a"/>
+      <stop offset="1" stop-color="#7ea6cf"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#cold-clip)">
+    <rect x="1" y="1" width="30" height="30" fill="url(#cold-sky)"/>
+    <!-- ferner Berg -->
+    <path d="M-1 24 L8.5 13 L18 24 Z" fill="#5d7697"/>
+    <path d="M8.5 13 L11 16 L9.8 15.5 L8.6 16.4 L7.4 15.4 L6 16 Z" fill="#dcecf7"/>
+    <!-- Hauptberg -->
+    <path d="M7 27 L19.5 8 L32 27 Z" fill="#8199b4"/>
+    <path d="M19.5 8 L32 27 H21 Z" fill="#62799b"/>
+    <path d="M19.5 8 L23.45 14 L21.8 13.2 L20.4 14.8 L19 13.4 L17.4 14.6 L15.55 14 Z" fill="#f4fbff"/>
+    <!-- Schneedecke -->
+    <path d="M1 26 C8 24.5 20 25 31 26.5 V31 H1 Z" fill="#e8f4fb"/>
+    <path d="M1 29 C10 27.8 22 28.2 31 29.4 V31 H1 Z" fill="#c4dceb"/>
+    <!-- Schneeflocke -->
+    <g fill="none" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round">
+      <path d="M7 3.2 V10.8 M3.7 5.1 L10.3 8.9 M3.7 8.9 L10.3 5.1"/>
+    </g>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

@@ -1,0 +1,98 @@
+'use strict';
+/*
+ * Shared test harness. Loads the built bundle into this process's global scope
+ * (the bootstrap in app.ts only starts when a document with #desktop exists,
+ * so running the bundle here defines everything and starts nothing) and wires
+ * the simulation systems together in the same order as App.tick.
+ */
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
+
+let SE = null;
+
+function loadSE() {
+  if (SE) return SE;
+  const bundle = path.join(__dirname, '..', 'simulation.js');
+  vm.runInThisContext(fs.readFileSync(bundle, 'utf8'), { filename: bundle });
+  SE = globalThis.SE;
+  if (!SE) throw new Error('simulation.js defined no SE namespace — run `npm run build`');
+  return SE;
+}
+
+/** A complete simulation without any UI, ticking exactly like App.tick. */
+function makeSim(seed = 12345) {
+  const SE = loadSE();
+  const s = {
+    SE,
+    world: new SE.WorldState(),
+    params: new SE.ModelParams(),
+    geo: new SE.GeoSystem(),
+    climate: new SE.ClimateSystem(),
+    flora: new SE.FloraSystem(),
+    life: new SE.LifeSystem(),
+    civ: new SE.CivSystem(),
+    events: new SE.EventSystem(),
+    atmo: new SE.AtmosphereSystem(),
+    history: new SE.HistoryRecorder(),
+  };
+  s.evo = new SE.EvolutionSystem(s.life, s.flora);
+  SE.civEventSink = (k, x, y) => s.events.trigger(s.world, k, x, y);
+  s.world.reset(seed);
+  s.evo.refresh(s.world, s.params, true);
+
+  s.tick = () => {
+    const { world: w, params: p } = s;
+    s.geo.step(w, p);
+    s.events.step(w, p);
+    SE.RiverSystem.maybeRebuild(w);
+    s.climate.step(w, p);
+    s.flora.step(w, p);
+    SE.BiomeSystem.step(w);
+    s.life.stepLife(w, p, s.atmo);
+    s.evo.step(w, p);
+    s.civ.step(w, p, s.atmo);
+    s.atmo.step(w, p);
+    w.omega = Math.min(SE.OMEGA_MAX, w.omega + SE.OMEGA_REGEN);
+    w.ticks++;
+    w.absoluteYears += w.yearsPerTick;
+    w.scaleYears += w.yearsPerTick;
+    s.history.sample(w);
+  };
+
+  /**
+   * Play like a greedy player: every few ticks develop one available node,
+   * chosen by `pick` (default: the cheapest). Returns the development order.
+   */
+  s.play = (maxTicks, pick) => {
+    const order = [];
+    for (let t = 0; t < maxTicks; t++) {
+      s.tick();
+      if (t % 5 !== 0) continue;
+      s.evo.refresh(s.world, s.params, true);
+      const ids = s.evo.availableIds();
+      if (ids.length === 0) continue;
+      const id = pick ? pick(ids) : ids.sort((a, b) => SE.evoNode(a).cost - SE.evoNode(b).cost)[0];
+      const r = s.evo.develop(s.world, s.params, id);
+      if (!r.ok) throw new Error(`develop(${id}) failed although available: ${r.reason}`);
+      order.push({ id, tick: s.world.ticks });
+      if (s.world.evo.developed.size === SE.EVO_NODES.length) break;
+    }
+    return order;
+  };
+
+  return s;
+}
+
+/** Cheap fingerprint of a typed array, to prove "unchanged". */
+function hash(arr) {
+  let h = 2166136261;
+  const bytes = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength);
+  for (let i = 0; i < bytes.length; i++) {
+    h ^= bytes[i];
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+module.exports = { loadSE, makeSim, hash };

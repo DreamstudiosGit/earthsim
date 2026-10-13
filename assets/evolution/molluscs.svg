@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Weichtiere</title>
+  <defs>
+    <linearGradient id="molluscs-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3d2412"/>
+      <stop offset="1" stop-color="#8a4a1c"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#molluscs-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Meer -->
+  <path d="M10 51q2.75-3 5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0M15.5 56.5q2.75-3 5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0" fill="none" stroke="#7fd3f0" stroke-width="2"/>
+  <!-- Weichkoerper mit Fangarmen -->
+  <path d="M49.5 36C52.5 36.5 54.5 38.5 55 41.5M47.5 39C49 41.5 49.5 44 51.5 46M44 40C44 43 43 45 41 46.5" fill="none" stroke="#f2a35c" stroke-width="2.6"/>
+  <ellipse cx="45" cy="35" rx="6.5" ry="5" transform="rotate(25 45 35)" fill="#f2a35c"/>
+  <!-- Ammonit-Spiralschale -->
+  <circle cx="29" cy="26" r="15" fill="#ffc785"/>
+  <circle cx="28.3" cy="25.3" r="14" fill="#f6f1df"/>
+  <path d="M19.9 20.75L17.3 19.25M23.75 16.9L22.25 14.3M29 15.5V12.5M34.25 16.9L35.75 14.3M38.1 20.75L40.7 19.25M34.25 35.1L35.75 37.7M29 36.5V39.5M23.75 35.1L22.25 37.7M19.9 31.25L17.3 32.75M18.5 26H15.5" fill="none" stroke="#f2a35c" stroke-width="2"/>
+  <path d="M31 26A2 2 0 0 0 27 26A3.5 3.5 0 0 0 34 26A5.5 5.5 0 0 0 23 26A8.5 8.5 0 0 0 40 26" fill="none" stroke="#8a4a1c" stroke-width="2"/>
+  <!-- Auge -->
+  <circle cx="47" cy="33.5" r="1.9" fill="#0c1a14"/>
+  <circle cx="46.4" cy="32.9" r="0.7" fill="#ffffff"/>
+</svg>

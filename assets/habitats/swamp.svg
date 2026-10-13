@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Sumpf</title>
+  <defs>
+    <clipPath id="swamp-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="swamp-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#93a487"/>
+      <stop offset="1" stop-color="#d2d6b6"/>
+    </linearGradient>
+    <linearGradient id="swamp-water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4d6448"/>
+      <stop offset="1" stop-color="#26372a"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#swamp-clip)">
+    <rect x="1" y="1" width="30" height="15" fill="url(#swamp-sky)"/>
+    <!-- ferne Büsche und toter Baum -->
+    <path d="M1 16 C4 13 7 13.5 9 14.5 C12 12.8 16 13.2 18 15 C22 13.5 27 13.8 31 15 V16 Z" fill="#6b7a55"/>
+    <path d="M7 16 V7.5 M7 11 L4.5 8.5 M7 9.5 L9.5 6.8" fill="none" stroke="#4a4636" stroke-width="1.3" stroke-linecap="round"/>
+    <rect x="1" y="15.5" width="30" height="16" fill="url(#swamp-water)"/>
+    <!-- Schlamminseln -->
+    <ellipse cx="9" cy="24" rx="7" ry="1.8" fill="#5a4b32"/>
+    <ellipse cx="25" cy="28.5" rx="7" ry="1.8" fill="#5a4b32"/>
+    <!-- Spiegelungen -->
+    <path d="M3 19 H8 M12 20.5 H17 M19 18.3 H24" stroke="#b8c79c" stroke-opacity="0.45" stroke-width="0.9" stroke-linecap="round"/>
+    <!-- Schilf -->
+    <g fill="none" stroke="#86a24c" stroke-width="1.1" stroke-linecap="round">
+      <path d="M6 24 V14.5 M8.5 24 V12.5 M11.5 24 Q11.3 19 9.8 16.5 M4 24 Q4.4 20 5.2 18"/>
+      <path d="M22 28.5 V17.5 M24.5 28.5 V15.5 M27.5 28.5 Q27.8 23 29.5 20.5 M20 28.5 Q19.6 24.5 18.4 22.5"/>
+    </g>
+    <g fill="#6e4423">
+      <rect x="5.1" y="13" width="1.8" height="4.2" rx="0.9"/>
+      <rect x="7.6" y="11" width="1.8" height="4.2" rx="0.9"/>
+      <rect x="21.1" y="16" width="1.8" height="4.2" rx="0.9"/>
+      <rect x="23.6" y="14" width="1.8" height="4.2" rx="0.9"/>
+    </g>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Feuchtgebiet</title>
+  <defs>
+    <clipPath id="wetland-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="wetland-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#98d5ec"/>
+      <stop offset="1" stop-color="#e4f5ee"/>
+    </linearGradient>
+    <linearGradient id="wetland-ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#93cf6c"/>
+      <stop offset="1" stop-color="#579f45"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#wetland-clip)">
+    <rect x="1" y="1" width="30" height="12" fill="url(#wetland-sky)"/>
+    <rect x="1" y="12" width="30" height="19" fill="url(#wetland-ground)"/>
+    <!-- Tümpel -->
+    <g fill="#5fcdb8" stroke="#c9f3e8" stroke-width="0.8">
+      <ellipse cx="11" cy="22.5" rx="7.5" ry="3.6"/>
+      <ellipse cx="23.5" cy="16.2" rx="5" ry="2"/>
+      <ellipse cx="25" cy="27.5" rx="3.8" ry="1.7"/>
+    </g>
+    <path d="M7 21.6 H12 M21.5 15.8 H24.5" stroke="#ffffff" stroke-opacity="0.65" stroke-width="0.9" stroke-linecap="round"/>
+    <!-- Gräser -->
+    <g fill="none" stroke-linecap="round" stroke-width="1.1">
+      <g stroke="#2f7a34">
+        <path d="M3.5 20 q-0.6 -2.6 -2 -3.8 M3.5 20 q0 -3 0.4 -4.6 M3.5 20 q0.6 -2.6 2 -3.6"/>
+        <path d="M19.5 24 q-0.6 -2.6 -2 -3.8 M19.5 24 q0 -3 0.4 -4.6 M19.5 24 q0.6 -2.6 2 -3.6"/>
+        <path d="M29 22.5 q-0.6 -2.6 -2 -3.8 M29 22.5 q0 -3 0.4 -4.6"/>
+      </g>
+      <g stroke="#c4ec98">
+        <path d="M14 29 q-0.5 -2.2 -1.7 -3.2 M14 29 q0 -2.6 0.4 -3.8 M14 29 q0.5 -2.2 1.7 -3"/>
+        <path d="M17.5 15.5 q-0.5 -2 -1.5 -3 M17.5 15.5 q0.4 -2 1.4 -2.8"/>
+      </g>
+    </g>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

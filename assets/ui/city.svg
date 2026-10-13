@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e9f1ec" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <title>Stadt</title>
+  <path d="M2.5 20.5h19M3.5 20.5V12h4V7.5h5V3.5h4v9h4v8"/>
+  <g fill="#f6c453" stroke="none">
+    <rect x="9" y="10" width="2" height="2" rx=".3"/>
+    <rect x="9" y="14.5" width="2" height="2" rx=".3"/>
+    <rect x="13.5" y="6.5" width="2" height="2" rx=".3"/>
+    <rect x="17.5" y="15.5" width="2" height="2" rx=".3"/>
+  </g>
+</svg>

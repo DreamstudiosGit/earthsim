@@ -1,0 +1,92 @@
+# Grafik- und Oberflächen-Überarbeitung Oktober 2026
+
+Ziel: das Spiel optisch auf ein neues Niveau heben, sodass Karte und Oberfläche wie aus einem Guss
+wirken – ohne den Charme von SimEarth zu verlieren. Leitlinie: **Die Spielwelt bleibt Pixelkunst**
+(8 × 8-Kacheln, doppelt vergrößert), aber in einer abgestimmten Naturpalette statt grellem EGA;
+**die Hülle ist modern** (dunkles Glas, klare Typografie) und zeigt Bedeutung statt bloßer Zahlen.
+
+Vorher/nachher: `vorher-karte.png` ↔ `nachher-karte.png`, `vorher-modell.png` ↔ `nachher-modell-geosphaere.png`.
+
+## 1. Planetenkarte
+
+- **Neue Palette** (`src/sprites.ts`): dieselben Buchstaben und Motive, aber abgestimmte Farben – keine
+  reinen EGA-Primärfarben mehr. Wüste und Offenland haben eigene Bodenfarben, damit Insekten, Reptilien
+  und Blätter darauf nicht verschwinden. Erste Zellen erscheinen im Türkis des Ursprungs (wie in Baum und UI).
+- **Meer nach Tiefe** (`src/terrainart.ts`): Wasser wird stufenlos von der Lagune bis zur Tiefsee eingefärbt,
+  darüber feine Wellenpixel; jede Küste bekommt einen Brandungssaum. Seetang scheint gedämpft durchs Wasser.
+- **Boden**: vier gespiegelte Varianten je Kachel gegen Stempel-Muster, Relief-Schattierung plus etwas
+  Höhenlicht und feine Körnung; Gebirge und Hochland lesen sich als solche.
+- **Tiefe**: Bäume, Tiere und Städte werfen einen Pixel-Schatten.
+- **Lebendige Atmosphäre** (`src/ambient.ts`): ziehende Pixelwolken mit Schatten (Dichte folgt dem
+  Wasserdampf, dünnen beim Hineinzoomen aus) und gelegentliches Sonnenglitzern auf offenem Wasser.
+  Neue Kartenebene **„Wolken“** zum Abschalten; „Bewegung reduzieren“ hält beides still.
+- Eckklammern als Cursor, leichte Vignette.
+- **Leistung**: Alle Kacheln werden einmal fertig zusammengesetzt und über Zahlen gefunden
+  (`src/tilecache.ts`); Relief und Wellen sind eingebacken. Beim Zoomen wird das letzte Bild skaliert und
+  erst nach 140 ms Ruhe neu gezeichnet – Zoomen bleibt auch auf langsamen Rechnern flüssig.
+
+## 2. Übersichtskarte
+
+- Gleiche Meeresfarben wie die Hauptkarte, Relief auf Gelände-, Lebensraum- und Technologiekarte.
+- Globus mit Atmosphärensaum, Sonnenlicht und Sternen.
+- Legenden für fließende Größen (Höhe, Temperatur, Niederschlag) als Farbverlauf mit benannten Enden,
+  eigene Legenden für Wind und Meeresströmung (`src/maplegend.ts`). Alle zwölf Modi in einer Zeile.
+
+## 3. Fenster, die vorher nur Regler oder Zahlen zeigten
+
+| Menüpunkt | Vorher | Jetzt |
+|---|---|---|
+| Modelle (4 Fenster, 27 Regler) | Regler mit Zahl 0–100 | Je ein **Schaubild, das live auf die Regler reagiert** (Erdquerschnitt; Energiebilanz mit aktueller Mitteltemperatur; fünf Biosphären-Vignetten; Energiemix-Ring, Budget-Balken und Kriegsgefahr nach derselben Formel wie die Simulation). Regler mit Symbol, Marke am kalibrierten Wert, Füllung ab dieser Marke, Klartext („Stark · 140 %“, „36 % des Mix“), Doppelklick setzt einen Regler zurück. |
+| Diagramme › Luftzusammensetzung | 5 Balken mit je eigener Skala | 6 **Ringanzeigen** mit markiertem Wohlfühlbereich und einer Zeile Bedeutung (z. B. „Ab 14 % möglich: Vögel, Säugetiere“) |
+| Diagramme › Lebensraumanteile | Balkenliste | **Ringdiagramm** mit Land/Meer in der Mitte und sortierter Legende |
+| Diagramme › Lebensformen | Balken in Artfarben | Rangliste nach Reich, ausgestorbene Gruppen markiert |
+| Diagramme › Technologie | Balken | **Weg der Zeitalter** mit Stadtzahlen und erreichter Stufe |
+| Gaia | Gesicht mit Prozentzahl | Gesicht als Planet (Ozeane, Kontinente, Licht), blinzelt, Augenbrauen und Wangen nach Stimmung; darunter Stimmungsbalken und **die vier Faktoren** ihrer Laune |
+| Verlauf | Linien | Flächen unter den Kurven, **Fadenkreuz mit Werten** beim Überfahren, aktuelle Werte an den Schaltern |
+| Bericht | Kennzahlenraster | **Lebenszeichen mit Mini-Verlauf und Trend**, Fortschritt (Planetenalter, Evolutionsbaum, Gaia), Oberfläche als ein Balken |
+| Glossar | Textliste | Karten mit Symbol je Begriff |
+| Chronik | Karten | Karten an einer Zeitleiste |
+| Datei › Spielstände | Textzeilen | Karten mit **Planeten-Vorschaubild**, Fortschrittsbalken und Datum |
+
+## 4. Titelbildschirm
+
+Beim Start erscheint statt des Rückfrage-Dialogs ein Titel: der frisch entstandene Planet dreht sich als
+Pixel-Globus im All, daneben „Weiterspielen“ (mit Vorschaubild der Sicherung), „Planet erwecken“,
+„Anderer Planet“ und „Spielstände …“. Die Simulation ruht, bis gewählt ist; das Spiel dahinter ist für
+Tastatur und Vorleser gesperrt (`inert`).
+
+## 5. Neue Dateien
+
+`src/terrainart.ts`, `src/tilecache.ts`, `src/ambient.ts`, `src/maplegend.ts`, `src/charts.ts`,
+`src/sliders.ts`, `src/modelscenes.ts`, `src/modelhero.ts`, `src/graphs.ts`, `src/gaia.ts`,
+`src/historyview.ts`, `src/report.ts`, `src/savesview.ts`, `src/title.ts`;
+Stile in `css/models.css`, `css/panels.css`, `css/title.css` (per `@import` aus `styles.css`);
+20 neue Liniensymbole in `assets/ui/` (Regler, Wolken-Ebene).
+
+Kleine Eingriffe in die Logik, ohne Verhaltensänderung: `CivSystem.aggression()` (dieselbe Formel, jetzt
+auch für die Anzeige), `WorldState.gaiaFactors()` (Gaias Stimmung in ihre Teile zerlegt),
+`livingGroups()` (gemeinsam für Verlauf und Bericht). Spielstand-Metadaten haben ein optionales
+Vorschaubild (`thumb`, ca. 10 KB); das Spielstandformat selbst ist unverändert.
+
+## 6. Prüfungen (tatsächlich ausgeführt)
+
+| Prüfung | Ergebnis |
+|---|---|
+| `npm test` | 32/32 bestanden |
+| Browser-Durchlauf über `index.html` (Chrome headless per DevTools-Protokoll): Titel starten, 16 Fenster, 12 Kartenmodi inkl. Globus, alle Ebenen und Überlagerungen, alle 27 Regler, Verlauf-Hover, Spielstände | alles ausgeführt, **keine Konsolenfehler** |
+| Ansichten 1440 × 900, 1920 × 1080, 2560 × 1440 und 390 × 844 (Gerät emuliert, DPR 2) | geprüft per Screenshot, siehe `nachher-*.png` |
+| Volle Kartenneuzeichnung, Software-Rendering ohne GPU, später Spielstand, 16 px je Feld | 1920 × 1080: ~50 ms · 2560 × 1440: ~71 ms; einzelne Zoomschritte ~0 ms (Vorschau) |
+
+## 7. Einschränkungen
+
+- Nur in Chrome geprüft (headless, Software-Rendering). Firefox, Safari und echte Touch-Geräte nicht.
+- Die volle Neuzeichnung ist ohne GPU etwas teurer als vorher, weil mehr gezeichnet wird; ein Vergleich
+  mit exakt demselben Planeten war nicht möglich, weil der alte Stand nicht mehr vorlag. Abgefedert durch
+  den Kachel-Cache, die Zoom-Vorschau und die bestehende Drosselung.
+- Der Titelbildschirm erscheint bei jedem Start; der Weg zurück ins Spiel ist ein Klick („Weiterspielen“).
+- Ältere Spielstände haben kein Vorschaubild, bis sie einmal neu gespeichert werden.
+
+## 8. Evolutionsmomente
+
+Spontane Evolution, das Fenster mit Film und Erklärung für jeden neuen Schritt und die 31 Filme sind in
+`evolutionsmomente.md` beschrieben.

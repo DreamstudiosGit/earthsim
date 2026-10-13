@@ -1,0 +1,25 @@
+/* Scene-specific keyframes for the greening films (prefix every name with the film id;
+   `green-` marks the few shared by several films of this group). */
+
+/* A dot travelling from its place by (--dx, --dy), fading in and out, then again:
+   water in a stem, nutrients and sugar in fungal threads, CO2 into a crown. */
+.evo-film .m.green-travel { animation-name: green-travel; animation-timing-function: var(--ease, linear); }
+@keyframes green-travel {
+  0% { transform: translate(0, 0); opacity: 0; }
+  15% { opacity: var(--o, 1); }
+  80% { opacity: var(--o, 1); }
+  100% { transform: translate(var(--dx, 0px), var(--dy, -40px)); opacity: 0; }
+}
+
+/* A one-shot squash towards --s in height only (drying cushions, coal pressed flat). */
+.evo-film .o.green-squash { animation-name: green-squash; transform-origin: var(--origin, 50% 100%); }
+@keyframes green-squash { from { transform: scaleY(1); } to { transform: scaleY(var(--s, 0.5)); } }
+
+/* A one-shot stretch in width only, from --s up to full (a trunk thickening). */
+.evo-film .o.green-widen { animation-name: green-widen; transform-origin: var(--origin, 50% 100%); }
+@keyframes green-widen { from { transform: scaleX(var(--s, 0.3)); } to { transform: scaleX(1); } }
+
+/* UV rays: a short bright stretch runs along a zigzag path of length --len
+   (give the path stroke-dasharray="30 2000"). */
+.evo-film .m.landPlants-zap { animation-name: landPlants-zap; animation-timing-function: linear; }
+@keyframes landPlants-zap { from { stroke-dashoffset: 30; } to { stroke-dashoffset: calc(var(--len, 300) * -1); } }

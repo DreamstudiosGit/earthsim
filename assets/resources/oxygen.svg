@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <title>Sauerstoff</title>
+  <defs>
+    <radialGradient id="oxygen-bubble" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#e6fdff"/>
+      <stop offset="0.45" stop-color="#7fe0f0"/>
+      <stop offset="1" stop-color="#3aa9c4"/>
+    </radialGradient>
+  </defs>
+  <g fill="url(#oxygen-bubble)" stroke="#2c8fa8" stroke-width="0.8">
+    <circle cx="9" cy="15" r="6.2"/>
+    <circle cx="17.2" cy="7.6" r="4.2"/>
+    <circle cx="18" cy="17.6" r="2.8"/>
+  </g>
+  <!-- Glanzlichter -->
+  <g fill="none" stroke="#ffffff" stroke-linecap="round" stroke-opacity="0.9">
+    <path d="M5.05 13.56 A4.2 4.2 0 0 1 7.56 11.05" stroke-width="1.5"/>
+    <path d="M14.66 6.68 A2.7 2.7 0 0 1 16.28 5.06" stroke-width="1.2"/>
+  </g>
+  <circle cx="17.1" cy="16.7" r="0.8" fill="#ffffff"/>
+</svg>

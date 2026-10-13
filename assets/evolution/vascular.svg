@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Frühe Gefäßpflanzen</title>
+  <defs>
+    <linearGradient id="vascular-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12341f"/>
+      <stop offset="1" stop-color="#2f6b36"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#vascular-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Land -->
+  <path d="M9 51H55M12 51l-.8-3.6M14.5 51l1-3.2M52 51l.8-3.6M18 56h4M30 56.5h4M42 56h4" fill="none" stroke="#c9a36b" stroke-width="2"/>
+  <!-- Cooksonia: gabelig verzweigte, blattlose Staengel -->
+  <path d="M27 51V40M27 40C27 35 22 34 21 30M27 40C27 35 32 34 33 29M21 30C21 26 17.5 25 17 21M21 30C21 26 23.5 23 24 19M33 29C33 25 30.5 22 30.5 18M33 29C33 25 37 24 38 21" fill="none" stroke="#b6e388" stroke-width="3"/>
+  <path d="M45 51V43M45 43C45 39 41.5 38 41 34.5M45 43C45 39 48.5 38 49 34.5" fill="none" stroke="#8ad16f" stroke-width="3"/>
+  <!-- Sporenkapseln -->
+  <g fill="#f6f1df">
+    <ellipse cx="17" cy="18.5" rx="3.4" ry="2.7"/>
+    <ellipse cx="24" cy="16.5" rx="3.4" ry="2.7"/>
+    <ellipse cx="30.5" cy="15.5" rx="3.4" ry="2.7"/>
+    <ellipse cx="38" cy="18.5" rx="3.4" ry="2.7"/>
+    <ellipse cx="41" cy="32" rx="3" ry="2.4"/>
+    <ellipse cx="49" cy="32" rx="3" ry="2.4"/>
+  </g>
+  <g fill="#c9a36b">
+    <ellipse cx="17.6" cy="19.4" rx="2" ry="1.2"/>
+    <ellipse cx="24.6" cy="17.4" rx="2" ry="1.2"/>
+    <ellipse cx="31.1" cy="16.4" rx="2" ry="1.2"/>
+    <ellipse cx="38.6" cy="19.4" rx="2" ry="1.2"/>
+    <ellipse cx="41.5" cy="32.8" rx="1.7" ry="1"/>
+    <ellipse cx="49.5" cy="32.8" rx="1.7" ry="1"/>
+  </g>
+</svg>

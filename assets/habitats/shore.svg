@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Uferzone</title>
+  <defs>
+    <clipPath id="shore-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="shore-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#86cdea"/>
+      <stop offset="1" stop-color="#d8f1f3"/>
+    </linearGradient>
+    <linearGradient id="shore-water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f9fc4"/>
+      <stop offset="1" stop-color="#1c77a2"/>
+    </linearGradient>
+    <linearGradient id="shore-land" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7cc95c"/>
+      <stop offset="1" stop-color="#4a9a3c"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#shore-clip)">
+    <rect x="1" y="1" width="30" height="10" fill="url(#shore-sky)"/>
+    <rect x="1" y="10" width="30" height="21" fill="url(#shore-water)"/>
+    <!-- Strand und Land -->
+    <path d="M12 10 C16 14 15.5 22 18.5 31 H31 V10 Z" fill="#ead39a"/>
+    <path d="M16.5 10 C20.5 13.5 20.5 22 24 31 H31 V10 Z" fill="url(#shore-land)"/>
+    <!-- Brandung -->
+    <path d="M11.4 11 C14.8 14.6 14.4 22 17.2 31" fill="none" stroke="#f4fbff" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.9"/>
+    <!-- Wellen -->
+    <path d="M3 15.5 q2 -1.2 4 0 t4 0 M2 22.5 q2.2 -1.3 4.4 0 t4.4 0" fill="none" stroke="#9fe0f5" stroke-width="1.2" stroke-linecap="round"/>
+    <!-- Gras -->
+    <g fill="none" stroke="#c4ec98" stroke-width="1.1" stroke-linecap="round">
+      <path d="M24 18 l-1 -2.2 M24 18 l0.2 -2.6 M24 18 l1.2 -2"/>
+      <path d="M27.5 26 l-1 -2.2 M27.5 26 l0.2 -2.6 M27.5 26 l1.2 -2"/>
+    </g>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

@@ -1,0 +1,44 @@
+/* Scene-specific keyframes for the sea films (prefix every name with the film id). */
+
+/* marineAlgae: the filament's sheath stretching upward as cells are added */
+.evo-film .o.marineAlgae-up { animation-name: marineAlgae-up; }
+@keyframes marineAlgae-up { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* earlyAnimals: the nerve net flashing as a wave, then the bell squeezing */
+.evo-film .m.earlyAnimals-flash { animation-name: earlyAnimals-flash; animation-direction: normal; animation-timing-function: ease-out; }
+@keyframes earlyAnimals-flash { 0% { opacity: 0.45; } 8% { opacity: 1; } 35%, 100% { opacity: 0.45; } }
+.evo-film .m.earlyAnimals-bell { animation-name: earlyAnimals-bell; animation-direction: normal; }
+@keyframes earlyAnimals-bell { 0%, 22% { transform: scale(1, 1); } 34% { transform: scale(0.8, 1.1); } 60%, 100% { transform: scale(1, 1); } }
+
+/* bilaterians: one sideways wave of a body segment, starting and ending straight */
+.evo-film .m.bilaterians-wiggle { animation-name: bilaterians-wiggle; animation-direction: normal; }
+@keyframes bilaterians-wiggle {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(calc(var(--amp, 3px) * -1)); }
+  75% { transform: translateY(var(--amp, 3px)); }
+}
+
+/* arthropods: the trilobite's trunk folding under its head, the predator turning round */
+.evo-film .o.arthropods-fold { animation-name: arthropods-fold; }
+@keyframes arthropods-fold { from { transform: scaleX(1); } to { transform: scaleX(0.22); } }
+.evo-film .o.arthropods-turn { animation-name: arthropods-turn; }
+@keyframes arthropods-turn { from { transform: scaleX(1); } to { transform: scaleX(-1); } }
+
+/* molluscs: the radula rasping, the shell's rim growing outward, the squid squeezing its mantle */
+.evo-film .m.molluscs-rasp { animation-name: molluscs-rasp; }
+@keyframes molluscs-rasp { from { transform: translate(0, 0) rotate(0deg); } to { transform: translate(9px, 3px) rotate(-6deg); } }
+.evo-film .o.molluscs-rim { animation-name: molluscs-rim; }
+@keyframes molluscs-rim { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.evo-film .o.molluscs-squeeze { animation-name: molluscs-squeeze; }
+@keyframes molluscs-squeeze { 0%, 100% { transform: scale(1, 1); } 40% { transform: scale(1.05, 0.68); } }
+
+/* fish: the lower jaw dropping wide open, holding, and snapping shut */
+.evo-film .m.fish-bite { animation-name: fish-bite; animation-direction: normal; }
+@keyframes fish-bite {
+  0%, 100% { transform: rotate(0deg); animation-timing-function: ease-out; }
+  30%, 52% { transform: rotate(var(--rot, 30deg)); animation-timing-function: cubic-bezier(.6,0,1,1); }
+  64% { transform: rotate(0deg); }
+}
+/* fish: a shoal fish turning round to flee */
+.evo-film .o.fish-turn { animation-name: fish-turn; }
+@keyframes fish-turn { from { transform: scaleX(1); } to { transform: scaleX(-1); } }

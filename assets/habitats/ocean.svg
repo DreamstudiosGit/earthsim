@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Hochsee</title>
+  <defs>
+    <clipPath id="ocean-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="ocean-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#335f8e"/>
+      <stop offset="1" stop-color="#6f9cc4"/>
+    </linearGradient>
+    <linearGradient id="ocean-water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#164f82"/>
+      <stop offset="1" stop-color="#0a2547"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#ocean-clip)">
+    <rect x="1" y="1" width="30" height="8.5" fill="url(#ocean-sky)"/>
+    <rect x="1" y="9" width="30" height="22" fill="url(#ocean-water)"/>
+    <g fill="none" stroke="#7fd3f0" stroke-linecap="round">
+      <path d="M1 13 q2.5 -1.4 5 0 t5 0 t5 0 t5 0 t5 0 t5 0" stroke-opacity="0.5" stroke-width="1"/>
+      <path d="M-1 18.5 q3 -2.2 6 0 t6 0 t6 0 t6 0 t6 0 t6 0" stroke-opacity="0.8" stroke-width="1.4"/>
+    </g>
+    <!-- Brecher im Vordergrund -->
+    <path d="M1 31 V25 C5 21 9 21 12 24 C14 26 16 24.5 17.5 23 C21 19.5 26 20 31 24.5 V31 Z" fill="#1d6aa3"/>
+    <path d="M1 25 C5 21 9 21 12 24 C14 26 16 24.5 17.5 23 C21 19.5 26 20 31 24.5" fill="none" stroke="#c4f0ff" stroke-width="1.6" stroke-linecap="round"/>
+    <path d="M5 28.5 q2.5 -1.2 5 0 M19 28 q2.5 -1.2 5 0" fill="none" stroke="#7fd3f0" stroke-opacity="0.6" stroke-width="1" stroke-linecap="round"/>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

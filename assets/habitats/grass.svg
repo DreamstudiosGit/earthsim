@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Offenland</title>
+  <defs>
+    <clipPath id="grass-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="grass-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#72c0ec"/>
+      <stop offset="1" stop-color="#d4effb"/>
+    </linearGradient>
+    <linearGradient id="grass-field" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#74c457"/>
+      <stop offset="1" stop-color="#48983b"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#grass-clip)">
+    <rect x="1" y="1" width="30" height="30" fill="url(#grass-sky)"/>
+    <!-- Wolke -->
+    <g fill="#ffffff" fill-opacity="0.85">
+      <circle cx="8" cy="8.5" r="2.4"/>
+      <circle cx="11" cy="7.6" r="3"/>
+      <rect x="6" y="8.4" width="8.6" height="2.5" rx="1.25"/>
+    </g>
+    <!-- Hügel und Wiese -->
+    <path d="M1 17 C8 14 15 14.5 21 16 C25 15 28 14.6 31 15.4 V31 H1 Z" fill="#a4d980"/>
+    <path d="M1 21 C9 18.5 18 19 31 20.5 V31 H1 Z" fill="url(#grass-field)"/>
+    <!-- Gras und Blüten -->
+    <g fill="none" stroke="#c4ec98" stroke-width="1.1" stroke-linecap="round">
+      <path d="M6 27.5 l-1.2 -2.6 M6 27.5 l0.2 -3 M6 27.5 l1.4 -2.4"/>
+      <path d="M16 25 l-1 -2.2 M16 25 l0.2 -2.6 M16 25 l1.2 -2"/>
+      <path d="M25 28.5 l-1.2 -2.6 M25 28.5 l0.2 -3 M25 28.5 l1.4 -2.4"/>
+    </g>
+    <circle cx="11" cy="23.5" r="1" fill="#f6f1df"/>
+    <circle cx="21" cy="23" r="1" fill="#ffd36b"/>
+    <circle cx="13.5" cy="28.5" r="1" fill="#ffd36b"/>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

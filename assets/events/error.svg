@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>Fehler</title>
+  <defs>
+    <linearGradient id="error-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3a2a14"/>
+      <stop offset="1" stop-color="#7a4e18"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#error-bg)"/>
+  <!-- Warndreieck -->
+  <path d="M24 10 L39.5 37 H8.5 Z" fill="#ffb347" stroke="#ffb347" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M22.6 13.4 L11.6 33" fill="none" stroke="#ffd59a" stroke-width="1.4" stroke-linecap="round" stroke-opacity="0.8"/>
+  <!-- Ausrufezeichen -->
+  <path d="M24 19.5 V28" stroke="#3a2208" stroke-width="3.6" stroke-linecap="round"/>
+  <circle cx="24" cy="32.6" r="2.1" fill="#3a2208"/>
+  <rect x="2.6" y="2.6" width="42.8" height="42.8" rx="11.4" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.2"/>
+</svg>

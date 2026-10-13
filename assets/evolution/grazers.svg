@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Huftiere &amp; Weidetiere</title>
+  <defs>
+    <linearGradient id="grazers-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3d2412"/>
+      <stop offset="1" stop-color="#8a4a1c"/>
+    </linearGradient>
+    <clipPath id="grazers-c">
+      <path d="M15 33C15 28.5 19 27 25 27C31 27 36 26.5 40 27C44 27.5 45 31 44.5 34C44 38 41 40.5 36 40.5H22C17.5 40.5 15 37.5 15 33Z"/>
+      <path d="M38 29C41 24 44 19 46 16L51 18.5C49 22 46 28 44 34Z"/>
+      <path d="M45 15.5C47 13.5 50.5 14 52 16L55.5 22C56.2 23.5 55 25 53.5 24.6L48.5 22C46 20.5 44 18 45 15.5Z"/>
+    </clipPath>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#grazers-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Land -->
+  <path d="M9 51H55M12 51l-.8-3.6M14.5 51l1-3.2M18 56h4M30 56.5h4M42 56h4" fill="none" stroke="#c9a36b" stroke-width="2"/>
+  <!-- Gras -->
+  <path d="M50 51C50 47 48.5 44 46.5 42M53 51C53 46 54 43 56 41M51.5 51C51 47 51 45 51.5 42.5" fill="none" stroke="#8ad16f" stroke-width="2.2"/>
+  <!-- Hoerner, Schwanz, Beine -->
+  <path d="M47.5 15C46 11 43.5 9 40.5 8.5M49.5 14.5C48.5 10.5 46.5 8 43.5 7" fill="none" stroke="#ffc785" stroke-width="2.5"/>
+  <path d="M15.5 32C13 33 12 36 12.5 39" fill="none" stroke="#f6f1df" stroke-width="2.5"/>
+  <path d="M37.5 40.5L36.5 50M25 40.5L26 50" fill="none" stroke="#ffc785" stroke-width="3.4"/>
+  <path d="M41 40L41.5 50M21 40C20 44 22 46.5 21 50" fill="none" stroke="#f6f1df" stroke-width="3.4"/>
+  <!-- Koerper, Hals, Kopf -->
+  <g fill="#ffc785">
+    <path d="M15 33C15 28.5 19 27 25 27C31 27 36 26.5 40 27C44 27.5 45 31 44.5 34C44 38 41 40.5 36 40.5H22C17.5 40.5 15 37.5 15 33Z"/>
+    <path d="M38 29C41 24 44 19 46 16L51 18.5C49 22 46 28 44 34Z"/>
+    <path d="M45 15.5C47 13.5 50.5 14 52 16L55.5 22C56.2 23.5 55 25 53.5 24.6L48.5 22C46 20.5 44 18 45 15.5Z"/>
+  </g>
+  <g clip-path="url(#grazers-c)"><g fill="#f6f1df" transform="translate(-2 -2)">
+    <path d="M15 33C15 28.5 19 27 25 27C31 27 36 26.5 40 27C44 27.5 45 31 44.5 34C44 38 41 40.5 36 40.5H22C17.5 40.5 15 37.5 15 33Z"/>
+    <path d="M38 29C41 24 44 19 46 16L51 18.5C49 22 46 28 44 34Z"/>
+    <path d="M45 15.5C47 13.5 50.5 14 52 16L55.5 22C56.2 23.5 55 25 53.5 24.6L48.5 22C46 20.5 44 18 45 15.5Z"/>
+  </g></g>
+  <path d="M19 36.5C26 38 34 38 42 36" fill="none" stroke="#8a4a1c" stroke-width="2"/>
+  <path d="M46 17C43 16 41 17 40 18.5C42 19.5 44.5 19 46 17Z" fill="#f2a35c" stroke="#f2a35c" stroke-width="2"/>
+  <circle cx="50" cy="18" r="1.5" fill="#0c1a14"/>
+</svg>

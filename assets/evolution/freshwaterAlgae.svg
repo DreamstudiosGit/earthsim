@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Süßwasser-Grünalgen</title>
+  <defs>
+    <linearGradient id="freshwaterAlgae-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12341f"/>
+      <stop offset="1" stop-color="#2f6b36"/>
+    </linearGradient>
+    <clipPath id="freshwaterAlgae-c">
+      <rect x="-22" y="-6" width="44" height="12" rx="6"/>
+    </clipPath>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#freshwaterAlgae-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Suesswasser -->
+  <path d="M10 51q2.25-2.4 4.5 0t4.5 0M24 51q2.25-2.4 4.5 0t4.5 0t4.5 0M42 51q2.25-2.4 4.5 0t4.5 0t4.5 0M16 56.5q2.25-2.4 4.5 0t4.5 0M33 56.5q2.25-2.4 4.5 0t4.5 0" fill="none" stroke="#6fd6c0" stroke-width="2"/>
+  <!-- feine Faeden im Hintergrund -->
+  <path d="M9 14C14 10 19 15 25 11M37 45C42 41.5 47 46 54 42" fill="none" stroke="#8ad16f" stroke-width="3"/>
+  <!-- Fadenalge (Spirogyra) mit Spiral-Chloroplast -->
+  <g transform="translate(32 29) rotate(-18)">
+    <rect x="-22" y="-6" width="44" height="12" rx="6" fill="#b6e388"/>
+    <g clip-path="url(#freshwaterAlgae-c)">
+      <rect x="-22" y="-6" width="44" height="12" rx="6" transform="translate(-.96 -1.89)" fill="#f6f1df"/>
+    </g>
+    <path d="M-18 4l3.5-8M-12.5 4l3.5-8M-4.5 4l3.5-8M1 4l3.5-8M9.5 4l3.5-8M15 4l3.5-8" fill="none" stroke="#8ad16f" stroke-width="3"/>
+    <path d="M-7.5-6V6M7.5-6V6" fill="none" stroke="#2f6b36" stroke-width="2"/>
+  </g>
+  <!-- Blaeschen -->
+  <circle cx="50" cy="12" r="2.4" fill="none" stroke="#6fd6c0" stroke-width="2"/>
+  <circle cx="45" cy="7.5" r="1.5" fill="#6fd6c0"/>
+</svg>

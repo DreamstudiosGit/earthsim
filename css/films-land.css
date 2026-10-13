@@ -1,0 +1,84 @@
+/* Scene-specific keyframes for the land animal films (prefix every name with the film id;
+   `land-` marks the few shared by several films of this group). */
+
+/* landArthropods: the springtail springs up, lands, rests, springs again. */
+.evo-film .m-landArthropods-hop { animation-name: landArthropods-hop; animation-timing-function: linear; }
+@keyframes landArthropods-hop {
+  0%, 50%, 100% { transform: translateY(0); animation-timing-function: ease-out; }
+  70% { transform: translateY(calc(var(--amp, 8px) * -1)); animation-timing-function: ease-in; }
+  88% { transform: translateY(0); }
+}
+
+/* landArthropods: the millipede (head at the origin) creeps over the sandy
+   bottom, tilts up the slope, levels out on land (in its own units, scale 1.55).
+   50% = 3 s of 6 s. */
+.evo-film .o-landArthropods-crawl { animation-name: landArthropods-crawl; }
+@keyframes landArthropods-crawl {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(12.9px, 0) rotate(0deg); }
+  58.9% { transform: translate(33.5px, -9.7px) rotate(-7.7deg); }
+  67.8% { transform: translate(54.2px, -19.4px) rotate(-15.5deg); }
+  75% { transform: translate(71px, -19.4px) rotate(-15.5deg); }
+  83.3% { transform: translate(90.3px, -19.4px) rotate(-12.6deg); }
+  91.7% { transform: translate(109.7px, -19.4px) rotate(-4.8deg); }
+  97.2% { transform: translate(122.6px, -19.4px) rotate(-0.5deg); }
+  100% { transform: translate(129px, -19.4px) rotate(0deg); }
+}
+
+/* insects: a wing beat seen from above (the span shortens and stretches). */
+.evo-film .m-insects-beat { animation-name: insects-beat; animation-timing-function: linear; }
+@keyframes insects-beat { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.3); } }
+
+/* insects: the leap from stem to stem on small flaps, head turning to the
+   flight direction and back up for the landing (own units, scale 1.4). */
+.evo-film .o-insects-glide { animation-name: insects-glide; }
+@keyframes insects-glide {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  12% { transform: translate(12px, -10px) rotate(60deg); }
+  30% { transform: translate(40px, -12px) rotate(85deg); }
+  70% { transform: translate(100px, 8px) rotate(95deg); }
+  88% { transform: translate(122px, 18px) rotate(40deg); }
+  100% { transform: translate(128.6px, 22.9px) rotate(0deg); }
+}
+
+/* insects: take-off, a full loop (radius 20 around 20/-25), then away to the right. */
+.evo-film .o-insects-flight { animation-name: insects-flight; }
+@keyframes insects-flight {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  14% { transform: translate(0, -25px) rotate(0deg); }
+  22% { transform: translate(5.9px, -39.1px) rotate(45deg); }
+  30% { transform: translate(20px, -45px) rotate(90deg); }
+  38% { transform: translate(34.1px, -39.1px) rotate(135deg); }
+  46% { transform: translate(40px, -25px) rotate(180deg); }
+  54% { transform: translate(34.1px, -10.9px) rotate(225deg); }
+  62% { transform: translate(20px, -5px) rotate(270deg); }
+  70% { transform: translate(5.9px, -10.9px) rotate(315deg); }
+  78% { transform: translate(0, -25px) rotate(360deg); }
+  89% { transform: translate(40px, -45px) rotate(420deg); }
+  100% { transform: translate(160px, -60px) rotate(450deg); }
+}
+
+/* A puff of dust: swells and fades as it drifts (used with landDust()). */
+.evo-film .m-land-puff { animation-name: land-puff; animation-timing-function: ease-out; }
+@keyframes land-puff { 0% { transform: scale(0.3); opacity: 0; } 15% { opacity: 0.85; } 100% { transform: scale(1.8); opacity: 0; } }
+
+/* reptiles: the egg rocks from side to side before it cracks. */
+.evo-film .m-reptiles-wobble { animation-name: reptiles-wobble; transform-origin: var(--origin, 50% 100%); }
+@keyframes reptiles-wobble {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(calc(var(--rot, 6deg) * -1)); }
+  75% { transform: rotate(var(--rot, 6deg)); }
+}
+
+/* dinosaurs: the sauropod raises its neck from low and short to high and long. */
+.evo-film .o-dinosaurs-neck { animation-name: dinosaurs-neck; }
+@keyframes dinosaurs-neck { from { transform: rotate(-35deg) scale(0.75); } to { transform: rotate(0deg) scale(1); } }
+
+/* birds: Archaeopteryx leaves the ground, climbing ever steeper (own units, scale 1.6). */
+.evo-film .o-birds-takeoff { animation-name: birds-takeoff; }
+@keyframes birds-takeoff {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(28px, -6px); }
+  60% { transform: translate(70px, -34px); }
+  100% { transform: translate(110px, -66px); }
+}

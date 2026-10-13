@@ -1,0 +1,234 @@
+/* =============================================================================
+ * SimEarth 2.0 — atmosphere and climate
+ * -----------------------------------------------------------------------------
+ * A deliberately transparent energy-balance model:
+ *
+ *   target = SOLAR * insolation * (1 - albedo) - radiativeLoss + greenhouse
+ *            - altitude lapse
+ *
+ * Tiles chase that target with thermal inertia (oceans far more slowly than
+ * land), then a diffusion pass stands in for winds and ocean currents. Every
+ * coefficient is scaled by the matching Atmosphere Model Control Panel slider.
+ * ========================================================================== */
+
+namespace SE {
+  export class ClimateSystem {
+    private readonly tempScratch = new Float32Array(TILE_COUNT);
+    private readonly moistScratch = new Float32Array(TILE_COUNT);
+
+    /**
+     * Normalized insolation for a row: 1.0 at the equator falling to a floor at
+     * the poles. The floor stands in for the annual average at high latitudes —
+     * a pole in permanent midsummer is not dark — and axial tilt moves it: a
+     * steeply tilted world spreads its sunlight far more evenly.
+     */
+    static insolationAt(y: number, axialTilt: number): number {
+      const floor = clamp(0.35 * mul(axialTilt), 0, 0.85);
+      const latRad = (latitudeDeg(y) * Math.PI) / 180;
+      return floor + (1 - floor) * Math.max(0, Math.cos(latRad));
+    }
+
+    /** Total greenhouse forcing in degrees, from the global gas mix. */
+    static greenhouseForcing(world: WorldState, params: ModelParams): number {
+      const co2Term = GH_CO2 * Math.log2(1 + world.co2 / CO2_REF);
+      const vaporTerm = GH_VAPOR * world.vapor;
+      // Denser air broadens absorption lines a little; thin air loses heat.
+      const pressureTerm = clamp(GH_N2 * (world.n2 - 78), -4, 4);
+      return (co2Term + vaporTerm + pressureTerm) * mul(params.atmo.greenhouse);
+    }
+
+    step(world: WorldState, params: ModelParams): void {
+      this.updateTemperature(world, params);
+      this.updateMoisture(world, params);
+    }
+
+    private updateTemperature(world: WorldState, params: ModelParams): void {
+      const { elevation, temperature, moisture, biome } = world;
+      const scratch = this.tempScratch;
+
+      const solar = SOLAR_INPUT_BASE * mul(params.atmo.solarInput);
+      const greenhouse = ClimateSystem.greenhouseForcing(world, params);
+      const surfAlb = mul(params.atmo.surfaceAlbedo);
+      const cloudAlb = 0.28 * mul(params.atmo.cloudAlbedo);
+      const diffusion = clamp(TEMP_DIFFUSION_BASE * mul(params.atmo.thermalTransfer), 0, 0.24);
+
+      // Suspended dust scatters sunlight straight back to space.
+      const dustExtinction = Math.min(0.9, world.dust * 1.1);
+
+      for (let y = 0; y < GRID_H; y++) {
+        const insolation =
+          ClimateSystem.insolationAt(y, params.geo.axialTilt) * (1 - dustExtinction);
+
+        for (let x = 0; x < GRID_W; x++) {
+          const i = idx(x, y);
+          const e = elevation[i];
+
+          // Cloud cover is humidity that actually has vapour to condense from.
+          const cloud = Math.min(0.6, world.vapor * moisture[i]);
+          const albedo = clamp(BIOME_ALBEDO[biome[i]] * surfAlb + cloudAlb * cloud, 0, 0.92);
+
+          let target = solar * insolation * (1 - albedo) - RADIATIVE_OFFSET + greenhouse;
+          if (e > 0) target -= e * ELEVATION_KM * LAPSE_RATE;
+
+          const inertia = e < 0 ? OCEAN_INERTIA : LAND_INERTIA;
+          scratch[i] = temperature[i] + (target - temperature[i]) * inertia;
+        }
+      }
+
+      // Lateral mixing: winds and currents smear the latitudinal gradient.
+      // Several passes rather than a larger coefficient — see
+      // TEMP_DIFFUSION_PASSES for why the reach has to be restored at all.
+      for (let pass = 0; pass < TEMP_DIFFUSION_PASSES; pass++) {
+        for (let y = 0; y < GRID_H; y++) {
+          for (let x = 0; x < GRID_W; x++) {
+            const i = idx(x, y);
+            temperature[i] =
+              scratch[i] * (1 - diffusion) + neighborMean(scratch, x, y) * diffusion;
+          }
+        }
+        if (pass + 1 < TEMP_DIFFUSION_PASSES) scratch.set(temperature);
+      }
+    }
+
+    /**
+     * Moisture: oceans evaporate in proportion to warmth, prevailing zonal
+     * winds carry that humidity downwind, and land rains it out — which is what
+     * produces continental interiors and rain shadows behind mountains.
+     *
+     * Air temperature and the global vapour supply enter as a *ceiling* on how
+     * much water the air over a tile can hold, not as a discount on what blew
+     * in. That distinction is the whole difference between a living planet and
+     * a desert one. Applied as a multiplier they compounded along the wind
+     * chain — about 18% lost per tile on top of the transmission loss — which
+     * dried the air out within five tiles of any coast whatever
+     * MOISTURE_TRANSMISSION was set to. Measured on the old model: mean land
+     * moisture 0.12-0.20 against a desert threshold of 0.16, so half of every
+     * continent was desert by construction, and raising transmission to 1.0
+     * changed the figure by 0.01.
+     */
+    private updateMoisture(world: WorldState, params: ModelParams): void {
+      const { elevation, temperature, moisture, riparian } = world;
+      const scratch = this.moistScratch;
+      scratch.set(moisture);
+
+      const rainMul = mul(params.atmo.rainfall);
+      const transmission = clamp(MOISTURE_TRANSMISSION * rainMul, 0, 0.999);
+      // A dry atmosphere cannot rain, however warm it is.
+      const vaporGate = clamp(0.25 + 1.35 * world.vapor, 0, 1);
+
+      for (let y = 0; y < GRID_H; y++) {
+        const wind = windDirection(y);
+
+        for (let x = 0; x < GRID_W; x++) {
+          const i = idx(x, y);
+          const e = elevation[i];
+          const upwind = idx(wrapX(x - wind), y);
+
+          // Warm air holds more water; freezing air holds almost none.
+          const holding = clamp((temperature[i] + 12) / 42, 0, 1);
+          const capacity = (0.35 + 0.65 * holding) * vaporGate;
+          let target: number;
+
+          if (e < 0) {
+            // Open water evaporates until the air above it is saturated.
+            target = capacity;
+          } else {
+            // Land inherits what the wind brings, minus what it rains out.
+            const carried = scratch[upwind] * transmission;
+            // Air forced up a slope dumps its load on the windward side.
+            const rise = Math.max(0, e - Math.max(0, elevation[upwind]));
+            const orographic = Math.min(0.35, rise * 1.6);
+            target = clamp(Math.min(capacity, carried + orographic), 0, 1);
+
+            // A river is a moisture source of its own, so its channel and banks
+            // stay green even where the wind arrives with nothing left — which
+            // is exactly how a desert river valley works.
+            const bank = riparian[i] * capacity;
+            if (bank > target) target = bank;
+          }
+
+          moisture[i] = scratch[i] + (target - scratch[i]) * MOISTURE_RATE;
+        }
+      }
+    }
+
+    /* ------------------------------------------------- overlay derivations -- */
+
+    /**
+     * Air current vector for a tile, used by the Winds overlay and Air Currents
+     * map. Zonal flow plus a weak meridional component toward the poles.
+     */
+    static airCurrent(y: number): { dx: number; dy: number } {
+      const absLat = Math.abs(latitudeDeg(y));
+      const dx = windDirection(y);
+      // Hadley/Ferrel/Polar cells: alternating poleward and equatorward drift.
+      const dy = absLat < 30 ? 1 : absLat < 60 ? -1 : 1;
+      const hemi = latitudeDeg(y) >= 0 ? 1 : -1;
+      return { dx, dy: dy * hemi };
+    }
+
+    /**
+     * Ocean current vector: wind-driven gyres that reverse across the equator,
+     * which is what the SeaFlow overlay draws.
+     */
+    static oceanCurrent(x: number, y: number): { dx: number; dy: number } {
+      const lat = latitudeDeg(y);
+      const gyre = Math.sin((x / GRID_W) * Math.PI * 4);
+      const dx = lat > 0 ? (gyre >= 0 ? 1 : -1) : (gyre >= 0 ? -1 : 1);
+      const dy = Math.abs(lat) < 45 ? (lat >= 0 ? -1 : 1) : (lat >= 0 ? 1 : -1);
+      return { dx, dy };
+    }
+  }
+
+  /* -------------------------------------------------------------------------- */
+
+  /** Collects every global source and sink, then clamps the mix to sane bounds. */
+  export class AtmosphereSystem {
+    /** Net gas exchange computed by the biosphere this tick. */
+    o2Delta = 0;
+    co2Delta = 0;
+    dustDelta = 0;
+
+    step(world: WorldState, params: ModelParams): void {
+      // --- Carbon dioxide ---
+      // The carbonate-silicate thermostat: weathering accelerates sharply with
+      // temperature, which is what stops a volcanic world cooking indefinitely.
+      const landFraction = 1 - world.oceanFraction;
+      const weathering =
+        world.co2 * WEATHERING * landFraction *
+        clamp((world.globalTemp + 5) / 25, 0, 2.5);
+
+      const volcanic = VOLCANIC_CO2 * mul(params.geo.volcanoes);
+      world.co2 += volcanic + this.co2Delta - weathering;
+
+      // --- Oxygen ---
+      // The oxidation sink grows faster than linearly: the more free oxygen
+      // there is, the more aggressively it attacks rock and dead organics.
+      const oxidation = world.o2 * OXIDATION * (0.5 + world.o2 / 40);
+      world.o2 += this.o2Delta - oxidation;
+
+      // --- Water vapour ---
+      // Equilibrium humidity rises with sea area and global temperature. The
+      // loop gain stays well under 1, so this amplifies without running away.
+      const vaporTarget = clamp(
+        world.oceanFraction * clamp((world.globalTemp + 25) / 45, 0, 1.3), 0, 1,
+      );
+      world.vapor += (vaporTarget - world.vapor) * 0.01;
+
+      // --- Dust ---
+      world.dust += this.dustDelta;
+      world.dust -= world.dust * DUST_SETTLING;
+
+      // --- Bounds ---
+      world.co2 = clamp(world.co2, 0, 5000);
+      world.o2 = clamp(world.o2, 0, 40);
+      world.n2 = clamp(world.n2, 0, 100);
+      world.vapor = clamp(world.vapor, 0, 1);
+      world.dust = clamp(world.dust, 0, 1);
+
+      this.o2Delta = 0;
+      this.co2Delta = 0;
+      this.dustDelta = 0;
+    }
+  }
+}

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Amphibien</title>
+  <defs>
+    <linearGradient id="amphibians-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3d2412"/>
+      <stop offset="1" stop-color="#8a4a1c"/>
+    </linearGradient>
+    <clipPath id="amphibians-c">
+      <path d="M22 42C21 34 27 27 36 25.5C40 24.5 43 22 47 22C51 22 54 25 54.5 29C55 32 53 34.5 50 35.5C47 40 41 45 33 46C28 46.5 23 45.5 22 42Z"/>
+    </clipPath>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#amphibians-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Ufer -->
+  <path d="M9 51q2.75-3 5.5 0t5.5 0t5.5 0t5.5 0M12 56.5q2.75-3 5.5 0t5.5 0t5.5 0" fill="none" stroke="#7fd3f0" stroke-width="2"/>
+  <path d="M31 57.5C33 53.5 35 51 40 51H55M52 51l.8-3.6M42 56h4" fill="none" stroke="#c9a36b" stroke-width="2"/>
+  <!-- Frosch: Fuesse -->
+  <path d="M26 47.5L40 48.5M46 37L46.8 47.5" fill="none" stroke="#f6f1df" stroke-width="3.4"/>
+  <path d="M40 48.5l3-1.4M40 48.5l3.2.8M46.8 48l-2.6.8M46.8 48l3 .3" fill="none" stroke="#f6f1df" stroke-width="2"/>
+  <!-- Koerper -->
+  <path d="M22 42C21 34 27 27 36 25.5C40 24.5 43 22 47 22C51 22 54 25 54.5 29C55 32 53 34.5 50 35.5C47 40 41 45 33 46C28 46.5 23 45.5 22 42Z" fill="#ffc785"/>
+  <g clip-path="url(#amphibians-c)">
+    <path d="M22 42C21 34 27 27 36 25.5C40 24.5 43 22 47 22C51 22 54 25 54.5 29C55 32 53 34.5 50 35.5C47 40 41 45 33 46C28 46.5 23 45.5 22 42Z" transform="translate(-2 -2)" fill="#f6f1df"/>
+  </g>
+  <g fill="#f2a35c">
+    <circle cx="31" cy="30.5" r="1.9"/>
+    <circle cx="37" cy="28.5" r="1.7"/>
+    <circle cx="40" cy="33" r="1.5"/>
+  </g>
+  <path d="M54 30.5C51 32 47 32.5 43.5 31.5" fill="none" stroke="#8a4a1c" stroke-width="2"/>
+  <!-- Oberschenkel -->
+  <ellipse cx="28.5" cy="40" rx="8.5" ry="6.2" transform="rotate(-20 28.5 40)" fill="#ffc785"/>
+  <ellipse cx="27.8" cy="39.3" rx="7.4" ry="5.2" transform="rotate(-20 27.8 39.3)" fill="#f6f1df"/>
+  <path d="M21.5 37C24 33.5 30 32.5 34.5 35.5" fill="none" stroke="#f2a35c" stroke-width="2"/>
+  <circle cx="27" cy="41" r="1.6" fill="#f2a35c"/>
+  <!-- Auge -->
+  <circle cx="45" cy="21.5" r="4.6" fill="#ffc785"/>
+  <circle cx="44.5" cy="21" r="3.9" fill="#f6f1df"/>
+  <circle cx="45.6" cy="21.3" r="2.3" fill="#0c1a14"/>
+  <circle cx="44.9" cy="20.6" r="0.8" fill="#ffffff"/>
+</svg>

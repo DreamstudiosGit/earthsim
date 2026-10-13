@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#071311">
+  <meta name="description" content="SimEarth 2.0 – ein Natur- und Evolutionsspiel: Lass aus Meeresalgen und ersten Zellen einen lebendigen Planeten wachsen.">
+  <title>SimEarth 2.0 – Der lebende Planet</title>
+  <link rel="icon" href="assets/ui/new-planet.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Status bar: brand, the classic pull-down menus, resources, time and speed. -->
+  <header id="topbar" class="topbar glass">
+    <nav id="menubar" class="menubar"></nav>
+    <div id="hud" class="hud"></div>
+  </header>
+
+  <!-- The living map, the tool dock and every window are created in code. -->
+  <main id="desktop" class="stage"></main>
+
+  <!-- Notifications: one-line messages and evolution cards, then milestones. -->
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="milestones" class="milestones"></div>
+  <div id="modal-root" class="modal-root"></div>
+
+  <noscript>
+    <p class="noscript">SimEarth 2.0 braucht JavaScript. Bitte aktiviere es in deinem Browser.</p>
+  </noscript>
+
+  <script src="simulation.js"></script>
+</body>
+</html>

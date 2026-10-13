@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Insekten</title>
+  <defs>
+    <linearGradient id="insects-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3d2412"/>
+      <stop offset="1" stop-color="#8a4a1c"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#insects-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Land -->
+  <path d="M9 51H55M12 51l-.8-3.6M14.5 51l1-3.2M49.5 51l-1-3.2M52 51l.8-3.6M18 56h4M42 56h4" fill="none" stroke="#c9a36b" stroke-width="2"/>
+  <!-- Libelle (Aufsicht): Fluegel -->
+  <g fill="#f6f1df" fill-opacity="0.45" stroke="#f6f1df" stroke-width="2">
+    <ellipse cx="21.5" cy="23" rx="11" ry="4" transform="rotate(-10 21.5 23)"/>
+    <ellipse cx="42.5" cy="23" rx="11" ry="4" transform="rotate(10 42.5 23)"/>
+    <ellipse cx="21" cy="16" rx="11.5" ry="3.6" transform="rotate(8 21 16)"/>
+    <ellipse cx="43" cy="16" rx="11.5" ry="3.6" transform="rotate(-8 43 16)"/>
+  </g>
+  <g fill="#ffc785">
+    <ellipse cx="12.6" cy="13.9" rx="2.2" ry="1.3" transform="rotate(8 12.6 13.9)"/>
+    <ellipse cx="51.4" cy="13.9" rx="2.2" ry="1.3" transform="rotate(-8 51.4 13.9)"/>
+  </g>
+  <!-- Hinterleib -->
+  <path d="M32 26V45" fill="none" stroke="#f2a35c" stroke-width="4.4"/>
+  <path d="M32 26V45" fill="none" stroke="#8a4a1c" stroke-width="4.4" stroke-linecap="butt" stroke-dasharray="2 3.5" stroke-dashoffset="-2"/>
+  <!-- Brust und Kopf -->
+  <ellipse cx="32" cy="21" rx="4" ry="5.5" fill="#f2a35c"/>
+  <ellipse cx="31.2" cy="20.2" rx="2.6" ry="4" fill="#ffc785"/>
+  <circle cx="29.7" cy="13.8" r="3.3" fill="#ffc785"/>
+  <circle cx="34.3" cy="13.8" r="3.3" fill="#ffc785"/>
+  <circle cx="29" cy="13" r="1.2" fill="#ffffff"/>
+  <circle cx="33.6" cy="13" r="1.2" fill="#ffffff"/>
+</svg>

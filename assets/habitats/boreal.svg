@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Nadelwald</title>
+  <defs>
+    <clipPath id="boreal-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="boreal-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#86b2b2"/>
+      <stop offset="1" stop-color="#d3e3d6"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#boreal-clip)">
+    <rect x="1" y="1" width="30" height="30" fill="url(#boreal-sky)"/>
+    <!-- ferne Baumreihe -->
+    <g fill="#5f8c78">
+      <path d="M4 13 L6.5 20 H1.5 Z"/>
+      <path d="M9 11.5 L11.75 19.5 H6.25 Z"/>
+      <path d="M13.5 13.5 L16 20 H11 Z"/>
+      <path d="M21.5 11.5 L24.25 19.5 H18.75 Z"/>
+      <path d="M29 13 L31.5 20 H26.5 Z"/>
+    </g>
+    <rect x="1" y="19.5" width="30" height="12" fill="#3d6653"/>
+    <rect x="1" y="26.5" width="30" height="5" fill="#173224"/>
+    <!-- Fichten -->
+    <path d="M7 12 L9.34 17.4 L8.26 17.4 L10.6 22.2 L9.16 22.2 L11.5 27 L2.5 27 L4.84 22.2 L3.4 22.2 L5.74 17.4 L4.66 17.4 Z" fill="#1f4a32"/>
+    <path d="M25.5 11.5 L27.97 17.26 L26.83 17.26 L29.3 22.38 L27.78 22.38 L30.25 27.5 L20.75 27.5 L23.22 22.38 L21.7 22.38 L24.17 17.26 L23.03 17.26 Z" fill="#1d4630"/>
+    <path d="M16 9 L18.73 15.84 L17.47 15.84 L20.2 21.92 L18.52 21.92 L21.25 28 L10.75 28 L13.48 21.92 L11.8 21.92 L14.53 15.84 L13.27 15.84 Z" fill="#143524"/>
+    <path d="M16 9 L13.27 15.84 L14.53 15.84 L11.8 21.92" fill="none" stroke="#4f8a5e" stroke-width="0.9" stroke-linejoin="round" stroke-opacity="0.8"/>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

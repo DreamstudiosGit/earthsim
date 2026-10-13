@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>Seuche</title>
+  <defs>
+    <linearGradient id="plague-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3f1a2c"/>
+      <stop offset="1" stop-color="#93354e"/>
+    </linearGradient>
+    <radialGradient id="plague-body" cx="0.38" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#fbf7ea"/>
+      <stop offset="1" stop-color="#e8d2c6"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#plague-bg)"/>
+  <!-- Stacheln -->
+  <g stroke="#f6f1df" stroke-width="2" stroke-linecap="round">
+    <path d="M33 24 H36.5 M15 24 H11.5 M24 15 V11.5 M24 33 V36.5"/>
+    <path d="M30.36 30.36 L32.84 32.84 M17.64 30.36 L15.16 32.84 M17.64 17.64 L15.16 15.16 M30.36 17.64 L32.84 15.16"/>
+  </g>
+  <g fill="#ff9a8a">
+    <circle cx="38" cy="24" r="2.1"/>
+    <circle cx="10" cy="24" r="2.1"/>
+    <circle cx="24" cy="10" r="2.1"/>
+    <circle cx="24" cy="38" r="2.1"/>
+    <circle cx="33.9" cy="33.9" r="2.1"/>
+    <circle cx="14.1" cy="33.9" r="2.1"/>
+    <circle cx="14.1" cy="14.1" r="2.1"/>
+    <circle cx="33.9" cy="14.1" r="2.1"/>
+  </g>
+  <!-- Erregerkörper -->
+  <circle cx="24" cy="24" r="9" fill="url(#plague-body)"/>
+  <g fill="#d9707f" fill-opacity="0.55">
+    <circle cx="21" cy="21.4" r="2.4"/>
+    <circle cx="27.6" cy="23" r="1.8"/>
+    <circle cx="22.6" cy="28" r="2"/>
+  </g>
+  <rect x="2.6" y="2.6" width="42.8" height="42.8" rx="11.4" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.2"/>
+</svg>

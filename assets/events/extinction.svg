@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>Ausgestorben</title>
+  <defs>
+    <linearGradient id="extinction-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#263033"/>
+      <stop offset="1" stop-color="#5a6767"/>
+    </linearGradient>
+    <linearGradient id="extinction-fade" gradientUnits="userSpaceOnUse" x1="14" y1="10" x2="32" y2="40">
+      <stop offset="0" stop-color="#f6f1df" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#f6f1df" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#f6f1df" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#extinction-bg)"/>
+  <!-- verblassender Dreizehen-Fußabdruck -->
+  <path d="M24 9.5 C25.7 12.5 26.9 17 26.9 22.4 C28.6 20.3 31.6 17.4 36 15.2 C36.8 17 34.8 21.6 30.7 26.6 C31.8 31.6 29.6 37.8 24 37.8 C18.4 37.8 16.2 31.6 17.3 26.6 C13.2 21.6 11.2 17 12 15.2 C16.4 17.4 19.4 20.3 21.1 22.4 C21.1 17 22.3 12.5 24 9.5 Z"
+        fill="url(#extinction-fade)"/>
+  <!-- zerfallende Partikel -->
+  <g fill="#f6f1df">
+    <circle cx="31.4" cy="35.6" r="1.3" fill-opacity="0.45"/>
+    <circle cx="34.6" cy="32.4" r="1" fill-opacity="0.35"/>
+    <circle cx="36.8" cy="36.8" r="0.9" fill-opacity="0.25"/>
+    <circle cx="33.8" cy="39.8" r="0.8" fill-opacity="0.2"/>
+  </g>
+  <rect x="2.6" y="2.6" width="42.8" height="42.8" rx="11.4" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.2"/>
+</svg>

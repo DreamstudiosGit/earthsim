@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Meeresalgen</title>
+  <defs>
+    <linearGradient id="marineAlgae-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12341f"/>
+      <stop offset="1" stop-color="#2f6b36"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#marineAlgae-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Meer -->
+  <path d="M10 51q2.75-3 5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0M15.5 56.5q2.75-3 5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0" fill="none" stroke="#7fd3f0" stroke-width="2"/>
+  <!-- Wedel rechts (gruen, hinten) -->
+  <path d="M43 49C41.5 46 40 44 40.5 41.5C41 38.5 43.5 37 43.5 34C43.5 31 42.5 29.5 43.5 27C45 24.5 48 23 52 22C51 24.5 48.5 25.5 48.5 28C48.5 31 49 32 48.5 35C48 38 45.5 39.5 45.5 42.5C45.5 44.5 46 46.5 46 49Z" fill="#8ad16f"/>
+  <!-- Wedel Mitte (Rotalge) -->
+  <path d="M31 49C28.5 45 26.5 42 27 39C27.5 35 31 34 30.5 30C30 26 28 24.5 29.5 21C31 17 35 14.5 40 13C39 16.5 36 18.5 36 22C36 25.5 38 27 37.5 31C37 35 33 37 33 40.5C33 43.5 34 46 34 49Z" fill="#ff7a6b"/>
+  <path d="M32.5 48C31 44 29.5 41 30.5 37C31.5 33 34 31.5 33.5 27C33 23.5 33 20.5 35 18C36.5 16 38 15 39.5 14" fill="none" stroke="#c9564a" stroke-width="2"/>
+  <!-- Wedel links (gruen, vorne) -->
+  <path d="M19 49C15 45 13 42 14 39C15 35 18 33 17.5 29C17 25 14 23 15 19C16 14 20 11 23 9C23 13 21.5 16 21.5 20C21.5 24 25 26 24.5 30C24 34 20 36 20.5 40C21 43 22 46 22 49Z" fill="#b6e388"/>
+  <path d="M20.5 48C18.5 44 17 41.5 17.5 38C18 34.5 21 32.5 21 29C21 25 18 23 18.5 19C19 15 21 12 22.5 10" fill="none" stroke="#2f6b36" stroke-width="2"/>
+  <!-- Blaeschen -->
+  <circle cx="50" cy="12" r="2.4" fill="none" stroke="#7fd3f0" stroke-width="2"/>
+  <circle cx="54.5" cy="17" r="1.5" fill="#7fd3f0"/>
+</svg>

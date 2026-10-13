@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Gräser</title>
+  <defs>
+    <linearGradient id="grasses-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12341f"/>
+      <stop offset="1" stop-color="#2f6b36"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#grasses-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Land -->
+  <path d="M9 51H55M18 56h4M30 56.5h4M42 56h4" fill="none" stroke="#c9a36b" stroke-width="2"/>
+  <!-- Halme mit Aehren -->
+  <path d="M30.5 51C30 40 27 31 22 22M34 51C35 39 37 29 40 19" fill="none" stroke="#f6f1df" stroke-width="2.2"/>
+  <g fill="#f6f1df">
+    <g transform="translate(22 22) rotate(-18)">
+      <ellipse cx="-2.2" cy="-2" rx="1.8" ry="3.2" transform="rotate(-25 -2.2 -2)"/>
+      <ellipse cx="2.2" cy="-4" rx="1.8" ry="3.2" transform="rotate(25 2.2 -4)"/>
+      <ellipse cx="-2.2" cy="-6" rx="1.8" ry="3.2" transform="rotate(-25 -2.2 -6)"/>
+      <ellipse cx="2.2" cy="-8" rx="1.8" ry="3.2" transform="rotate(25 2.2 -8)"/>
+      <ellipse cx="-1.8" cy="-10" rx="1.8" ry="3.2" transform="rotate(-20 -1.8 -10)"/>
+      <ellipse cx="0.3" cy="-12.5" rx="1.8" ry="3.2"/>
+    </g>
+    <g transform="translate(40 19) rotate(10)">
+      <ellipse cx="-2.2" cy="-2" rx="1.8" ry="3.2" transform="rotate(-25 -2.2 -2)"/>
+      <ellipse cx="2.2" cy="-4" rx="1.8" ry="3.2" transform="rotate(25 2.2 -4)"/>
+      <ellipse cx="-2.2" cy="-6" rx="1.8" ry="3.2" transform="rotate(-25 -2.2 -6)"/>
+      <ellipse cx="2.2" cy="-8" rx="1.8" ry="3.2" transform="rotate(25 2.2 -8)"/>
+      <ellipse cx="-1.8" cy="-10" rx="1.8" ry="3.2" transform="rotate(-20 -1.8 -10)"/>
+      <ellipse cx="0.3" cy="-12.5" rx="1.8" ry="3.2"/>
+    </g>
+  </g>
+  <!-- Grasblaetter -->
+  <path d="M30 51C26 42 19 35 11 32C17 36 23 43 27 51ZM34 51C38 44 45 38 53 35C47 39.5 41 45 37 51Z" fill="#8ad16f"/>
+  <path d="M31 51C29 40 25 31 19 25C22 32 25 41 28 51ZM33 51C35 41 39 32 45 26C41.5 33 38.5 42 36 51Z" fill="#b6e388"/>
+  <path d="M31.5 51C31.5 42 31 35 29.5 28C32 34 33.5 42 34 51Z" fill="#8ad16f"/>
+</svg>

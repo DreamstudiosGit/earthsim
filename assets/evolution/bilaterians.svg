@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Frühe Zweiseitentiere</title>
+  <defs>
+    <linearGradient id="bilaterians-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3d2412"/>
+      <stop offset="1" stop-color="#8a4a1c"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bilaterians-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Meer -->
+  <path d="M10 51q2.75-3 5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0M15.5 56.5q2.75-3 5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0" fill="none" stroke="#7fd3f0" stroke-width="2"/>
+  <!-- Wurmkoerper in S-Kurve -->
+  <path d="M12 34C14 25 23 22 28 29C33 36 40 39 45 31C48 26 47 20 50 16" fill="none" stroke="#ffc785" stroke-width="9"/>
+  <path d="M12 34C14 25 23 22 28 29C33 36 40 39 45 31C48 26 47 20 50 16" transform="translate(-1 -1)" fill="none" stroke="#f6f1df" stroke-width="6.5"/>
+  <!-- Segmente -->
+  <path d="M12 34C14 25 23 22 28 29C33 36 40 39 45 31C48 26 47 20 50 16" fill="none" stroke="#f2a35c" stroke-width="9" stroke-linecap="butt" stroke-dasharray="2 4.2" stroke-dashoffset="-3"/>
+  <!-- Kopf -->
+  <path d="M48.5 11L46.5 7.5M52.5 11.5L54 7.7" fill="none" stroke="#f6f1df" stroke-width="2"/>
+  <circle cx="50.5" cy="15" r="5.5" fill="#ffc785"/>
+  <circle cx="49.8" cy="14.3" r="4.6" fill="#f6f1df"/>
+  <circle cx="48.4" cy="14.2" r="1.4" fill="#0c1a14"/>
+  <circle cx="52.2" cy="15.2" r="1.4" fill="#0c1a14"/>
+</svg>

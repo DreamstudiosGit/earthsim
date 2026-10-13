@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>Zivilisation</title>
+  <defs>
+    <linearGradient id="civilization-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10363d"/>
+      <stop offset="1" stop-color="#276f6a"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#civilization-bg)"/>
+  <!-- Zahnrad -->
+  <circle cx="32" cy="15" r="8.2" fill="none" stroke="#f6c453" stroke-width="3.4" stroke-dasharray="3.2 3.24"/>
+  <circle cx="32" cy="15" r="6.6" fill="#f6c453"/>
+  <circle cx="32" cy="15" r="2.6" fill="#10363d"/>
+  <!-- Stadtsilhouette -->
+  <path d="M18.5 18 V14" stroke="#f6f1df" stroke-width="1.4" stroke-linecap="round"/>
+  <g fill="#f6f1df">
+    <rect x="15" y="18" width="7" height="22"/>
+    <rect x="28" y="22" width="7" height="18"/>
+  </g>
+  <g fill="#ddd2b8">
+    <rect x="8" y="24" width="7" height="16"/>
+    <rect x="22" y="27" width="6" height="13"/>
+    <rect x="35" y="29" width="6" height="11"/>
+  </g>
+  <!-- Fenster -->
+  <g fill="#10363d" fill-opacity="0.7">
+    <rect x="16.8" y="21" width="1.8" height="1.8"/>
+    <rect x="19.4" y="21" width="1.8" height="1.8"/>
+    <rect x="16.8" y="25.4" width="1.8" height="1.8"/>
+    <rect x="19.4" y="25.4" width="1.8" height="1.8"/>
+    <rect x="16.8" y="29.8" width="1.8" height="1.8"/>
+    <rect x="19.4" y="29.8" width="1.8" height="1.8"/>
+    <rect x="10" y="27.4" width="1.8" height="1.8"/>
+    <rect x="12.4" y="27.4" width="1.8" height="1.8"/>
+    <rect x="10" y="31.6" width="1.8" height="1.8"/>
+    <rect x="12.4" y="31.6" width="1.8" height="1.8"/>
+    <rect x="29.8" y="25.4" width="1.8" height="1.8"/>
+    <rect x="32.4" y="25.4" width="1.8" height="1.8"/>
+    <rect x="29.8" y="29.8" width="1.8" height="1.8"/>
+    <rect x="32.4" y="29.8" width="1.8" height="1.8"/>
+    <rect x="24.1" y="30.4" width="1.8" height="1.8"/>
+    <rect x="37.1" y="32.2" width="1.8" height="1.8"/>
+  </g>
+  <path d="M6.5 40.6 H41.5" stroke="#6fd38f" stroke-width="2" stroke-linecap="round"/>
+  <rect x="2.6" y="2.6" width="42.8" height="42.8" rx="11.4" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.2"/>
+</svg>

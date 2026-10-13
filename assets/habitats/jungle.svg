@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Regenwald</title>
+  <defs>
+    <clipPath id="jungle-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="jungle-air" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c3e6d3"/>
+      <stop offset="1" stop-color="#0f3a22"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#jungle-clip)">
+    <rect x="1" y="1" width="30" height="30" fill="url(#jungle-air)"/>
+    <!-- hintere Kronen -->
+    <g fill="#1f5a32">
+      <circle cx="4" cy="10" r="6"/>
+      <circle cx="12" cy="7.5" r="6.5"/>
+      <circle cx="21" cy="8.5" r="6"/>
+      <circle cx="29" cy="9.5" r="6"/>
+    </g>
+    <!-- Dunst -->
+    <rect x="1" y="12.5" width="30" height="3.5" fill="#e6f5ec" fill-opacity="0.35"/>
+    <!-- mittlere Kronen -->
+    <g fill="#2f8b40">
+      <circle cx="6" cy="18" r="6"/>
+      <circle cx="16" cy="16.5" r="6.5"/>
+      <circle cx="26.5" cy="18" r="6.5"/>
+    </g>
+    <g fill="none" stroke="#8ad16f" stroke-width="1.2" stroke-linecap="round" stroke-opacity="0.8">
+      <path d="M2.6 15.6 a4.4 4.4 0 0 1 3.6 -2.2"/>
+      <path d="M12 13.6 a4.8 4.8 0 0 1 4 -2.4"/>
+      <path d="M22.4 15.6 a4.8 4.8 0 0 1 4 -2.4"/>
+    </g>
+    <rect x="1" y="24" width="30" height="7" fill="#0f3a22"/>
+    <!-- Wedel -->
+    <path d="M1.5 31 C3 25 8 22 14 22.5 C10 24.5 6 27 4.5 31 Z" fill="#5cc24f"/>
+    <path d="M30.5 31 C29 25 24 22 18 22.5 C22 24.5 26 27 27.5 31 Z" fill="#4fb045"/>
+    <path d="M15.6 31 C13.8 27 14.4 23 17 20 C18.2 23.5 18 27 16.6 31 Z" fill="#6fd05a"/>
+    <!-- Tropfen -->
+    <g fill="#7fe0f0">
+      <path d="M10.5 10.6 C11 11.6 12 12.6 12 13.5 A1.5 1.5 0 0 1 9 13.5 C9 12.6 10 11.6 10.5 10.6 Z"/>
+      <path d="M23.5 19.6 C24 20.6 25 21.6 25 22.5 A1.5 1.5 0 0 1 22 22.5 C22 21.6 23 20.6 23.5 19.6 Z"/>
+    </g>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

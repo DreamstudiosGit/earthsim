@@ -1,0 +1,120 @@
+/* =============================================================================
+   Evolution films: one shared motion vocabulary (see src/scenekit.ts).
+   Loops are `.m.m-<name>`, one-shot entrances `.o.o-<name>`; both read
+   --dur, --delay, --ease and --origin, plus the variables of their motion.
+   ========================================================================== */
+
+.evo-film { display: block; width: 100%; height: 100%; overflow: hidden; }
+.evo-film text { font-family: inherit; font-weight: 700; letter-spacing: 0.2px; }
+.evo-film .cam { transform-box: view-box; transform-origin: 50% 55%; animation: film-cam 12s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes film-cam { from { transform: scale(1.12); } to { transform: scale(1); } }
+
+/* The motion variables are inherited custom properties: without this reset a
+   nested motion would take its parent's duration, and every film the UI's
+   --ease. An element's own inline values still win. */
+.evo-film .m,
+.evo-film .o {
+  --dur: initial; --delay: initial; --ease: initial; --origin: initial; --n: initial; --len: initial;
+  --dx: initial; --dy: initial; --amp: initial; --rot: initial; --s: initial; --o: initial;
+}
+
+.evo-film .m,
+.evo-film .o {
+  transform-box: fill-box;
+  transform-origin: var(--origin, 50% 50%);
+  animation-duration: var(--dur, 4s);
+  animation-delay: var(--delay, 0s);
+  animation-timing-function: var(--ease, ease-in-out);
+}
+/* Loops that start late show their first frame while they wait. */
+.evo-film .m { animation-iteration-count: var(--n, infinite); animation-fill-mode: backwards; }
+.evo-film .o { animation-iteration-count: 1; animation-fill-mode: both; }
+
+/* ---- loops ---- */
+.evo-film .m-float { animation-name: film-float; animation-direction: alternate; }
+@keyframes film-float { from { transform: translateY(calc(var(--amp, 5px) * -1)); } to { transform: translateY(var(--amp, 5px)); } }
+
+.evo-film .m-sway { animation-name: film-sway; animation-direction: alternate; transform-origin: var(--origin, 50% 100%); }
+@keyframes film-sway { from { transform: rotate(calc(var(--rot, 5deg) * -1)); } to { transform: rotate(var(--rot, 5deg)); } }
+
+.evo-film .m-drift { animation-name: film-drift; animation-timing-function: var(--ease, linear); }
+@keyframes film-drift { from { transform: translate(0, 0); } to { transform: translate(var(--dx, 60px), var(--dy, 0px)); } }
+
+.evo-film .m-swim { animation-name: film-swim; animation-timing-function: var(--ease, linear); }
+@keyframes film-swim {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(calc(var(--dx, 80px) * 0.25), var(--amp, 6px)); }
+  50% { transform: translate(calc(var(--dx, 80px) * 0.5), 0); }
+  75% { transform: translate(calc(var(--dx, 80px) * 0.75), calc(var(--amp, 6px) * -1)); }
+  100% { transform: translate(var(--dx, 80px), 0); }
+}
+
+.evo-film .m-rise { animation-name: film-rise; animation-timing-function: var(--ease, ease-in); }
+@keyframes film-rise {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  15% { opacity: var(--o, 0.8); }
+  85% { opacity: var(--o, 0.8); }
+  100% { transform: translateY(var(--dy, -120px)) scale(1); opacity: 0; }
+}
+
+.evo-film .m-pulse { animation-name: film-pulse; animation-direction: alternate; }
+@keyframes film-pulse { from { transform: scale(1); } to { transform: scale(var(--s, 1.12)); } }
+
+.evo-film .m-spin { animation-name: film-spin; animation-timing-function: var(--ease, linear); }
+@keyframes film-spin { to { transform: rotate(360deg); } }
+
+.evo-film .m-flap { animation-name: film-flap; animation-direction: alternate; animation-duration: var(--dur, 0.22s); }
+@keyframes film-flap { from { transform: scaleY(1); } to { transform: scaleY(var(--s, 0.25)); } }
+
+.evo-film .m-twinkle { animation-name: film-twinkle; animation-direction: alternate; }
+@keyframes film-twinkle { from { opacity: var(--o, 0.2); } to { opacity: 1; } }
+
+.evo-film .m-wave { animation-name: film-wave; animation-timing-function: var(--ease, linear); }
+@keyframes film-wave { from { transform: translateX(0); } to { transform: translateX(var(--dx, -40px)); } }
+
+.evo-film .m-twist { animation-name: film-twist; animation-direction: alternate; animation-duration: var(--dur, 1.2s); }
+@keyframes film-twist { from { transform: scaleX(1); } to { transform: scaleX(-1); } }
+
+.evo-film .m-blink { animation-name: film-blink; }
+@keyframes film-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+
+/* ---- one-shot entrances ---- */
+.evo-film .o-grow { animation-name: film-grow; transform-origin: var(--origin, 50% 100%); animation-duration: var(--dur, 1.2s); animation-timing-function: var(--ease, cubic-bezier(0.3, 1.5, 0.5, 1)); }
+@keyframes film-grow { from { transform: scale(0); } to { transform: scale(1); } }
+
+.evo-film .o-pop { animation-name: film-pop; animation-duration: var(--dur, 0.7s); animation-timing-function: var(--ease, cubic-bezier(0.3, 1.6, 0.5, 1)); }
+@keyframes film-pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.evo-film .o-fade { animation-name: film-fade; animation-duration: var(--dur, 1s); }
+@keyframes film-fade { from { opacity: 0; } to { opacity: var(--o, 1); } }
+
+.evo-film .o-fadeout { animation-name: film-fadeout; animation-duration: var(--dur, 1s); }
+@keyframes film-fadeout { from { opacity: 1; } to { opacity: 0; } }
+
+.evo-film .o-move { animation-name: film-move; animation-duration: var(--dur, 3s); }
+@keyframes film-move { from { transform: translate(0, 0); } to { transform: translate(var(--dx, 0px), var(--dy, 0px)); } }
+
+.evo-film .o-enter { animation-name: film-enter; animation-duration: var(--dur, 2s); animation-timing-function: var(--ease, cubic-bezier(0.2, 0.8, 0.3, 1)); }
+@keyframes film-enter { from { transform: translate(var(--dx, -80px), var(--dy, 0px)); opacity: 0; } 20% { opacity: 1; } to { transform: translate(0, 0); opacity: 1; } }
+
+.evo-film .o-draw { stroke-dasharray: var(--len, 300); animation-name: film-draw; animation-duration: var(--dur, 2s); }
+@keyframes film-draw { from { stroke-dashoffset: var(--len, 300); } to { stroke-dashoffset: 0; } }
+
+.evo-film .o-burst { animation-name: film-burst; animation-duration: var(--dur, 1.4s); animation-timing-function: var(--ease, cubic-bezier(0.1, 0.7, 0.3, 1)); }
+@keyframes film-burst { 0% { transform: scale(0.2); opacity: 0; } 10% { opacity: 1; } 100% { transform: scale(var(--s, 2.4)); opacity: 0; } }
+
+.evo-film .o-unfurl { animation-name: film-unfurl; transform-origin: var(--origin, 0% 100%); animation-duration: var(--dur, 1.6s); animation-timing-function: var(--ease, cubic-bezier(0.3, 1.3, 0.5, 1)); }
+@keyframes film-unfurl { from { transform: rotate(var(--rot, -120deg)) scale(0.3); opacity: 0; } 30% { opacity: 1; } to { transform: rotate(0) scale(1); opacity: 1; } }
+
+.evo-film .o-rotate { animation-name: film-rotate; animation-duration: var(--dur, 1s); }
+@keyframes film-rotate { from { transform: rotate(0deg); } to { transform: rotate(var(--rot, 20deg)); } }
+
+.evo-film .o-scale { animation-name: film-scale; animation-duration: var(--dur, 1s); }
+@keyframes film-scale { from { transform: scale(1); } to { transform: scale(var(--s, 1.5)); } }
+
+/* Without motion the film shows its last frame: every entrance and exit has
+   already happened, so time-lapse stages do not pile up on each other. */
+@media (prefers-reduced-motion: reduce) {
+  .evo-film .cam, .evo-film .m { animation: none !important; }
+  .evo-film .o { animation-duration: 1ms !important; animation-delay: 0s !important; }
+}

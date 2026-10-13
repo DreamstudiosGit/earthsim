@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Nadelbäume</title>
+  <defs>
+    <linearGradient id="conifers-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12341f"/>
+      <stop offset="1" stop-color="#2f6b36"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#conifers-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Land -->
+  <path d="M9 51H55M12 51l-.8-3.6M14.5 51l1-3.2M18 56h4M30 56.5h4M42 56h4" fill="none" stroke="#c9a36b" stroke-width="2"/>
+  <!-- Schneeflocke -->
+  <path d="M50 8.5v11M45.2 11.25l9.6 5.5M45.2 16.75l9.6-5.5" fill="none" stroke="#f6f1df" stroke-width="2"/>
+  <!-- Nadelbaum -->
+  <rect x="21.5" y="39" width="5" height="12" fill="#c9a36b"/>
+  <g stroke-width="2">
+    <path d="M24 22L10 41Q24 38.5 38 41Z" fill="#8ad16f" stroke="#8ad16f"/>
+    <path d="M24 22L10 41Q17 40.1 24 39.75Z" fill="#b6e388" stroke="#b6e388"/>
+    <path d="M24 14L13 30Q24 28 35 30Z" fill="#8ad16f" stroke="#8ad16f"/>
+    <path d="M24 14L13 30Q18.5 29.1 24 29Z" fill="#b6e388" stroke="#b6e388"/>
+    <path d="M24 7L16 20Q24 18.5 32 20Z" fill="#8ad16f" stroke="#8ad16f"/>
+    <path d="M24 7L16 20Q20 19.3 24 19.25Z" fill="#b6e388" stroke="#b6e388"/>
+  </g>
+  <!-- Zapfen -->
+  <path d="M46 30.5C50.5 32 52 37 51.5 41.5C51 46 48.5 49.5 46 50C43.5 49.5 41 46 40.5 41.5C40 37 41.5 32 46 30.5Z" fill="#c9a36b"/>
+  <path d="M42.2 35.5q1.9 2.4 3.8 0q1.9 2.4 3.8 0M41 40q1.67 2.4 3.33 0q1.67 2.4 3.33 0q1.67 2.4 3.33 0M42 44.5q2 2.4 4 0q2 2.4 4 0M46 30.5V28" fill="none" stroke="#0c1a14" stroke-opacity="0.45" stroke-width="2"/>
+</svg>

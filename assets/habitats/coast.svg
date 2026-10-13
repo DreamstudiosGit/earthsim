@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Küstenmeer</title>
+  <defs>
+    <clipPath id="coast-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="coast-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7fcbe6"/>
+      <stop offset="1" stop-color="#d3f1ee"/>
+    </linearGradient>
+    <linearGradient id="coast-water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2794b2"/>
+      <stop offset="1" stop-color="#4ccbca"/>
+    </linearGradient>
+    <linearGradient id="coast-veil" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#36b9c2" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#5fd8cf" stop-opacity="0.15"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#coast-clip)">
+    <rect x="1" y="1" width="30" height="10" fill="url(#coast-sky)"/>
+    <rect x="1" y="10" width="30" height="21" fill="url(#coast-water)"/>
+    <!-- Sandgrund, durch das Wasser sichtbar -->
+    <path d="M1 18 C6 16.3 10 19.1 16 17.5 S26 15.9 31 17.3 V31 H1 Z" fill="#f0d9a0"/>
+    <path d="M1 18 C6 16.3 10 19.1 16 17.5 S26 15.9 31 17.3 V31 H1 Z" fill="url(#coast-veil)"/>
+    <g fill="none" stroke-linecap="round">
+      <path d="M4 25.5 q3 -1.6 6 0 M15 28.2 q3 -1.6 6 0 M20.5 22.6 q3 -1.6 6 0" stroke="#b8935a" stroke-opacity="0.75" stroke-width="1.2"/>
+      <!-- Lichtnetz -->
+      <path d="M3 14.2 q2.5 -1.3 5 0 t5 0 M17.5 12.8 q2.2 -1.1 4.4 0 t4.4 0 M8 21.4 q2 -1 4 0 t4 0" stroke="#e9fbff" stroke-opacity="0.7" stroke-width="1"/>
+    </g>
+    <path d="M1 10.2 H31" stroke="#e9fbff" stroke-opacity="0.8" stroke-width="0.8"/>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

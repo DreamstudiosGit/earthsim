@@ -1,0 +1,130 @@
+/* =============================================================================
+ * SimEarth 2.0 — what the evolution films tell: animals
+ * -----------------------------------------------------------------------------
+ * See stories-plants.ts for the format and the rules the texts follow.
+ * ========================================================================== */
+
+namespace SE {
+  Object.assign(EVO_STORIES, {
+    earlyAnimals: {
+      when: 'vor rund 600 Mio. Jahren', era: 'Ediacarium',
+      beats: ['Einzeller schließen sich zusammen', 'Ein Schwamm pumpt Wasser', 'Erste Nerven: Die Qualle pulsiert', 'Nesselzellen feuern'],
+      innovation: 'Nerven und Muskeln',
+      advantage: 'Nerven leiten Reize in Sekundenbruchteilen weiter, Muskeln setzen sie in Bewegung um. Tiere, die so auf Beute oder Gefahr reagierten, waren trägen Konkurrenten voraus – der Anfang von allem, was Tiere heute können.',
+      story: 'Tiere stammen von Einzellern ab, die sich zu Kolonien zusammenschlossen – ihre nächsten lebenden Verwandten heißen Kragengeißeltierchen. Schwämme haben weder Nerven noch Organe: Ihre Geißelzellen pumpen Wasser durch den Körper und filtern Nahrung heraus. Nesseltiere wie Quallen besitzen schon ein Netz aus Nervenzellen und Muskeln – und Nesselzellen, winzige Harpunen.',
+      fact: 'Eine Nesselzelle feuert in weniger als einer millionstel Sekunde – einer der schnellsten Vorgänge im ganzen Tierreich.',
+    },
+    bilaterians: {
+      when: 'vor rund 560 Mio. Jahren', era: 'Ediacarium',
+      beats: ['Mikrobenmatten am Meeresgrund', 'Vorne und hinten, links und rechts', 'Vorne: Augenflecken und ein Gehirn', 'Ein Darm – und Grabgänge im Schlamm'],
+      innovation: 'Ein Kopf mit Gehirn',
+      advantage: 'Wer zielstrebig vorwärts kriecht, trifft zuerst mit dem Vorderende auf Neues. Tiere, deren Sinne und Nerven sich dort bündelten, fanden Nahrung schneller und bemerkten Gefahr früher – so entstand der Kopf.',
+      story: 'Zweiseitentiere haben links und rechts, vorne und hinten – und damit eine Richtung. Vorne bündelten sich Sinneszellen und Nerven: der Anfang von Kopf und Gehirn. Ein durchgehender Darm von Mund bis After ließ sie gleichzeitig fressen und verdauen. Ihre Kriech- und Grabspuren tauchen vor rund 560 Millionen Jahren im Gestein auf.',
+      fact: 'Ikaria, eines der ältesten bekannten Zweiseitentiere, war kaum größer als ein Reiskorn. Fast alle heutigen Tiere – vom Regenwurm bis zum Menschen – folgen seinem Bauplan.',
+    },
+    arthropods: {
+      when: 'vor rund 520 Mio. Jahren', era: 'Kambrium',
+      beats: ['Weiche Würmer im Schlamm', 'Panzer und gegliederte Beine', 'Die ersten Linsenaugen', 'Jäger und Gejagte sehen sich'],
+      innovation: 'Augen, Panzer, Gelenkbeine',
+      advantage: 'Sobald die ersten Tiere sehen konnten, lohnte sich Sehen für alle: Jäger fanden Beute, Beute entkam früher, und ein Panzer schützte vor Bissen. Dieses Wettrüsten hat die Kambrische Explosion vermutlich mit angetrieben.',
+      story: 'In der Kambrischen Explosion erscheinen die Trilobiten: Gliederfüßer mit einem Außenskelett aus Chitin und gegliederten Beinen – um zu wachsen, häuten sie sich. Sie besaßen einige der ältesten Augen der Erdgeschichte: Facettenaugen aus vielen kleinen Linsen. Zugleich gingen große Räuber wie Anomalocaris auf die Jagd.',
+      fact: 'Die Augenlinsen der Trilobiten bestanden aus Kalkspat-Kristallen – sie sahen buchstäblich durch Stein.',
+    },
+    molluscs: {
+      when: 'vor rund 530 Mio. Jahren', era: 'Kambrium',
+      beats: ['Eine Schnecke raspelt Algen', 'Die Schale wächst mit', 'Gaskammern: schweben wie ein U-Boot', 'Kopffüßer: schnell und klug'],
+      innovation: 'Schale, Raspelzunge, Auftrieb',
+      advantage: 'Eine Schale schützt vor Fressfeinden. Mit gasgefüllten Kammern konnten Kopffüßer zudem frei im Wasser schweben, ohne Kraft zu verbrauchen – und erschlossen sich das offene Meer, in dem andere Weichtiere nicht mitkamen.',
+      story: 'Viele Weichtiere tragen eine Kalkschale, die am Rand mitwächst, und eine Raspelzunge, die Radula, mit der sie Algenbeläge abschaben. Kopffüßer unterteilten ihre Schale in Kammern, deren Gasfüllung sie regeln – so schwebten Nautiloideen und später die Ammoniten wie U-Boote. Kraken und Tintenfische zählen heute zu den klügsten Tieren ohne Wirbelsäule.',
+      fact: 'Ein Krake hat drei Herzen und blaues Blut.',
+    },
+    fish: {
+      when: 'vor rund 518 Mio. Jahren', era: 'Kambrium bis Silur',
+      beats: ['Ein Fisch ohne Kiefer', 'Kiemenbögen werden zum Kiefer', 'Zubeißen: der erste Kiefer', 'Kiefer und Flossen: neue Jäger'],
+      innovation: 'Rückgrat und Kiefer',
+      advantage: 'Ohne Kiefer konnten Fische nur saugen und filtern. Mit Kiefern ließ sich Beute packen und zerbeißen – kiefertragende Fische eroberten neue Nischen und verdrängten die meisten kieferlosen. Heute haben über 99 % aller Wirbeltierarten Kiefer.',
+      story: 'Die ersten Wirbeltiere waren kleine, kieferlose Fische, etwa Haikouichthys vor rund 518 Millionen Jahren. Erst rund 80 Millionen Jahre später entstanden Kiefer – vermutlich aus den vorderen Kiemenbögen, die das Maul stützten. Aus einer Gruppe von Knochenfischen, den Fleischflossern, gingen später alle Landwirbeltiere hervor.',
+      fact: 'Dein Kiefer und die winzigen Knöchelchen in deinem Ohr gehen auf die Kiemenbögen früher Fische zurück.',
+    },
+    whales: {
+      when: 'vor rund 50 Mio. Jahren', era: 'Eozän',
+      beats: ['Ein Säugetier watet ins Wasser', 'Zeitraffer: Beine werden zu Flossen', 'Die Nase wandert: ein Blasloch', 'Ein Wal – er atmet Luft und säugt'],
+      innovation: 'Flossen, Fluke und Blasloch',
+      advantage: 'Im Meer gab es reichlich Fisch und nach dem Aussterben der großen Meeresreptilien wenig Konkurrenz. Wer etwas besser schwamm und tauchte, fing mehr – Generation um Generation wurden die Beine kürzer und der Schwanz kräftiger.',
+      story: 'Wale stammen von kleinen Paarhufern ab, die schon im Wasser wateten. Pakicetus, einer der frühesten Wale, lief vor rund 50 Millionen Jahren noch auf vier Beinen am Ufer. In rund zehn Millionen Jahren wurden aus Vorderbeinen Flossen, die Hinterbeine schrumpften, der Schwanz bekam eine Fluke, und die Nasenlöcher wanderten als Blasloch auf den Kopf.',
+      fact: 'In vielen Walen stecken bis heute winzige Beckenknochen – ein Überbleibsel der Hinterbeine ihrer Vorfahren. Ihre nächsten lebenden Verwandten sind die Flusspferde.',
+    },
+    landArthropods: {
+      when: 'vor rund 425 Mio. Jahren', era: 'Silur',
+      beats: ['Erste Pflanzenpolster am Ufer', 'Ein Tausendfüßer krabbelt an Land', 'Atemlöcher: Luft statt Wasser', 'Die ersten Jäger an Land'],
+      innovation: 'Atmen an der Luft',
+      advantage: 'An Land lag Nahrung im Überfluss – abgestorbene Pflanzen – und es gab keinen einzigen Fressfeind. Gliederfüßer, die Luft atmen konnten und nicht austrockneten, hatten diese Welt für sich, bis ihnen die ersten Jäger folgten.',
+      story: 'Gliederfüßer waren die ersten Tiere an Land – lange vor den Wirbeltieren. Schon im Silur krabbelten Tausendfüßer wie Kampecaris durch die ersten Pflanzenpolster und fraßen abgestorbenes Grün. Ihr Außenskelett schützte sie vor dem Austrocknen, Atemöffnungen führten Luft ins Körperinnere. Bald folgten ihnen Jäger: Verwandte der Spinnen.',
+      fact: 'Pneumodesmus, ein rund 414 Millionen Jahre alter Tausendfüßer aus Schottland, zeigt schon Atemöffnungen – er ist einer der ältesten bekannten Luftatmer.',
+    },
+    insects: {
+      when: 'Flügel seit rund 325 Mio. Jahren', era: 'Karbon',
+      beats: ['Sechs Beine, keine Flügel', 'Flügelansätze: erst Gleiten', 'Der erste Flug der Erdgeschichte', 'Riesenlibellen über dem Sumpf'],
+      innovation: 'Flügel – die ersten Flieger',
+      advantage: 'Wer fliegen kann, entkommt Räubern am Boden, findet neue Nahrung und erreicht ferne Lebensräume. Fliegende Insekten breiteten sich überallhin aus – rund 100 Millionen Jahre bevor das erste Wirbeltier abhob.',
+      story: 'Insekten stammen von krebsartigen Vorfahren ab. Vor rund 325 Millionen Jahren hoben sie als erste Tiere überhaupt in die Luft ab. Woraus ihre Flügel entstanden, wird noch erforscht – vermutlich aus Hautlappen am Rücken und Teilen der Beine. Im sauerstoffreichen Karbon erreichten Riesenlibellen wie Meganeura rund 70 Zentimeter Spannweite.',
+      fact: 'Insekten sind die artenreichste Tiergruppe der Erde: Mehr als eine Million Arten sind beschrieben.',
+    },
+    pollinators: {
+      when: 'vor rund 100 Mio. Jahren', era: 'Kreide',
+      beats: ['Eine Wespe jagt für ihre Larven', 'Pollen bleibt im Pelz hängen', 'Bienen sehen UV-Landebahnen', 'Blüte und Biene: ein Team'],
+      innovation: 'Koevolution: Blüte und Biene',
+      advantage: 'Blüten, die Bienen besser anlockten, wurden öfter bestäubt; Bienen, die Blüten besser fanden, hatten mehr Futter. So passten sich beide über Jahrmillionen aneinander an – jeder ist für den anderen die Umwelt, die auswählt.',
+      story: 'Bienen stammen von räuberischen Grabwespen ab, die ihre Larven statt mit Beute mit Pollen fütterten. Die älteste bekannte Biene steckt in rund 100 Millionen Jahre altem Bernstein. Verzweigte Härchen halten den Pollen fest. Bienen sehen ultraviolettes Licht – und viele Blüten tragen UV-Muster, die wie Landebahnen zum Nektar führen.',
+      fact: 'Bienen sehen kein Rot, dafür Ultraviolett. Was für uns eine schlicht gelbe Blüte ist, hat für sie oft ein dunkles Zielfeld in der Mitte.',
+    },
+    amphibians: {
+      when: 'vor rund 375 Mio. Jahren', era: 'Devon',
+      beats: ['Ein Fleischflosser im Sumpf', 'Zeitraffer: Flossen werden Beine', 'Die ersten Schritte an Land', 'Eier legen – noch im Wasser'],
+      innovation: 'Beine mit Fingern und Zehen',
+      advantage: 'Im flachen, sauerstoffarmen Sumpfwasser halfen kräftige Flossen und Lungen, sich abzustützen und Luft zu schnappen. An Land warteten Insekten als Beute – und kein Fressfeind mit Rückgrat. Wer dorthin kam, fand einen reich gedeckten Tisch.',
+      story: 'Tiktaalik lebte vor rund 375 Millionen Jahren im seichten Wasser: halb Fisch, halb Vierfüßer, mit Hals, Lungen und Flossen voller Armknochen. Er zeigt, wie der Schritt an Land aussah – ein naher Verwandter der Vorfahren aller Vierfüßer. Aus solchen Flossen wurden Beine mit Fingern und Zehen. Ihre Eier legten die ersten Vierfüßer weiter im Wasser ab.',
+      fact: 'Die ersten Vierfüßer hatten mehr als fünf Finger – Acanthostega hatte acht. Und in deinem Arm steckt Tiktaaliks Bauplan: ein Knochen, dann zwei, dann viele kleine.',
+    },
+    reptiles: {
+      when: 'vor rund 312 Mio. Jahren', era: 'Karbon',
+      beats: ['Amphibieneier brauchen Wasser', 'Ein Ei mit fester Schale', 'Darin: ein eigener kleiner Teich', 'Schlüpfen – fern vom Wasser'],
+      innovation: 'Das Ei mit Schale',
+      advantage: 'Wer seine Eier ins Wasser legen muss, bleibt ans Wasser gebunden, und die Brut ist leichte Beute. Mit dem beschalten Ei konnten Tiere überall an Land Nachwuchs haben und trockene Gebiete besiedeln, die bis dahin leer waren.',
+      story: 'Das beschalte Ei der Amnioten trägt alles in sich, was der Embryo braucht: Dotter als Nahrung, eine Blase für Abfälle und das Amnion – eine mit Flüssigkeit gefüllte Hülle, sein eigener kleiner Teich. Durch die poröse Schale atmet es. Hylonomus, eines der ältesten bekannten Reptilien, lebte vor rund 312 Millionen Jahren.',
+      fact: 'Auch du bist vor deiner Geburt in einer Fruchtblase herangewachsen – einem Amnion, wie es bei den ersten Amnioten entstand.',
+    },
+    mammals: {
+      when: 'vor rund 200 Mio. Jahren', era: 'Trias bis Jura',
+      beats: ['Ein Synapside wärmt sich in der Sonne', 'Über Jahrmillionen: klein, mit Fell', 'Warmes Blut: aktiv in kalter Nacht', 'Junge trinken Milch'],
+      innovation: 'Warmes Blut, Fell und Milch',
+      advantage: 'Ein eigener Ofen im Körper macht unabhängig von der Sonne: Säugetiere konnten nachts jagen, wenn viele Reptilien kalt und träge waren, und kühle Gegenden besiedeln. Milch gab ihren Jungen einen sicheren Start.',
+      story: 'Säugetiere stammen nicht von Reptilien ab, sondern von den Synapsiden – einer eigenen Linie früher Amnioten. Über viele Millionen Jahre wurden ihre Nachfahren kleiner, bekamen Fell und warmes Blut und säugten ihre Jungen. Die ersten echten Säugetiere, etwa Morganucodon, waren kaum größer als eine Maus und lebten vor allem nachts.',
+      fact: 'Dimetrodon mit seinem Rückensegel war kein Dinosaurier, sondern ein Synapside – also näher mit dir verwandt als mit jedem Dinosaurier.',
+    },
+    dinosaurs: {
+      when: 'vor rund 230 Mio. Jahren', era: 'Trias',
+      beats: ['Kriechend: Beine seitlich am Körper', 'Die Beine wandern unter den Körper', 'Aufrecht: schnell und ausdauernd', 'Hälse bis in die Baumkronen'],
+      innovation: 'Beine unter dem Körper',
+      advantage: 'Seitlich abgespreizte Beine stauchen beim Laufen den Rumpf – schnell laufen und dabei atmen ist schwer. Mit Beinen unter dem Körper liefen Dinosaurier schnell und ausdauernd. Nach einem Massenaussterben vor 201 Millionen Jahren beherrschten sie das Land.',
+      story: 'Die ersten Dinosaurier, etwa Eoraptor, waren flinke, rund einen Meter lange Zweibeiner. Ihr Erfolgsgeheimnis: Beine, die gerade unter dem Körper stehen, und ein Atemsystem mit Luftsäcken, wie es Vögel heute haben. Luftsäcke reichten bis in die Knochen und machten sie leicht – so konnten Sauropoden über 30 Meter lang werden.',
+      fact: 'Ein Tyrannosaurus war mit einer Amsel enger verwandt als mit einem Krokodil.',
+    },
+    birds: {
+      when: 'vor rund 150 Mio. Jahren', era: 'Jura',
+      beats: ['Daunen wärmen – noch ohne Flug', 'Federn zum Imponieren', 'Federn tragen ihn in die Luft', 'Vögel: die letzten Dinosaurier'],
+      innovation: 'Federn werden zu Flügeln',
+      advantage: 'Federn entstanden nicht zum Fliegen, sondern wärmten und beeindruckten. Erst später trugen sie auch in die Luft – Evolution baut um, was schon da ist. Fliegend erreichten Vögel neue Nahrung und entkamen Räubern.',
+      story: 'Vögel sind gefiederte Raubdinosaurier. Viele Dinosaurier trugen Federn, lange bevor einer flog: Daunen hielten warm, bunte Federn an Armen und Schwanz dienten der Balz und schützten beim Brüten das Gelege. Archaeopteryx, rund 150 Millionen Jahre alt, hatte Zähne, Krallen und einen langen Schwanz – und Flügel, die ihn trugen.',
+      fact: 'Als vor 66 Millionen Jahren ein Asteroid einschlug, überlebten von allen Dinosauriern nur die Vögel. Heute gibt es rund 11.000 Vogelarten.',
+    },
+    grazers: {
+      when: 'vor rund 55 Mio. Jahren', era: 'Eozän bis Miozän',
+      beats: ['Ein fuchsgroßes Urpferd im Wald', 'Zeitraffer: Wald wird Grasland', 'Hohe Zähne, ein einziger Huf', 'Herden ziehen durch die Steppe'],
+      innovation: 'Mahlzähne und Hufe',
+      advantage: 'Gras ist zäh und voller Kieselkörnchen, die Zähne abschleifen. Tiere mit höheren Zahnkronen konnten länger fressen, bevor ihre Zähne verschlissen. Lange Beine mit Hufen trugen sie auf offenen Ebenen schneller vor Räubern davon.',
+      story: 'Das erste Urpferd, Eohippus, war vor rund 55 Millionen Jahren so groß wie ein Fuchs, lebte im Wald, fraß Blätter und hatte vorne vier Zehen. Als sich Grasland ausbreitete, wurden seine Nachfahren größer, ihre Backenzähne höher, und die Zehen schrumpften bis auf einen: den Huf. Wiederkäuer wie Antilopen verdauen Gras mit Hilfe von Mikroben im Vormagen.',
+      fact: 'Ein Pferd läuft auf den Spitzen seiner Mittelfinger und Mittelzehen: Der Huf ist ein riesiger Finger- und Zehennagel.',
+    },
+  });
+}

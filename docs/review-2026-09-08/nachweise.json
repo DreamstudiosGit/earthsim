@@ -1,0 +1,415 @@
+{
+    "date":  "2026-09-08",
+    "originalBundleSha256":  "911F382139ED0EF03D0C17E72A9C244A51C7F29286AF0EF64E80A4FFC922529D",
+    "browser":  {
+                    "slider":  {
+                                   "before":  0.5,
+                                   "display":  "100",
+                                   "actual":  0.5
+                               },
+                    "sliderGroups":  [
+                                         {
+                                             "group":  "model-geo",
+                                             "count":  6
+                                         },
+                                         {
+                                             "group":  "model-atmo",
+                                             "count":  6
+                                         },
+                                         {
+                                             "group":  "model-bio",
+                                             "count":  5
+                                         },
+                                         {
+                                             "group":  "model-civ",
+                                             "count":  4
+                                         },
+                                         {
+                                             "group":  "model-civ",
+                                             "count":  6
+                                         }
+                                     ],
+                    "monolith":  {
+                                     "energyBefore":  5000,
+                                     "energyAfter":  2500,
+                                     "message":  "The monolith needs dry land."
+                                 },
+                    "failedLoad":  {
+                                       "error":  "corrupt save",
+                                       "originalElevation":  0.5855481028556824,
+                                       "afterElevation":  0.9876000285148621
+                                   },
+                    "invalidLoad":  {
+                                        "error":  "",
+                                        "omega":  -500,
+                                        "timeScale":  999,
+                                        "yearsPerTick":  "undefined",
+                                        "biome":  255,
+                                        "solar":  "invalid"
+                                    },
+                    "newPlanetDrift":  {
+                                           "offset":  0.75
+                                       },
+                    "resetCounts":  {
+                                        "stored":  [
+                                                       6536,
+                                                       10595,
+                                                       11651,
+                                                       3986,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0
+                                                   ],
+                                        "actual":  [
+                                                       8520,
+                                                       7672,
+                                                       13020,
+                                                       3556,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0
+                                                   ]
+                                    },
+                    "newPlanetDuringDialog":  {
+                                                  "speed":  0,
+                                                  "dialogVisible":  false
+                                              },
+                    "focusLimit":  {
+                                       "mapZ":  "3999",
+                                       "editZ":  "3999"
+                                   },
+                    "accessibility":  {
+                                          "menus":  [
+                                                        {
+                                                            "tag":  "DIV",
+                                                            "tabIndex":  -1,
+                                                            "role":  null
+                                                        },
+                                                        {
+                                                            "tag":  "DIV",
+                                                            "tabIndex":  -1,
+                                                            "role":  null
+                                                        },
+                                                        {
+                                                            "tag":  "DIV",
+                                                            "tabIndex":  -1,
+                                                            "role":  null
+                                                        },
+                                                        {
+                                                            "tag":  "DIV",
+                                                            "tabIndex":  -1,
+                                                            "role":  null
+                                                        },
+                                                        {
+                                                            "tag":  "DIV",
+                                                            "tabIndex":  -1,
+                                                            "role":  null
+                                                        },
+                                                        {
+                                                            "tag":  "DIV",
+                                                            "tabIndex":  -1,
+                                                            "role":  null
+                                                        },
+                                                        {
+                                                            "tag":  "DIV",
+                                                            "tabIndex":  -1,
+                                                            "role":  null
+                                                        }
+                                                    ],
+                                          "ranges":  27
+                                      },
+                    "laptop":  [
+                                   {
+                                       "id":  "edit",
+                                       "x":  8,
+                                       "y":  8,
+                                       "w":  620,
+                                       "h":  671,
+                                       "right":  628
+                                   },
+                                   {
+                                       "id":  "map",
+                                       "x":  636,
+                                       "y":  8,
+                                       "w":  380,
+                                       "h":  433,
+                                       "right":  1016
+                                   }
+                               ],
+                    "mobile":  [
+                                   {
+                                       "id":  "edit",
+                                       "x":  8,
+                                       "y":  8,
+                                       "w":  390,
+                                       "h":  740,
+                                       "right":  398
+                                   },
+                                   {
+                                       "id":  "map",
+                                       "x":  436,
+                                       "y":  8,
+                                       "w":  380,
+                                       "h":  477,
+                                       "right":  816
+                                   }
+                               ],
+                    "errors":  [
+
+                               ]
+                },
+    "interactions":  {
+                         "pausedPlacement":  {
+                                                 "density":  0.20000000298023224,
+                                                 "biomass":  0,
+                                                 "lifeMarker":  0,
+                                                 "lifeCount":  0,
+                                                 "message":  "Prokaryotes introduced.",
+                                                 "examine":  "ExamineCoastBarrenRain:400.0 cm/yrHeat:-5 Â°CWind:SWArchaebacteriumProkaryote Â· stage 1 of 3HabitatsInhabitedProkaryoteAge:â€”Pop:20%World:0.0%Event:NoneProkaryote 20%Altitude: 0 mMagma: 18 cm/Yr"
+                                             },
+                         "repeatedPlacement":  {
+                                                   "energyAfterFirst":  4950,
+                                                   "energyAfterSecond":  4900,
+                                                   "densityBefore":  0.20000000298023224,
+                                                   "densityAfter":  0.20000000298023224
+                                               },
+                         "dialogNewPlanet":  {
+                                                 "beforeDialog":  3,
+                                                 "duringDialog":  0,
+                                                 "afterNewPlanet":  0,
+                                                 "visible":  false
+                                             },
+                         "fire":  {
+                                      "before":  "Forest",
+                                      "immediate":  "Grass",
+                                      "vegetation":  0.800000011920929,
+                                      "afterClassification":  "Forest"
+                                  },
+                         "staleExamineAltitude":  {
+                                                      "before":  "Altitude: 225 mMagma: 16 cm/Yr",
+                                                      "after":  "Altitude: 225 mMagma: 16 cm/Yr",
+                                                      "actualMeters":  855
+                                                  },
+                         "badCapacity":  {
+                                             "accepted":  true,
+                                             "capacity":  0.002666666770974796,
+                                             "minDensity":  0.02
+                                         },
+                         "rightClick":  {
+                                            "beforeEnergy":  5000,
+                                            "afterEnergy":  4950
+                                        },
+                         "errors":  [
+
+                                    ]
+                     },
+    "simulation":  {
+                       "value":  [
+                                     {
+                                         "seed":  12345,
+                                         "placed":  40,
+                                         "msPerTick":  12.422833333333333,
+                                         "ticks":  6000,
+                                         "temp":  12.268607162151238,
+                                         "o2":  21.890619484652998,
+                                         "co2":  532.6869079491191,
+                                         "biomass":  20656.26382645406,
+                                         "classes":  [
+                                                         0,
+                                                         10170,
+                                                         7065,
+                                                         4862,
+                                                         3476,
+                                                         3476,
+                                                         9889,
+                                                         4213,
+                                                         0,
+                                                         834,
+                                                         0,
+                                                         3429,
+                                                         4059,
+                                                         7051,
+                                                         6405,
+                                                         400
+                                                     ],
+                                         "cities":  [
+                                                        0,
+                                                        32,
+                                                        79,
+                                                        50,
+                                                        9,
+                                                        3,
+                                                        2,
+                                                        1
+                                                    ],
+                                         "land":  13702,
+                                         "orphans":  0,
+                                         "problems":  [
+
+                                                      ],
+                                         "saveChars":  2253778
+                                     },
+                                     {
+                                         "seed":  777,
+                                         "placed":  40,
+                                         "msPerTick":  8.265,
+                                         "ticks":  1200,
+                                         "temp":  8.562914172549958,
+                                         "o2":  21.23528059352102,
+                                         "co2":  203.367043223701,
+                                         "biomass":  13000.6082364358,
+                                         "classes":  [
+                                                         0,
+                                                         12255,
+                                                         10627,
+                                                         5980,
+                                                         0,
+                                                         270,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0
+                                                     ],
+                                         "cities":  [
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0
+                                                    ],
+                                         "land":  13771,
+                                         "orphans":  0,
+                                         "problems":  [
+
+                                                      ],
+                                         "saveChars":  1668437
+                                     },
+                                     {
+                                         "seed":  42,
+                                         "placed":  40,
+                                         "msPerTick":  8.8275,
+                                         "ticks":  1200,
+                                         "temp":  10.407981489679692,
+                                         "o2":  20.305439826111638,
+                                         "co2":  287.2223161411932,
+                                         "biomass":  14134.677704788744,
+                                         "classes":  [
+                                                         0,
+                                                         14585,
+                                                         7934,
+                                                         3508,
+                                                         2271,
+                                                         2171,
+                                                         7593,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0,
+                                                         0
+                                                     ],
+                                         "cities":  [
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0
+                                                    ],
+                                         "land":  13741,
+                                         "orphans":  0,
+                                         "problems":  [
+
+                                                      ],
+                                         "saveChars":  1779813
+                                     }
+                                 ],
+                       "Count":  3
+                   },
+    "lateBrowser":  {
+                        "save":  {
+                                     "message":  "Planet saved.",
+                                     "chars":  2253778
+                                 },
+                        "modes":  [
+                                      "Terrain Map",
+                                      "Event Map",
+                                      "Drift Map",
+                                      "Show/Hide Oceans",
+                                      "Ocean Temperature",
+                                      "Ocean Currents",
+                                      "Air Temperature",
+                                      "Rainfall",
+                                      "Air Currents",
+                                      "Biomes",
+                                      "Life",
+                                      "Technology"
+                                  ],
+                        "renderTiming":  {
+                                             "flat":  {
+                                                          "median":  1.3999999910593033,
+                                                          "max":  1.7000000029802322
+                                                      },
+                                             "globe":  {
+                                                           "median":  10,
+                                                           "max":  12.799999997019768
+                                                       },
+                                             "edit":  {
+                                                          "median":  13,
+                                                          "max":  128.40000000596046
+                                                      },
+                                             "dpr":  1
+                                         },
+                        "saveDrift":  {
+                                          "atSave":  0.25,
+                                          "afterRestore":  0.8500000238418579
+                                      },
+                        "historyAfterLoad":  0,
+                        "resized":  [
+                                        {
+                                            "id":  "edit",
+                                            "x":  8,
+                                            "y":  8,
+                                            "width":  780,
+                                            "height":  790
+                                        },
+                                        {
+                                            "id":  "map",
+                                            "x":  914,
+                                            "y":  8,
+                                            "width":  518,
+                                            "height":  509
+                                        },
+                                        {
+                                            "id":  "examine",
+                                            "x":  330,
+                                            "y":  200,
+                                            "width":  470,
+                                            "height":  300
+                                        }
+                                    ],
+                        "errors":  [
+
+                                   ]
+                    }
+}

@@ -1,0 +1,212 @@
+/* =============================================================================
+   The evolution showcase: a card with the step's film, its captions and
+   its story, arriving with a spring and a burst of light (src/celebrate.ts).
+   ========================================================================== */
+
+.fx-layer { position: fixed; inset: 0; z-index: 870; pointer-events: none; width: 100vw; height: 100vh; }
+
+.showcase-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 860;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: radial-gradient(60% 60% at 50% 45%, rgba(3, 9, 8, 0.25), rgba(3, 9, 8, 0.62));
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  animation: fade-in 200ms ease-out;
+}
+.showcase-backdrop.leaving { animation: showcase-out 260ms var(--ease) forwards; }
+@keyframes showcase-out { to { opacity: 0; transform: scale(0.98); } }
+
+.showcase {
+  --k: var(--accent);
+  position: relative;
+  width: min(720px, calc(100vw - 24px), calc((100vh - 360px) * 16 / 9));
+  min-width: min(520px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px;
+  overflow: hidden;
+  background: var(--glass-strong);
+  border: 1px solid color-mix(in srgb, var(--k) 45%, transparent);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04), 0 0 60px color-mix(in srgb, var(--k) 22%, transparent);
+  animation: showcase-in 620ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes showcase-in {
+  0% { opacity: 0; transform: translateY(26px) scale(0.86); }
+  60% { opacity: 1; }
+  100% { transform: none; }
+}
+
+/* ---- the film ---- */
+.showcase-film { position: relative; flex: 0 0 auto; aspect-ratio: 16 / 9; background: #071311; overflow: hidden; }
+.showcase-screen { position: absolute; inset: 0; }
+.showcase-film::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(4, 12, 10, 0.55), transparent 28%, transparent 62%, rgba(4, 12, 10, 0.7)),
+    radial-gradient(120% 100% at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.35));
+}
+.showcase-stamp {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(4, 12, 10, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  font-size: 11.5px;
+  color: var(--ink-2);
+  animation: stamp-in 700ms 300ms var(--ease) both;
+}
+.showcase-stamp b { color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; }
+@keyframes stamp-in { from { opacity: 0; transform: translateX(-10px); } }
+.showcase-caption {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: 22px;
+  max-width: calc(100% - 40px);
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(4, 12, 10, 0.6);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+}
+.showcase-caption.show { animation: caption-in 2.6s var(--ease) both; }
+.showcase-caption.key {
+  border-radius: 16px;
+  padding: 5px 16px 8px;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--k) 75%, transparent), 0 0 26px color-mix(in srgb, var(--k) 45%, transparent);
+}
+.showcase-caption.key::before { content: "✦ Durchbruch"; display: block; font-size: 10.5px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase; color: var(--k); }
+@keyframes caption-in {
+  0% { opacity: 0; transform: translate(-50%, 8px); }
+  14% { opacity: 1; transform: translate(-50%, 0); }
+  86% { opacity: 1; }
+  100% { opacity: 0.0; transform: translate(-50%, -4px); }
+}
+.showcase-timeline { position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(255, 255, 255, 0.12); }
+.showcase-timeline span { display: block; height: 100%; background: var(--k); transform-origin: left; animation: film-timeline 12s linear both; }
+@keyframes film-timeline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.showcase-replay { position: absolute; z-index: 2; top: 10px; right: 10px; background: rgba(4, 12, 10, 0.55); }
+.showcase-replay:hover { background: rgba(4, 12, 10, 0.8); }
+
+/* ---- the words ---- */
+.showcase-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 20px 18px; display: flex; flex-direction: column; gap: 10px; }
+.showcase-head { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-top: -30px; position: relative; z-index: 3; }
+.showcase-badge {
+  width: 76px;
+  height: 76px;
+  border-radius: 22px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5), 0 0 0 3px color-mix(in srgb, var(--k) 70%, transparent);
+  animation: badge-pop 900ms 150ms cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+.showcase-badge-img { width: 100%; height: 100%; border-radius: 22px; }
+@keyframes badge-pop { 0% { transform: scale(0) rotate(-20deg); } 100% { transform: none; } }
+.showcase-titles { min-width: 0; padding-top: 30px; }
+.showcase-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 11.5px; font-weight: 800; letter-spacing: 0.9px; text-transform: uppercase; color: var(--k); }
+.showcase-spont {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(246, 196, 83, 0.25), rgba(180, 140, 255, 0.25));
+  color: #ffe7a8;
+  letter-spacing: 0.4px;
+}
+.showcase-spont::before { content: "✦ "; }
+.showcase-title {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+  background: linear-gradient(100deg, #fff 30%, color-mix(in srgb, var(--k) 70%, #fff) 50%, #fff 70%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: title-shine 2.4s 400ms var(--ease) both;
+}
+@keyframes title-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.showcase-sub { font-size: 13px; color: var(--ink-3); }
+.showcase-count {
+  align-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.showcase-count b { font-size: 22px; line-height: 1; color: var(--ink); animation: count-pop 700ms 700ms cubic-bezier(0.2, 1.8, 0.4, 1) both; }
+@keyframes count-pop { 0% { transform: scale(0.4); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.showcase-note { font-size: 13px; color: #ffe7a8; background: rgba(246, 196, 83, 0.08); border: 1px solid rgba(246, 196, 83, 0.25); padding: 8px 10px; border-radius: 10px; }
+.showcase-story { color: var(--ink-2); font-size: 14.5px; line-height: 1.55; }
+.showcase-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--k) 14%, transparent), rgba(255, 255, 255, 0.02));
+  border: 1px solid color-mix(in srgb, var(--k) 30%, transparent);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.showcase-fact-kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.9px; text-transform: uppercase; color: var(--k); }
+.showcase-fact-kicker::before { content: "💡 "; }
+.showcase-learn { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.showcase-key { background: linear-gradient(135deg, rgba(246, 196, 83, 0.14), rgba(255, 255, 255, 0.02)); border-color: rgba(246, 196, 83, 0.35); }
+.showcase-key .showcase-fact-kicker { color: #ffd77a; }
+.showcase-key .showcase-fact-kicker::before { content: "✦ "; }
+.showcase-key-name { font-size: 15px; color: #fff; }
+.showcase-change { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--ink-2); }
+.showcase-change .ico { width: 16px; height: 16px; margin-top: 2px; }
+.showcase-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 2px; }
+.showcase-next { min-width: 120px; }
+
+@media (max-width: 760px) {
+  .showcase { width: calc(100vw - 16px); min-width: 0; border-radius: 18px; }
+  .showcase-head { grid-template-columns: 60px minmax(0, 1fr); margin-top: -24px; }
+  .showcase-badge { width: 60px; height: 60px; border-radius: 18px; }
+  .showcase-badge-img { border-radius: 18px; }
+  .showcase-count { display: none; }
+  .showcase-titles { padding-top: 24px; }
+  .showcase-title { font-size: 21px; }
+  .showcase-caption { font-size: 13.5px; bottom: 14px; }
+  .showcase-actions .btn { flex: 1 1 auto; }
+  .showcase-learn { grid-template-columns: 1fr; }
+  .showcase-stamp { top: 8px; left: 8px; padding: 4px 8px; font-size: 10px; }
+  .showcase-stamp b { font-size: 11px; }
+  .showcase-caption.key::before { font-size: 9.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .showcase-caption.show { animation: none; opacity: 1; }
+}
+
+/* ---- the tree's hint that a ready step may arise on its own ---- */
+.detail-wild { font-size: 12.5px; color: #ffe7a8; padding: 7px 10px; border-radius: 9px; background: linear-gradient(90deg, rgba(246, 196, 83, 0.12), rgba(180, 140, 255, 0.1)); }
+.detail-wild::before { content: "✦ "; }
+.chron-spont { align-self: flex-start; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }

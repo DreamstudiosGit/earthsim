@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e9f1ec" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <title>Biome</title>
+  <path d="M3 20h18M10.5 20l5.3-13.5L21 20M7.5 13.5V20"/>
+  <circle cx="7.5" cy="9.5" r="4" stroke="#8ad16f" fill="#8ad16f" fill-opacity=".25"/>
+</svg>

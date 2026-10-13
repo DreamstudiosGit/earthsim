@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Fels</title>
+  <defs>
+    <clipPath id="rock-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="rock-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a7c1cd"/>
+      <stop offset="1" stop-color="#e4e3d6"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#rock-clip)">
+    <rect x="1" y="1" width="30" height="30" fill="url(#rock-sky)"/>
+    <!-- ferner Grat -->
+    <path d="M1 17 L6 13 L10 15 L15 10.5 L20 14 L25 11.5 L31 15 V31 H1 Z" fill="#a9a59c"/>
+    <!-- Boden -->
+    <rect x="1" y="25.5" width="30" height="6" fill="#7b7266"/>
+    <!-- kleiner Block -->
+    <path d="M18.5 26.5 L20.5 20 L25.5 17.5 L29.5 20.5 L31 26.5 Z" fill="#8f897f"/>
+    <path d="M20.5 20 L25.5 17.5 L26 21.5 Z" fill="#c9c4ba"/>
+    <path d="M25.5 17.5 L29.5 20.5 L31 26.5 L25 26.5 L26 21.5 Z" fill="#5f5a52"/>
+    <!-- großer Block -->
+    <path d="M3 26.5 L5.5 17 L11 11.5 L17.5 12.5 L21 19 L20 26.5 Z" fill="#9a948a"/>
+    <path d="M5.5 17 L11 11.5 L17.5 12.5 L13 17.5 Z" fill="#d3cec4"/>
+    <path d="M17.5 12.5 L21 19 L20 26.5 L14.5 26.5 L13 17.5 Z" fill="#6c665d"/>
+    <path d="M8.5 20 L10.5 23.5" stroke="#4f4a43" stroke-width="1" stroke-linecap="round"/>
+    <!-- Kiesel -->
+    <g fill="#b5aea2">
+      <ellipse cx="6" cy="28.5" rx="1.6" ry="0.9"/>
+      <ellipse cx="14.5" cy="29" rx="1.3" ry="0.8"/>
+      <ellipse cx="25" cy="28.8" rx="1.5" ry="0.85"/>
+    </g>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

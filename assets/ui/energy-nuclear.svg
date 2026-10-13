@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e9f1ec" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <title>Kernkraft</title>
+  <circle cx="12" cy="12" r="1.7" fill="#b48cff" stroke="#b48cff"/>
+  <ellipse cx="12" cy="12" rx="9" ry="3.6"/>
+  <ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(60 12 12)"/>
+  <ellipse cx="12" cy="12" rx="9" ry="3.6" transform="rotate(120 12 12)"/>
+</svg>

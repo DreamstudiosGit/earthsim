@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Tundra</title>
+  <defs>
+    <clipPath id="tundra-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="tundra-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b3c9d4"/>
+      <stop offset="1" stop-color="#e6ece6"/>
+    </linearGradient>
+    <linearGradient id="tundra-plain" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a0ad88"/>
+      <stop offset="1" stop-color="#73835e"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#tundra-clip)">
+    <rect x="1" y="1" width="30" height="16" fill="url(#tundra-sky)"/>
+    <!-- ferne Schneeberge -->
+    <path d="M1 16 L5 12.5 L8 14 L12 10 L16 14.2 L19 12 L23 14.6 L27 11.2 L31 14.8 V16.5 H1 Z" fill="#8a9eaa"/>
+    <g fill="#f4f8fa">
+      <path d="M10.4 11.6 L12 10 L13.7 11.8 L12.7 11.5 L12 12.3 L11.3 11.4 Z"/>
+      <path d="M25.6 12.5 L27 11.2 L28.6 12.6 L27.6 12.4 L27 13.1 L26.4 12.3 Z"/>
+      <path d="M4 13.4 L5 12.5 L6 13.3 L5.4 13.2 L5 13.7 Z"/>
+    </g>
+    <!-- Ebene -->
+    <rect x="1" y="16" width="30" height="15" fill="url(#tundra-plain)"/>
+    <!-- Mooskissen -->
+    <g fill="#5f7a48">
+      <path d="M3 24 a3.6 2.4 0 0 1 7.2 0 Z"/>
+      <path d="M15 20.5 a2.8 1.8 0 0 1 5.6 0 Z"/>
+      <path d="M20 29 a4 2.6 0 0 1 8 0 Z"/>
+    </g>
+    <g fill="#9cb474">
+      <path d="M4.4 23 a2.2 1.2 0 0 1 4.4 0 Z"/>
+      <path d="M21.6 27.8 a2.4 1.3 0 0 1 4.8 0 Z"/>
+    </g>
+    <!-- Flechten -->
+    <circle cx="12.5" cy="26.5" r="1" fill="#e3d36b"/>
+    <circle cx="25" cy="21.5" r="0.9" fill="#ede9da"/>
+    <circle cx="8" cy="19" r="0.8" fill="#d98a5a"/>
+    <circle cx="15.5" cy="29.2" r="0.9" fill="#ede9da"/>
+    <circle cx="29" cy="25" r="0.8" fill="#e3d36b"/>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

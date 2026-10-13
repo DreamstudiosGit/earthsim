@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Offenes Meer</title>
+  <defs>
+    <clipPath id="opensea-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="opensea-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7fc6ee"/>
+      <stop offset="1" stop-color="#e4f6fb"/>
+    </linearGradient>
+    <linearGradient id="opensea-water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a9ccc"/>
+      <stop offset="1" stop-color="#1a5590"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#opensea-clip)">
+    <rect x="1" y="1" width="30" height="15" fill="url(#opensea-sky)"/>
+    <!-- Möwe -->
+    <path d="M19 8.5 q1.2 -1.4 2.4 0 q1.2 -1.4 2.4 0" fill="none" stroke="#3d5a6e" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="1" y="15" width="30" height="16" fill="url(#opensea-water)"/>
+    <path d="M1 15.2 H31" stroke="#2a6f9f" stroke-width="0.8"/>
+    <!-- Wellenreihen bis zum Horizont -->
+    <g fill="none" stroke="#d6f3ff" stroke-linecap="round">
+      <path d="M3 17.6 q1 -0.6 2 0 M10 17.9 q1 -0.6 2 0 M18 17.5 q1 -0.6 2 0 M25 17.8 q1 -0.6 2 0" stroke-width="0.8" stroke-opacity="0.6"/>
+      <path d="M1 21 q2 -1.2 4 0 t4 0 t4 0 t4 0 t4 0 t4 0 t4 0" stroke-width="1.1" stroke-opacity="0.75"/>
+      <path d="M-2 26 q3 -1.8 6 0 t6 0 t6 0 t6 0 t6 0 t6 0" stroke-width="1.4" stroke-opacity="0.9"/>
+    </g>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

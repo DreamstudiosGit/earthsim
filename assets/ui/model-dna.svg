@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e9f1ec" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <title>Mutationsrate</title>
+  <path d="M8 3c0 6 8 6 8 9s-8 3-8 9"/>
+  <path d="M16 3c0 6-8 6-8 9s8 3 8 9" stroke="#b48cff"/>
+  <path d="M9.6 6.5h4.8M9.6 17.5h4.8"/>
+</svg>

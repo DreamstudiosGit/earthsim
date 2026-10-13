@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <title>Temperatur</title>
+  <!-- Glaskörper -->
+  <path d="M7.7 5.6 A2.8 2.8 0 0 1 13.3 5.6 V13.95 A4.6 4.6 0 1 1 7.7 13.95 Z"
+        fill="#f6f1df" stroke="#9c4a2c" stroke-width="1" stroke-linejoin="round"/>
+  <!-- Füllung -->
+  <rect x="9.3" y="7.4" width="2.4" height="9.4" rx="1.2" fill="#ff8a5c"/>
+  <circle cx="10.5" cy="17.6" r="3.1" fill="#ff8a5c"/>
+  <circle cx="9.5" cy="16.6" r="0.9" fill="#ffd2bd"/>
+  <!-- Skala -->
+  <path d="M15.4 5.8 H18 M15.4 8.8 H17.2 M15.4 11.8 H18" stroke="#ff8a5c" stroke-width="1.6" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Dinosaurier</title>
+  <defs>
+    <linearGradient id="dinosaurs-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3d2412"/>
+      <stop offset="1" stop-color="#8a4a1c"/>
+    </linearGradient>
+    <clipPath id="dinosaurs-c">
+      <path d="M7 40C12 35 17 31 22 28C27 24 34 23 39 26C41 21 43 15 47 11.5C48.5 10 53 9.5 55 11C56.5 12 56.5 14.5 54.5 15C52.5 15.5 50.5 16.5 49.5 18C47.5 22 46.5 27 46 32C45.5 35 45 37 44 38V50H39V40C35 41 30 41 27.5 40V50H22.5V39C18 38 14 39 7 40Z"/>
+    </clipPath>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#dinosaurs-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Land -->
+  <path d="M9 51H55M12 51l-.8-3.6M14.5 51l1-3.2M52 51l.8-3.6M18 56h4M30 56.5h4M42 56h4" fill="none" stroke="#c9a36b" stroke-width="2"/>
+  <!-- hintere Beine -->
+  <rect x="43" y="37" width="4.5" height="13" rx="2" fill="#f2a35c"/>
+  <rect x="29" y="37" width="4.5" height="13" rx="2" fill="#f2a35c"/>
+  <!-- Sauropode -->
+  <path d="M7 40C12 35 17 31 22 28C27 24 34 23 39 26C41 21 43 15 47 11.5C48.5 10 53 9.5 55 11C56.5 12 56.5 14.5 54.5 15C52.5 15.5 50.5 16.5 49.5 18C47.5 22 46.5 27 46 32C45.5 35 45 37 44 38V50H39V40C35 41 30 41 27.5 40V50H22.5V39C18 38 14 39 7 40Z" fill="#ffc785"/>
+  <g clip-path="url(#dinosaurs-c)">
+    <path d="M7 40C12 35 17 31 22 28C27 24 34 23 39 26C41 21 43 15 47 11.5C48.5 10 53 9.5 55 11C56.5 12 56.5 14.5 54.5 15C52.5 15.5 50.5 16.5 49.5 18C47.5 22 46.5 27 46 32C45.5 35 45 37 44 38V50H39V40C35 41 30 41 27.5 40V50H22.5V39C18 38 14 39 7 40Z" transform="translate(-2 -2)" fill="#f6f1df"/>
+  </g>
+  <g fill="#f2a35c">
+    <circle cx="29.5" cy="28.5" r="2"/>
+    <circle cx="35" cy="27.8" r="1.7"/>
+    <circle cx="24.5" cy="31.5" r="1.6"/>
+  </g>
+  <circle cx="52" cy="12.4" r="1.5" fill="#0c1a14"/>
+</svg>

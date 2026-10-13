@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Erste Zellen</title>
+  <defs>
+    <linearGradient id="cells-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f3b3f"/>
+      <stop offset="1" stop-color="#1f6f6b"/>
+    </linearGradient>
+    <clipPath id="cells-rod">
+      <path d="M-8.5-6.5H-3Q0-6.5 0-3Q0-6.5 3-6.5H8.5A6.5 6.5 0 0 1 8.5 6.5H3Q0 6.5 0 3Q0 6.5-3 6.5H-8.5A6.5 6.5 0 0 1-8.5-6.5Z"/>
+    </clipPath>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#cells-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Meer -->
+  <path d="M10 51q2.75-3 5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0M15.5 56.5q2.75-3 5.5 0t5.5 0t5.5 0t5.5 0t5.5 0t5.5 0" fill="none" stroke="#7fd3f0" stroke-width="2"/>
+  <!-- Stromatolith (geschichteter Huegel) -->
+  <path d="M9 47C9 43.5 10.5 41 11.5 38.5C12.5 35.5 16.5 34 21.5 34S30.5 35.5 31.5 38.5C32.5 41 34 43.5 34 47Z" fill="#5ccfd0"/>
+  <path d="M11 43q2.6-1.8 5.2 0t5.2 0t5.2 0t5.2 0M13.5 38.5q2-1.6 4 0t4 0t4 0t4 0" fill="none" stroke="#0f3b3f" stroke-width="2"/>
+  <!-- Staebchenbakterium in Teilung -->
+  <g transform="translate(29 20) rotate(-20) scale(1.15)">
+    <path d="M-8.5-6.5H-3Q0-6.5 0-3Q0-6.5 3-6.5H8.5A6.5 6.5 0 0 1 8.5 6.5H3Q0 6.5 0 3Q0 6.5-3 6.5H-8.5A6.5 6.5 0 0 1-8.5-6.5Z" fill="#8ff0e4"/>
+    <g clip-path="url(#cells-rod)">
+      <path d="M-8.5-6.5H-3Q0-6.5 0-3Q0-6.5 3-6.5H8.5A6.5 6.5 0 0 1 8.5 6.5H3Q0 6.5 0 3Q0 6.5-3 6.5H-8.5A6.5 6.5 0 0 1-8.5-6.5Z" transform="translate(-.8 -1.7)" fill="#f6f1df"/>
+    </g>
+    <ellipse cx="-7.5" cy="0" rx="3.4" ry="2.1" fill="#5ccfd0"/>
+    <ellipse cx="7.5" cy="0" rx="3.4" ry="2.1" fill="#5ccfd0"/>
+    <path d="M0-3V3" fill="none" stroke="#1f6f6b" stroke-width="2"/>
+  </g>
+  <!-- Kugelbakterium -->
+  <circle cx="47" cy="36" r="7" fill="#8ff0e4"/>
+  <circle cx="46.3" cy="35.3" r="6" fill="#f6f1df"/>
+  <ellipse cx="46.3" cy="36" rx="3" ry="2" fill="#5ccfd0"/>
+  <!-- Blaeschen -->
+  <circle cx="55" cy="22.5" r="2.4" fill="none" stroke="#8ff0e4" stroke-width="2"/>
+  <circle cx="54" cy="15" r="1.6" fill="#8ff0e4"/>
+</svg>

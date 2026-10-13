@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e9f1ec" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <title>CO₂-Aufnahme</title>
+  <path d="M6 20c0-8 4.6-13 14-14 0 9-5 14-14 14z" stroke="#8ad16f" fill="#8ad16f" fill-opacity=".25"/>
+  <path d="M6 20l7.5-7.5"/>
+  <circle cx="5.5" cy="7" r="1.8"/>
+  <circle cx="9.5" cy="3.8" r="1.1"/>
+</svg>

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Blütenpflanzen</title>
+  <defs>
+    <linearGradient id="flowering-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12341f"/>
+      <stop offset="1" stop-color="#2f6b36"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#flowering-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Land -->
+  <path d="M9 51H55M12 51l-.8-3.6M14.5 51l1-3.2M49.5 51l-1-3.2M52 51l.8-3.6M18 56h4M30 56.5h4M42 56h4" fill="none" stroke="#c9a36b" stroke-width="2"/>
+  <!-- Stengel und Blaetter -->
+  <path d="M32 28C33 36 31 44 32 51" fill="none" stroke="#8ad16f" stroke-width="3"/>
+  <path d="M32 44C27 38 21 37 17 39.5C21 44.5 27 46 32 44Z" fill="#b6e388"/>
+  <path d="M32 38C36 32 42 30.5 46.5 32.5C43.5 37.5 37.5 40 32 38Z" fill="#8ad16f"/>
+  <path d="M31 43.5C27 41.5 23 40 18.5 39.8M33 37.5C37 35 41 33.5 45 33" fill="none" stroke="#2f6b36" stroke-width="2"/>
+  <!-- Bluete: 5 Bluetenblaetter -->
+  <g fill="#f6f1df">
+    <ellipse cx="32" cy="13.5" rx="4.8" ry="6.5"/>
+    <ellipse cx="32" cy="13.5" rx="4.8" ry="6.5" transform="rotate(72 32 21)"/>
+    <ellipse cx="32" cy="13.5" rx="4.8" ry="6.5" transform="rotate(144 32 21)"/>
+    <ellipse cx="32" cy="13.5" rx="4.8" ry="6.5" transform="rotate(216 32 21)"/>
+    <ellipse cx="32" cy="13.5" rx="4.8" ry="6.5" transform="rotate(288 32 21)"/>
+  </g>
+  <circle cx="32" cy="21" r="4.6" fill="#f6c453"/>
+  <circle cx="33" cy="22" r="2.2" fill="#ffb347"/>
+</svg>

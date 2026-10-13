@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Feuchter Boden</title>
+  <defs>
+    <clipPath id="moist-clip"><rect x="1" y="1" width="30" height="30" rx="8"/></clipPath>
+    <linearGradient id="moist-air" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9fcbdc"/>
+      <stop offset="1" stop-color="#dcebec"/>
+    </linearGradient>
+    <linearGradient id="moist-soil" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6e4b2d"/>
+      <stop offset="1" stop-color="#3a2618"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#moist-clip)">
+    <rect x="1" y="1" width="30" height="20" fill="url(#moist-air)"/>
+    <!-- Erde -->
+    <path d="M1 19 C8 17.8 22 20 31 18.6 V31 H1 Z" fill="url(#moist-soil)"/>
+    <ellipse cx="10" cy="24.5" rx="4.5" ry="1.3" fill="#4cb6d6" fill-opacity="0.75"/>
+    <path d="M8 24.2 H10.5" stroke="#c9f1fb" stroke-width="0.8" stroke-linecap="round"/>
+    <path d="M18 27.5 q2 -0.8 4 0 M4 28.5 q1.6 -0.7 3.2 0" fill="none" stroke="#9fc9d6" stroke-opacity="0.55" stroke-width="0.9" stroke-linecap="round"/>
+    <!-- Keimling -->
+    <path d="M23 19.4 V15.5" stroke="#5f9e45" stroke-width="1.3" stroke-linecap="round"/>
+    <path d="M23 16.2 C21 16.4 19.8 15.2 19.6 13.6 C21.6 13.4 22.8 14.5 23 16.2 Z" fill="#8ad16f"/>
+    <path d="M23 15.4 C25 15.6 26.4 14.2 26.6 12.6 C24.6 12.4 23.2 13.6 23 15.4 Z" fill="#8ad16f"/>
+    <!-- Tropfen -->
+    <g fill="#4cb6d6" stroke="#2c8fa8" stroke-width="0.6">
+      <path d="M8 4.3 C8.8 6.1 10.6 8.4 10.6 10 A2.6 2.6 0 0 1 5.4 10 C5.4 8.4 7.2 6.1 8 4.3 Z"/>
+      <path d="M16.5 10.1 C17.1 11.5 18.5 13.3 18.5 14.5 A2 2 0 0 1 14.5 14.5 C14.5 13.3 15.9 11.5 16.5 10.1 Z"/>
+      <path d="M26 3.2 C26.6 4.6 28 6.4 28 7.6 A2 2 0 0 1 24 7.6 C24 6.4 25.4 4.6 26 3.2 Z"/>
+    </g>
+    <g fill="none" stroke="#e6fbff" stroke-width="0.9" stroke-linecap="round">
+      <path d="M6.7 9.2 Q6.8 8.2 7.4 7.4"/>
+      <path d="M15.5 13.9 Q15.6 13.2 16 12.6"/>
+    </g>
+  </g>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="none" stroke="#0c1a14" stroke-opacity="0.3" stroke-width="0.6"/>
+  <rect x="1.5" y="1.5" width="29" height="29" rx="7.5" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1"/>
+</svg>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <title>Meilenstein</title>
+  <defs>
+    <linearGradient id="milestone-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4d3a10"/>
+      <stop offset="1" stop-color="#a8812a"/>
+    </linearGradient>
+    <linearGradient id="milestone-sea" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5fc3e0"/>
+      <stop offset="1" stop-color="#1f6f8b"/>
+    </linearGradient>
+    <clipPath id="milestone-planet"><circle cx="24" cy="36" r="8"/></clipPath>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#milestone-bg)"/>
+  <rect x="2.6" y="2.6" width="42.8" height="42.8" rx="11.4" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.2"/>
+  <!-- Planet -->
+  <circle cx="24" cy="36" r="8" fill="url(#milestone-sea)"/>
+  <g clip-path="url(#milestone-planet)">
+    <path d="M17 31.5 C19.5 29.5 23 30.5 24 33 C25 35.5 21.5 36.5 20 38.5 C18.5 40.5 15.5 38 16 35 Z" fill="#8ad16f"/>
+    <path d="M27 36 C29 34.5 32.5 35 32.5 38 C32.5 41 29 42.5 27.5 41 C26.5 40 25.5 37.5 27 36 Z" fill="#8ad16f"/>
+    <circle cx="27.5" cy="39.5" r="8" fill="#0c1a14" fill-opacity="0.28"/>
+  </g>
+  <circle cx="24" cy="36" r="8.6" fill="none" stroke="#8ff0e4" stroke-opacity="0.7" stroke-width="1.2"/>
+  <!-- Stern -->
+  <circle cx="24" cy="15" r="10.5" fill="#ffd36b" fill-opacity="0.22"/>
+  <path d="M24 7 L26 12.25 L31.61 12.53 L27.23 16.05 L28.7 21.47 L24 18.4 L19.3 21.47 L20.77 16.05 L16.39 12.53 L22 12.25 Z"
+        fill="#f6f1df" stroke="#f6f1df" stroke-width="1.2" stroke-linejoin="round"/>
+  <!-- Funkeln -->
+  <g fill="#ffe7a3">
+    <path d="M11 19 Q11 22 14 22 Q11 22 11 25 Q11 22 8 22 Q11 22 11 19 Z"/>
+    <path d="M37 6.5 Q37 9 39.5 9 Q37 9 37 11.5 Q37 9 34.5 9 Q37 9 37 6.5 Z"/>
+  </g>
+</svg>

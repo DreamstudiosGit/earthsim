@@ -1,0 +1,781 @@
+/* =============================================================================
+ * SimEarth 2.0 — world state and terrain generation
+ * -----------------------------------------------------------------------------
+ * Struct-of-arrays over typed arrays. A tile holds a whole community: every
+ * life class carries its own density there, so ancestors and descendants
+ * coexist and competition is just a shared carrying capacity. The Examine
+ * window lists what lives on a tile; the Edit window draws one creature per
+ * local population peak so the map stays readable.
+ * ========================================================================== */
+
+namespace SE {
+  /**
+   * Seeded fractal terrain. Every octave's lattice divides the grid and lookups
+   * wrap, so the map is seam-free across the cylinder join. Lattices are twice
+   * as wide as tall to match the 2:1 grid and keep continents round.
+   */
+  export class TerrainGenerator {
+    private static readonly OCTAVES: readonly { cx: number; cy: number; amp: number }[] = [
+      { cx: 8, cy: 4, amp: 1.0 },
+      { cx: 16, cy: 8, amp: 0.52 },
+      { cx: 32, cy: 16, amp: 0.26 },
+      { cx: 64, cy: 32, amp: 0.13 },
+      // The 256-column grid resolves a lattice this fine; on the old 128 it was
+      // below one cell per tile and would only have added noise.
+      { cx: 128, cy: 64, amp: 0.065 },
+    ];
+
+    /**
+     * Octaves of the ridge field. Coarser than the terrain octaves on purpose:
+     * a mountain range is one long structure, so the lowest octave has to span
+     * a good fraction of a continent or the crests break into hills.
+     */
+    private static readonly RIDGE_OCTAVES: readonly { cx: number; cy: number; amp: number }[] = [
+      { cx: 10, cy: 5, amp: 1.0 },
+      { cx: 20, cy: 10, amp: 0.5 },
+      { cx: 40, cy: 20, amp: 0.25 },
+      { cx: 80, cy: 40, amp: 0.125 },
+    ];
+
+    /**
+     * Only the top of the ridge field becomes mountain. Everything below this
+     * is discarded, and what remains is squared — see `orogeny` for why that
+     * matters so much.
+     */
+    private static readonly CREST = 0.55;
+    /** Elevation added at a full-strength crest, in the -1..1 elevation space. */
+    private static readonly OROGENY_AMP = 0.75;
+
+    /** Fill `out` with elevations in [-1, 1], sea level at 0. */
+    static generate(seed: number, out: Float32Array): void {
+      const rng = new Rng(seed);
+      out.fill(0);
+
+      for (const o of TerrainGenerator.OCTAVES) {
+        const lattice = new Float32Array(o.cx * o.cy);
+        for (let i = 0; i < lattice.length; i++) lattice[i] = rng.next();
+
+        for (let y = 0; y < GRID_H; y++) {
+          for (let x = 0; x < GRID_W; x++) {
+            out[idx(x, y)] += o.amp * TerrainGenerator.sample(lattice, o.cx, o.cy, x, y);
+          }
+        }
+      }
+
+      TerrainGenerator.normalize(out);
+    }
+
+    /**
+     * Raise mountain ranges out of the continents, and record the belts in
+     * `uplift` so the geosphere can keep pushing them up against erosion.
+     *
+     * Plain fBm gives rounded blobs, never ranges: a real orogen is a long
+     * narrow crest, which is what ridge noise (`1 - |2v - 1|`, folded so the
+     * lattice midpoints become sharp lines) produces. The fold is applied per
+     * octave and each octave is weighted by the previous one's crest value, so
+     * detail only accumulates *along* a ridge instead of scattering hills over
+     * the lowlands.
+     *
+     * Two shaping steps decide whether this reads as mountains or as a
+     * continent-wide plateau:
+     *
+     *   crest cut  everything below CREST is thrown away, so only the top of
+     *              the field builds anything at all;
+     *   squaring   what survives is squared, which pulls the flanks down and
+     *              leaves the summit, turning a broad swell into a narrow spine.
+     *
+     * Skipping either one lifts the whole landmass — measured 37% of land above
+     * the Rock line, a grey plateau rather than a range.
+     *
+     * Placement follows distance from the sea rather than the plate boundaries.
+     * `GeoSystem.drift` rolls whole rows independently, so a ridge pinned to a
+     * plate edge would slide across the continent sitting on it; distance to
+     * water travels *with* the crust and puts cordilleras where they belong,
+     * a little back from the coast.
+     */
+    static orogeny(seed: number, elevation: Float32Array, uplift: Float32Array): void {
+      const ridge = TerrainGenerator.ridgeField(seed ^ 0x5bf03635);
+      const shore = TerrainGenerator.distanceToWater(elevation);
+      const crest = TerrainGenerator.CREST;
+
+      uplift.fill(0);
+      for (let i = 0; i < TILE_COUNT; i++) {
+        if (elevation[i] < 0) continue;
+
+        const sharp = Math.max(0, (ridge[i] - crest) / (1 - crest));
+        // The coast itself stays low — beaches, not cliffs — then the belt
+        // rises to a peak a few tiles inland and tails off into the interior.
+        const d = shore[i];
+        const band = d <= 1 ? 0.2 : clamp(1 - Math.abs(d - 7) / 18, 0.3, 1);
+
+        const u = sharp * sharp * band;
+        uplift[i] = u;
+        elevation[i] = Math.min(1, elevation[i] + u * TerrainGenerator.OROGENY_AMP);
+      }
+    }
+
+    /** Ridged multifractal in 0..1, wrapped across the cylinder join. */
+    private static ridgeField(seed: number): Float32Array {
+      const rng = new Rng(seed);
+      const out = new Float32Array(TILE_COUNT);
+      // Each octave is scaled by how close the previous one was to its crest,
+      // which is what keeps the fine detail on the ridgelines.
+      const carry = new Float32Array(TILE_COUNT).fill(1);
+      let total = 0;
+
+      for (const o of TerrainGenerator.RIDGE_OCTAVES) {
+        const lattice = new Float32Array(o.cx * o.cy);
+        for (let i = 0; i < lattice.length; i++) lattice[i] = rng.next();
+        total += o.amp;
+
+        for (let y = 0; y < GRID_H; y++) {
+          for (let x = 0; x < GRID_W; x++) {
+            const i = idx(x, y);
+            const v = TerrainGenerator.sample(lattice, o.cx, o.cy, x, y);
+            const r = 1 - Math.abs(2 * v - 1);
+            out[i] += o.amp * r * r * carry[i];
+            carry[i] = clamp(r * 1.6, 0, 1);
+          }
+        }
+      }
+
+      for (let i = 0; i < TILE_COUNT; i++) out[i] /= total;
+      return out;
+    }
+
+    /**
+     * Tiles from each land cell to the nearest water, by breadth-first search
+     * from every sea tile at once. Water reads 0, its neighbours 1, and so on.
+     */
+    private static distanceToWater(elevation: Float32Array): Int32Array {
+      const dist = new Int32Array(TILE_COUNT).fill(-1);
+      const queue = new Int32Array(TILE_COUNT);
+      let head = 0;
+      let tail = 0;
+
+      for (let i = 0; i < TILE_COUNT; i++) {
+        if (elevation[i] < 0) {
+          dist[i] = 0;
+          queue[tail++] = i;
+        }
+      }
+
+      // A planet with no sea at all leaves every land tile at -1; treat that as
+      // "deep interior" rather than letting the caller index a negative band.
+      if (tail === 0) return dist.fill(GRID_W);
+
+      while (head < tail) {
+        const i = queue[head++];
+        const x = i % GRID_W;
+        const y = (i / GRID_W) | 0;
+        const next = dist[i] + 1;
+
+        const n0 = idx(wrapX(x - 1), y);
+        const n1 = idx(wrapX(x + 1), y);
+        const n2 = idx(x, clampY(y - 1));
+        const n3 = idx(x, clampY(y + 1));
+        if (dist[n0] < 0) { dist[n0] = next; queue[tail++] = n0; }
+        if (dist[n1] < 0) { dist[n1] = next; queue[tail++] = n1; }
+        if (dist[n2] < 0) { dist[n2] = next; queue[tail++] = n2; }
+        if (dist[n3] < 0) { dist[n3] = next; queue[tail++] = n3; }
+      }
+      return dist;
+    }
+
+    /** Bilinear value noise with wrapped lattice lookups. */
+    private static sample(
+      lattice: Float32Array, cx: number, cy: number, x: number, y: number,
+    ): number {
+      const fx = (x / GRID_W) * cx;
+      const fy = (y / GRID_H) * cy;
+
+      const x0 = Math.floor(fx) % cx;
+      const y0 = Math.floor(fy) % cy;
+      const x1 = (x0 + 1) % cx;
+      const y1 = (y0 + 1) % cy;
+
+      const tx = smoothstep(fx - Math.floor(fx));
+      const ty = smoothstep(fy - Math.floor(fy));
+
+      const top = lerp(lattice[y0 * cx + x0], lattice[y0 * cx + x1], tx);
+      const bottom = lerp(lattice[y1 * cx + x0], lattice[y1 * cx + x1], tx);
+      return lerp(top, bottom, ty);
+    }
+
+    /**
+     * Rescale raw fBm to [-1, 1] with sea level at exactly 0, placing the
+     * shoreline at the OCEAN_FRACTION percentile so every planet is habitable.
+     */
+    private static normalize(out: Float32Array): void {
+      let min = Infinity;
+      let max = -Infinity;
+      for (let i = 0; i < out.length; i++) {
+        if (out[i] < min) min = out[i];
+        if (out[i] > max) max = out[i];
+      }
+      const span = max - min || 1;
+
+      const sorted = new Float32Array(out.length);
+      for (let i = 0; i < out.length; i++) {
+        out[i] = (out[i] - min) / span;
+        sorted[i] = out[i];
+      }
+      sorted.sort();
+      const seaLevel = sorted[Math.floor(OCEAN_FRACTION * (sorted.length - 1))];
+
+      const above = Math.max(1e-4, 1 - seaLevel);
+      const below = Math.max(1e-4, seaLevel);
+
+      for (let i = 0; i < out.length; i++) {
+        const d = out[i] - seaLevel;
+        const v = d >= 0 ? d / above : d / below;
+        // Gamma > 1 broadens continental shelves and coastal plains.
+        out[i] = Math.sign(v) * Math.pow(Math.abs(v), 1.3);
+      }
+    }
+  }
+
+  /* -------------------------------------------------------------------------- */
+
+  /** The complete simulation state. */
+  export class WorldState {
+    /* ---- per-tile fields ---- */
+    readonly elevation = new Float32Array(TILE_COUNT);     // -1 .. 1
+    readonly temperature = new Float32Array(TILE_COUNT);   // degrees Celsius
+    readonly moisture = new Float32Array(TILE_COUNT);      // 0 .. 1
+    readonly biome = new Uint8Array(TILE_COUNT);           // Biome
+    /**
+     * The plant layer. In SimEarth the *biomes* are the vegetation and the life
+     * classes are the animals living in them, so this is what actually
+     * photosynthesises — and what decides whether land reads as barren Rock or
+     * as Forest/Jungle/Swamp.
+     */
+    readonly vegetation = new Float32Array(TILE_COUNT);    // 0 .. 1
+    /**
+     * Which plant groups grow on each tile, one bit per `Flora` value. Saved
+     * as-is, so the bit numbers are stable identifiers.
+     */
+    readonly flora = new Uint16Array(TILE_COUNT);
+    /** The plant group that shapes the tile — drawn, and read by the biome. */
+    readonly floraTop = new Uint8Array(TILE_COUNT);
+    /**
+     * The animal layer, as a community rather than a single occupant: every
+     * class carries its own density on every tile, indexed by `lifeIdx(i, c)`.
+     * Competition then falls out of a shared carrying capacity instead of the
+     * displacement special cases a one-class-per-tile model needs, and a
+     * descendant can arise alongside its ancestor instead of erasing it.
+     */
+    readonly lifeDensity = new Float32Array(TILE_COUNT * LIFE_COUNT);  // 0 .. 1
+    /** Sub-species stage 0..SUBSPECIES_PER_CLASS-1, same indexing. */
+    readonly lifeStage = new Uint8Array(TILE_COUNT * LIFE_COUNT);
+    readonly tech = new Uint8Array(TILE_COUNT);            // Tech (0 = no city)
+    readonly cityPop = new Float32Array(TILE_COUNT);       // 0 .. 1
+    readonly magma = new Float32Array(TILE_COUNT);         // mantle upwelling
+    /**
+     * Strength of the orogenic belt under each tile, 0..1. Laid down once by
+     * `TerrainGenerator.orogeny` and thereafter the rate at which `GeoSystem`
+     * keeps pushing the crust up, so ranges stand against erosion instead of
+     * being ground flat over a long game. Rides the plates like the crust does.
+     */
+    readonly uplift = new Float32Array(TILE_COUNT);
+    readonly eventKind = new Uint8Array(TILE_COUNT);       // EventKind
+    readonly eventTtl = new Uint8Array(TILE_COUNT);        // ticks remaining
+
+    /* ---- rivers: derived from elevation, never saved ---- */
+    /** Upstream discharge, in units of one average land tile's runoff. */
+    readonly riverFlow = new Float32Array(TILE_COUNT);
+    /** Tile this one drains into, or -1 for the sea and for water tiles. */
+    readonly riverDown = new Int32Array(TILE_COUNT).fill(-1);
+    /** 0 where no river runs, else its size 0.25 .. 1. */
+    readonly riverLevel = new Float32Array(TILE_COUNT);
+    /**
+     * Moisture floor a river holds over itself and its banks, 0..1 of local
+     * capacity. This is the whole mechanism behind a green corridor through a
+     * desert: it feeds `ClimateSystem`, which feeds vegetation, which feeds the
+     * biome — no special case anywhere in the chain.
+     */
+    readonly riparian = new Float32Array(TILE_COUNT);
+    /**
+     * Set whenever the crust moves, so the river network is rebuilt instead of
+     * describing terrain that no longer exists. Cleared by `RiverSystem`.
+     */
+    terrainDirty = true;
+
+    /* ---- global atmosphere ---- */
+    co2 = 400;    // parts per million
+    o2 = 1;       // percent
+    n2 = 78;      // percent
+    vapor = 0.45; // 0 .. 1 saturation
+    dust = 0.02;  // 0 .. 1 opacity
+
+    /* ---- evolution ---- */
+    /** The tree: developed steps, evolution points, chronicle. */
+    readonly evo = new EvolutionState();
+
+    /* ---- bookkeeping ---- */
+    ticks = 0;
+    omega = OMEGA_START;
+    seed = 1;
+    rng = new Rng(1);
+    timeScale: TimeScale = TimeScale.Geologic;
+    /** Total years since the planet formed. */
+    absoluteYears = 0;
+    /** Years elapsed inside the current time scale. */
+    scaleYears = 0;
+    /** Set once a sentient species founds its first city. */
+    sentientClass: Life = Life.None;
+    name = 'Erde';
+
+    /* ---- derived, refreshed every tick ---- */
+    globalTemp = 14;
+    oceanFraction = OCEAN_FRACTION;
+    readonly biomeCounts = new Uint32Array(BIOME_COUNT);
+    readonly lifeCounts = new Uint32Array(LIFE_COUNT);
+    /** Tiles carrying each plant group. */
+    readonly floraCounts = new Uint32Array(FLORA_COUNT);
+    readonly techCounts = new Uint32Array(TECH_COUNT);
+    /** Summed habitat density across the planet, per life class. */
+    readonly lifeBiomass = new Float32Array(LIFE_COUNT);
+    /**
+     * Planet age at which each class first appeared, or -1 if it never has.
+     * Float64 because absoluteYears reaches billions and Float32 would start
+     * rounding away whole millennia.
+     */
+    readonly lifeFirstSeen = new Float64Array(LIFE_COUNT).fill(-1);
+    totalBiomass = 0;
+    /** Tiles carrying any life at all — the honest "% cover" figure. */
+    inhabitedTiles = 0;
+    /**
+     * Tiles per class per sub-species stage, indexed
+     * `[c * SUBSPECIES_PER_CLASS + stage]`. Derived — it is what lets the
+     * biosphere cap how much of a class may stand on the higher rungs.
+     */
+    readonly lifeStageCounts = new Uint32Array(LIFE_COUNT * SUBSPECIES_PER_CLASS);
+    /** Most abundant class on each tile, or Life.None. Derived, never written to. */
+    readonly dominantLife = new Uint8Array(TILE_COUNT);
+    /** Summed density of every class on the tile. Derived. */
+    readonly tileBiomass = new Float32Array(TILE_COUNT);
+    /**
+     * The class whose abundance peaks locally on this tile, or Life.None.
+     *
+     * The Edit window draws one creature per marker, so the map reads as
+     * scattered populations the way the original's does, while the simulation
+     * underneath stays continuous and fills every habitable tile. Computed once
+     * per tick because the render loop runs sixty times a second.
+     */
+    readonly lifeMarker = new Uint8Array(TILE_COUNT);
+    /** Land plant cover summed over the planet, per tile of planet, 0..1. */
+    vegetationCoverage = 0;
+    /** Marine algae cover summed over the planet, per tile of planet, 0..1. */
+    algaeCoverage = 0;
+    /** Share of the whole planet held by marine and by terrestrial classes. */
+    seaLifeCoverage = 0;
+    landLifeCoverage = 0;
+    totalCityPop = 0;
+    highestLife: Life = Life.None;
+    /** 0 = horror, 1 = bliss. Drives the Gaia face. */
+    gaiaMood = 0.5;
+
+    /** Build a brand new planet from a seed. */
+    reset(seed: number): void {
+      this.seed = seed >>> 0;
+      this.rng = new Rng(this.seed);
+
+      TerrainGenerator.generate(this.seed, this.elevation);
+      // After the coastlines exist, never before: the belts are placed by
+      // distance from the sea, so they need to know where the sea ended up.
+      TerrainGenerator.orogeny(this.seed, this.elevation, this.uplift);
+
+      this.co2 = 400;
+      this.o2 = 1;
+      this.n2 = 78;
+      this.vapor = 0.45;
+      this.dust = 0.02;
+      this.ticks = 0;
+      this.omega = OMEGA_START;
+      this.timeScale = TimeScale.Geologic;
+      this.absoluteYears = 0;
+      this.scaleYears = 0;
+      this.sentientClass = Life.None;
+
+      this.vegetation.fill(0);
+      this.flora.fill(0);
+      this.floraTop.fill(0);
+      this.evo.reset();
+      this.lifeDensity.fill(0);
+      this.lifeStage.fill(0);
+      this.lifeFirstSeen.fill(-1);
+      this.tech.fill(0);
+      this.cityPop.fill(0);
+      this.eventKind.fill(0);
+      this.eventTtl.fill(0);
+
+      this.riverFlow.fill(0);
+      this.riverDown.fill(-1);
+      this.riverLevel.fill(0);
+      this.riparian.fill(0);
+      this.terrainDirty = true;
+
+      // Mantle upwelling: a smooth field so volcanism clusters into belts
+      // instead of speckling the planet at random.
+      const magmaSeed = new Float32Array(TILE_COUNT);
+      TerrainGenerator.generate(this.seed ^ 0x9e3779b9, magmaSeed);
+      for (let i = 0; i < TILE_COUNT; i++) {
+        this.magma[i] = clamp(magmaSeed[i] * 0.5 + 0.5, 0, 1);
+      }
+
+      // Seed the climate on the WARM branch of the ice-albedo feedback. Seeding
+      // it cold instead freezes half the world permanently, because a frozen
+      // tile reflects enough sunlight to stay frozen where open water would not.
+      for (let y = 0; y < GRID_H; y++) {
+        const insolation = ClimateSystem.insolationAt(y, 0.5);
+        for (let x = 0; x < GRID_W; x++) {
+          const i = idx(x, y);
+          const e = this.elevation[i];
+          let t = SOLAR_INPUT_BASE * insolation * 0.8 - RADIATIVE_OFFSET + 20.5;
+          if (e > 0) t -= e * ELEVATION_KM * LAPSE_RATE;
+          this.temperature[i] = t;
+          this.moisture[i] = e < 0 ? 1 : 0.45;
+        }
+      }
+
+      // Before the first biome pass: the river corridors are part of what makes
+      // a tile wet, and a planet that opened with dry riverbeds would spend its
+      // first hundred ticks visibly greening up out of nothing.
+      RiverSystem.rebuild(this);
+
+      // Classify first, then count: the derived tallies describe the biomes,
+      // so the other order showed the previous planet's distribution until
+      // the first tick.
+      BiomeSystem.step(this);
+      this.refreshDerived();
+    }
+
+    /**
+     * Take over another world's entire state. The loader validates a save
+     * into a staging world and commits it with this, so the live planet is
+     * either untouched or completely replaced — never half of each.
+     */
+    copyFrom(o: WorldState): void {
+      this.elevation.set(o.elevation);
+      this.temperature.set(o.temperature);
+      this.moisture.set(o.moisture);
+      this.biome.set(o.biome);
+      this.vegetation.set(o.vegetation);
+      this.flora.set(o.flora);
+      this.floraTop.set(o.floraTop);
+      this.lifeDensity.set(o.lifeDensity);
+      this.lifeStage.set(o.lifeStage);
+      this.tech.set(o.tech);
+      this.cityPop.set(o.cityPop);
+      this.magma.set(o.magma);
+      this.uplift.set(o.uplift);
+      this.eventKind.set(o.eventKind);
+      this.eventTtl.set(o.eventTtl);
+      this.lifeFirstSeen.set(o.lifeFirstSeen);
+      this.terrainDirty = true;
+
+      this.co2 = o.co2;
+      this.o2 = o.o2;
+      this.n2 = o.n2;
+      this.vapor = o.vapor;
+      this.dust = o.dust;
+      this.ticks = o.ticks;
+      this.omega = o.omega;
+      this.seed = o.seed;
+      this.rng = new Rng(o.seed);
+      this.rng.setState(o.rng.getState());
+      this.timeScale = o.timeScale;
+      this.absoluteYears = o.absoluteYears;
+      this.scaleYears = o.scaleYears;
+      this.sentientClass = o.sentientClass;
+      this.name = o.name;
+
+      const evo = this.evo;
+      evo.reset();
+      evo.ep = o.evo.ep;
+      for (const [k, v] of o.evo.developed) evo.developed.set(k, v);
+      for (const k of o.evo.reported) evo.reported.add(k);
+      for (const e of o.evo.chronicle) evo.chronicle.push(e);
+      for (const k of o.evo.extinct) evo.extinct.add(k);
+      for (const [k, v] of o.evo.readySince) evo.readySince.set(k, v);
+    }
+
+    /** Years advanced by one tick at the current time scale. */
+    get yearsPerTick(): number {
+      return YEARS_PER_TICK[this.timeScale];
+    }
+
+    /**
+     * Bumped on every refresh of the derived state — by the tick and by any
+     * player edit — so views can tell "the world changed" apart from "time
+     * passed", which is what keeps a paused planet's displays honest.
+     */
+    revision = 0;
+
+    /** Recompute cached aggregates used by the HUD, panels and other systems. */
+    refreshDerived(): void {
+      this.revision++;
+      let weighted = 0;
+      let weightSum = 0;
+      let water = 0;
+
+      this.biomeCounts.fill(0);
+      this.lifeCounts.fill(0);
+      this.floraCounts.fill(0);
+      this.techCounts.fill(0);
+      this.lifeBiomass.fill(0);
+      this.lifeStageCounts.fill(0);
+      this.totalBiomass = 0;
+      this.totalCityPop = 0;
+      this.inhabitedTiles = 0;
+      let vegSum = 0;
+      let algaeSum = 0;
+
+      for (let y = 0; y < GRID_H; y++) {
+        // Weight by cos(latitude): polar rows cover far less area than the
+        // equator on a real sphere, so an unweighted mean would run cold.
+        const w = Math.max(0.05, Math.cos((latitudeDeg(y) * Math.PI) / 180));
+        for (let x = 0; x < GRID_W; x++) {
+          const i = idx(x, y);
+          weighted += this.temperature[i] * w;
+          weightSum += w;
+          if (this.elevation[i] < 0) {
+            water++;
+            algaeSum += this.vegetation[i];
+          } else {
+            vegSum += this.vegetation[i];
+          }
+
+          this.biomeCounts[this.biome[i]]++;
+          let fm = this.flora[i];
+          while (fm !== 0) {
+            const g = 31 - Math.clz32(fm & -fm);
+            fm &= fm - 1;
+            this.floraCounts[g]++;
+          }
+
+          // Walk the tile's community once: totals, who dominates, how full.
+          const base = i * LIFE_COUNT;
+          let tileSum = 0;
+          let best = Life.None;
+          let bestDensity = 0;
+          for (let c = 1; c < LIFE_COUNT; c++) {
+            const d = this.lifeDensity[base + c];
+            if (d <= 0) continue;
+            this.lifeCounts[c]++;
+            this.lifeBiomass[c] += d;
+            this.lifeStageCounts[c * SUBSPECIES_PER_CLASS + this.lifeStage[base + c]]++;
+            tileSum += d;
+            if (d > bestDensity) {
+              bestDensity = d;
+              best = c as Life;
+            }
+          }
+          this.tileBiomass[i] = tileSum;
+          this.dominantLife[i] = best;
+          this.totalBiomass += tileSum;
+          if (best !== Life.None) this.inhabitedTiles++;
+
+          const t = this.tech[i];
+          if (t !== Tech.None) {
+            this.techCounts[t]++;
+            this.totalCityPop += this.cityPop[i];
+          }
+        }
+      }
+
+      this.globalTemp = weighted / weightSum;
+      this.oceanFraction = water / TILE_COUNT;
+      this.vegetationCoverage = vegSum / TILE_COUNT;
+      this.algaeCoverage = algaeSum / TILE_COUNT;
+
+      let sea = 0;
+      let land = 0;
+      for (let c = 1; c < LIFE_COUNT; c++) {
+        if (isSeaLife(c as Life)) sea += this.lifeBiomass[c];
+        else land += this.lifeBiomass[c];
+      }
+      this.seaLifeCoverage = sea / TILE_COUNT;
+      this.landLifeCoverage = land / TILE_COUNT;
+
+      // "Highest life form achieved", as the Report window puts it.
+      this.highestLife = Life.None;
+      for (let c = LIFE_COUNT - 1; c >= 1; c--) {
+        if (this.lifeCounts[c] > 0) {
+          this.highestLife = c as Life;
+          break;
+        }
+      }
+
+      // Stamp each class the first time it ever appears, so Examine can report
+      // how long a lineage has been on the planet. Never cleared on extinction:
+      // a class that dies out and is re-seeded keeps its original debut.
+      for (let c = 1; c < LIFE_COUNT; c++) {
+        if (this.lifeCounts[c] > 0 && this.lifeFirstSeen[c] < 0) {
+          this.lifeFirstSeen[c] = this.absoluteYears;
+        }
+      }
+
+      this.refreshLifeMarkers();
+      this.gaiaMood = this.computeGaiaMood();
+    }
+
+    /** A marker needs at least this much of the dominant class to be drawn. */
+    private static readonly MARKER_MIN_DENSITY = 0.05;
+    /**
+     * How much per-tile noise is mixed into the peak test.
+     *
+     * Without it a saturated region is one flat plateau of identical densities
+     * and elects a single winner for the whole ocean — two percent of inhabited
+     * tiles drew a creature. Real density differences larger than this still
+     * decide the peak; inside a plateau the noise decides, which scatters the
+     * markers the way the original's map looks.
+     */
+    private static readonly MARKER_JITTER = 0.02;
+
+    /**
+     * Deterministic per-tile noise. Must not use the world RNG: markers are
+     * recomputed every tick and read by a 60 fps render loop, so anything that
+     * changed between frames would make the wildlife flicker.
+     */
+    private static jitter(i: number): number {
+      let h = Math.imul(i ^ 0x9e3779b9, 0x85ebca6b);
+      h ^= h >>> 13;
+      h = Math.imul(h, 0xc2b2ae35);
+      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+    }
+
+    /**
+     * Elect the tiles that get to show a creature: those where the dominant
+     * class is at a local maximum among its four neighbours.
+     *
+     * Only the dominant class is a candidate, which keeps this at four
+     * comparisons per tile rather than four per class per tile. Four neighbours
+     * rather than eight because on a flat field one tile in five wins instead of
+     * one in nine, which is the density the map wants.
+     */
+    /** Reused by `refreshLifeMarkers`, which runs once per tile per tick. */
+    private readonly markerNeighbours = new Int32Array(4);
+
+    private refreshLifeMarkers(): void {
+      const neighbours = this.markerNeighbours;
+
+      for (let y = 0; y < GRID_H; y++) {
+        for (let x = 0; x < GRID_W; x++) {
+          const i = idx(x, y);
+          const c = this.dominantLife[i];
+          if (c === Life.None) {
+            this.lifeMarker[i] = Life.None;
+            continue;
+          }
+
+          const raw = this.lifeDensity[i * LIFE_COUNT + c];
+          if (raw < WorldState.MARKER_MIN_DENSITY) {
+            this.lifeMarker[i] = Life.None;
+            continue;
+          }
+
+          const mine = raw + WorldState.jitter(i) * WorldState.MARKER_JITTER;
+          neighbours[0] = idx(wrapX(x - 1), y);
+          neighbours[1] = idx(wrapX(x + 1), y);
+          neighbours[2] = idx(x, clampY(y - 1));
+          neighbours[3] = idx(x, clampY(y + 1));
+
+          let peak = true;
+          for (let n = 0; n < 4; n++) {
+            const j = neighbours[n];
+            if (j === i) continue;
+            const theirs = this.lifeDensity[j * LIFE_COUNT + c] +
+              WorldState.jitter(j) * WorldState.MARKER_JITTER;
+            if (theirs > mine) { peak = false; break; }
+          }
+
+          this.lifeMarker[i] = peak ? c : Life.None;
+        }
+      }
+    }
+
+    /**
+     * Gaia's mood: how comfortable the planet is for the life currently on it.
+     * Bliss needs a temperate climate, a broad biosphere and clean air.
+     */
+    private computeGaiaMood(): number {
+      const f = this.gaiaFactors();
+      return clamp(f.climate * 0.3 + f.life * 0.25 + f.diversity * 0.2 + f.clean * 0.25, 0, 1);
+    }
+
+    /** The four things Gaia's mood is made of, each 0..1, and the group count behind one. */
+    gaiaFactors(): { climate: number; life: number; diversity: number; clean: number; groups: number } {
+      // Temperature comfort peaks around 15 °C and falls away either side.
+      const tempScore = clamp(1 - Math.abs(this.globalTemp - 15) / 35, 0, 1);
+
+      // Biosphere coverage, saturating well before the whole planet is full.
+      // Measured in inhabited tiles rather than summed density: with several
+      // classes sharing a tile, biomass no longer has a natural ceiling of one
+      // per tile and would run this straight to 1 on any living planet.
+      const lifeScore = clamp(this.lifeCover / 0.35, 0, 1);
+
+      // Diversity: how many animal classes and plant groups live here at all.
+      let present = 0;
+      for (let c = 1; c < LIFE_COUNT; c++) if (this.lifeCounts[c] > 0) present++;
+      for (let g = 1; g < FLORA_COUNT; g++) if (this.floraCounts[g] > 0) present++;
+      const diversityScore = clamp(present / 12, 0, 1);
+
+      // Pollution: runaway CO2 and dust make her miserable.
+      const cleanScore = clamp(1 - (this.co2 - 300) / 2500, 0, 1) * clamp(1 - this.dust * 2, 0, 1);
+
+      return { climate: tempScore, life: lifeScore, diversity: diversityScore, clean: cleanScore, groups: present };
+    }
+
+    /** Fraction of the planet covered by a given life class. */
+    coverage(c: Life): number {
+      return this.lifeBiomass[c] / TILE_COUNT;
+    }
+
+    /**
+     * Fraction of the planet carrying any life. This is what the HUD and the
+     * Report window mean by "% cover" — summed biomass would exceed 1 now that
+     * a tile can hold several classes at once.
+     */
+    get lifeCover(): number {
+      return this.inhabitedTiles / TILE_COUNT;
+    }
+
+    /** Density of one class on one tile. */
+    density(i: number, c: Life): number {
+      return this.lifeDensity[i * LIFE_COUNT + c];
+    }
+
+    /** Sub-species stage of one class on one tile. */
+    stage(i: number, c: Life): number {
+      return this.lifeStage[i * LIFE_COUNT + c];
+    }
+
+    /** Classes present on a tile, most abundant first. */
+    speciesOn(i: number): Life[] {
+      const out: Life[] = [];
+      const base = i * LIFE_COUNT;
+      for (let c = 1; c < LIFE_COUNT; c++) {
+        if (this.lifeDensity[base + c] > 0) out.push(c as Life);
+      }
+      out.sort((a, b) => this.lifeDensity[base + b] - this.lifeDensity[base + a]);
+      return out;
+    }
+
+    /** True if the tile is below sea level. */
+    isWater(i: number): boolean {
+      return this.elevation[i] < 0;
+    }
+
+    /** Altitude in metres, as the Examine window reports it. */
+    altitudeMeters(i: number): number {
+      return Math.round(this.elevation[i] * ELEVATION_KM * 1000);
+    }
+
+    /** Rainfall in cm/year, as the Examine window reports it. */
+    rainfallCm(i: number): number {
+      return this.moisture[i] * 400;
+    }
+  }
+}

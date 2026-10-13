@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" stroke-linecap="round" stroke-linejoin="round">
+  <title>Moose</title>
+  <defs>
+    <linearGradient id="mosses-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#12341f"/>
+      <stop offset="1" stop-color="#2f6b36"/>
+    </linearGradient>
+    <clipPath id="mosses-c">
+      <path d="M11.5 51C9.5 46 12 41 17 41C18 37 22.5 35.5 26 37.5C28 34 33.5 33.5 36 37C39 35 44 36 45.5 40C50 40 54 44.5 52.5 51Z"/>
+    </clipPath>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#mosses-bg)" stroke="#ffffff" stroke-opacity="0.18" stroke-width="1.5"/>
+  <!-- Lebensraum: Land -->
+  <path d="M9 51H55M18 56h4M30 56.5h4M42 56h4" fill="none" stroke="#c9a36b" stroke-width="2"/>
+  <!-- Stiele -->
+  <path d="M24 40C23.5 33 22 27 20.6 22.8M31.5 38C31.5 31 31.8 25 32 20M40.5 40C41.5 34 42.5 28 44 23.5" fill="none" stroke="#f6f1df" stroke-width="2.2"/>
+  <!-- Sporenkapseln mit Deckel -->
+  <g transform="translate(18 19) rotate(-35)">
+    <ellipse cx="0" cy="0" rx="2.8" ry="4.6" fill="#f6f1df"/>
+    <path d="M-2.4-3C-1.5-6.5-.5-8 0-8.5C.5-8 1.5-6.5 2.4-3Z" fill="#c9a36b"/>
+  </g>
+  <g transform="translate(33 15.5) rotate(12)">
+    <ellipse cx="0" cy="0" rx="2.8" ry="4.6" fill="#f6f1df"/>
+    <path d="M-2.4-3C-1.5-6.5-.5-8 0-8.5C.5-8 1.5-6.5 2.4-3Z" fill="#c9a36b"/>
+  </g>
+  <g transform="translate(47 20) rotate(40)">
+    <ellipse cx="0" cy="0" rx="2.8" ry="4.6" fill="#f6f1df"/>
+    <path d="M-2.4-3C-1.5-6.5-.5-8 0-8.5C.5-8 1.5-6.5 2.4-3Z" fill="#c9a36b"/>
+  </g>
+  <!-- Mooskissen -->
+  <path d="M11.5 51C9.5 46 12 41 17 41C18 37 22.5 35.5 26 37.5C28 34 33.5 33.5 36 37C39 35 44 36 45.5 40C50 40 54 44.5 52.5 51Z" fill="#8ad16f"/>
+  <g clip-path="url(#mosses-c)">
+    <path d="M11.5 51C9.5 46 12 41 17 41C18 37 22.5 35.5 26 37.5C28 34 33.5 33.5 36 37C39 35 44 36 45.5 40C50 40 54 44.5 52.5 51Z" transform="translate(-2 -2)" fill="#b6e388"/>
+  </g>
+  <path d="M16 47l1.5-2 1.5 2M24 43l1.5-2 1.5 2M33 41l1.5-2 1.5 2M40 45.5l1.5-2 1.5 2M46 48l1.5-2 1.5 2M28 49l1.5-2 1.5 2" fill="none" stroke="#2f6b36" stroke-width="2"/>
+  <!-- Tropfen -->
+  <path d="M53 24c-2.3 3-3.5 5-3.5 6.5a3.5 3.5 0 0 0 7 0c0-1.5-1.2-3.5-3.5-6.5Z" fill="#7fd3f0"/>
+  <path d="M11.5 26c-1.7 2.3-2.6 3.8-2.6 4.9a2.6 2.6 0 0 0 5.2 0c0-1.1-.9-2.6-2.6-4.9Z" fill="#7fd3f0"/>
+</svg>

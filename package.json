@@ -1,0 +1,17 @@
+{
+  "name": "simearth-2-0",
+  "version": "0.6.0",
+  "private": true,
+  "description": "Ein Natur- und Evolutionsspiel als moderner Nachfolger von SimEarth: The Living Planet (Maxis, 1990).",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc && node --test \"tests/*.test.js\"",
+    "test:quick": "node --test tests/sim.test.js tests/save.test.js",
+    "probe": "node tools/headless.js 2000 12345 777 --life"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
