@@ -12,7 +12,7 @@ Baumansicht und Ereignistexte lesen dieselben Einträge.
 | Beziehung | Bedeutung | Darstellung im Baum | Geprüft durch |
 |---|---|---|---|
 | Abstammung | Eine Gruppe geht aus *frühen Vertretern* der Vorgängergruppe hervor. Die Vorgänger leben weiter. | durchgezogene Linie, Notiz über dem Knoten (z. B. „Amnioten · Synapsiden“) | Vorgänger entwickelt **und** lebt derzeit auf dem Planeten |
-| Lebensraum | Umweltbedingungen: Meer, Ufer, Feuchtgebiet, trockenes Land, Kälte, Sauerstoff | Lebensraum-Symbole am Knoten, Abschnitt „Lebensraum“ in der Detailansicht | Es gibt mindestens einen Ort **neben** den Vorfahren, an dem die neue Gruppe tatsächlich leben könnte (dieselbe Funktion, die auch Wachstum und Ausbreitung berechnet) |
+| Lebensraum | Umweltbedingungen: Meer, Ufer, Feuchtgebiet, trockenes Land, Kälte, Sauerstoff | Lebensraum-Symbole am Knoten, Abschnitt „Lebensraum“ in der Detailansicht | Es gibt mindestens einen Ort **neben** den Vorfahren, an dem die neue Gruppe auch dann noch Platz hat, wenn alle Arten, die dort leben könnten, eingewandert sind (dieselbe Funktion, die auch Wachstum und Ausbreitung berechnet; seit 14. 10. 2026) |
 | Ökologische Beziehung | Nahrung, Partner (Blüten für Bestäuber), Boden | gestrichelte Pfeile: grün = Pflanzen als Nahrung, orange = Beutetiere, violett = Partner, braun = Boden | eine der genannten Gruppen ist auf mindestens 24 Feldern verbreitet |
 
 Eine Futterpflanze wird nie als Vorfahr dargestellt; ein automatischer Test stellt sicher, dass kein
@@ -21,9 +21,11 @@ Ein weiterer Test prüft, dass jede im Baum genannte Nahrung auch in der Ernähr
 vorkommt – was der Baum verspricht, tut die Simulation.
 
 **Freischalten statt Zufall.** Neue Gruppen entstehen nicht mehr durch zufällige Artbildung.
-Der Spieler entwickelt sie im Baum mit Evolutionspunkten (EP). Dabei werden die ersten Populationen
-an den besten Orten neben den Vorfahren gegründet; von dort breiten sie sich selbst aus.
-Unterarten (drei Stufen je Gruppe) entstehen weiterhin von selbst.
+Der Spieler entwickelt sie im Baum mit Evolutionspunkten (EP). Seit 14. 10. 2026 entsteht jede neue
+Gruppe an **genau einem Ort** neben ihren Vorfahren (bis zu fünf benachbarte Felder, im größten
+erreichbaren Lebensraum); von dort breitet sie sich selbst aus. Unterarten entstehen weiterhin von
+selbst – seit 14. 10. 2026 acht Stufen je Tierklasse statt drei, mit Namen und Erstauftreten in
+`src/species/` (siehe `docs/oekosystem-2026-10/bericht.md`).
 
 **Die Natur wartet nicht ewig** (seit 12. 10. 2026, `src/spontaneous.ts`). Sind für einen Schritt alle
 Bedingungen außer den EP-Kosten erfüllt, beginnt eine Uhr zu laufen. Nach einer Schonfrist von
@@ -66,10 +68,25 @@ Wasserzugang × Höhenlage. Gruppen breiten sich in geeignete Nachbarfelder aus,
 (Sporen, Samen, später durch Vögel), und sterben dort ab, wo das Klima nicht mehr passt. Frühere
 Gruppen werden nicht ersetzt – ein Feld kann viele Gruppen tragen, die Moose bleiben in Tundra und Moor.
 
-Das **Biom** eines Feldes ist seine Struktur und hängt davon ab, welche Pflanzen es prägen:
-Wald, Regenwald und Nadelwald brauchen baumbildende Gruppen (Nadelwald: Nadelbäume),
-kalte bemooste Ebenen werden zur Tundra, offenes Land heißt „Offenland“ (nicht „Grasland“, solange es
-keine Gräser gibt).
+Seit 14. 10. 2026 trägt jedes Landfeld eine **Landschaft** (`src/landscape.ts`, `src/succession.ts`,
+Spezifikation `docs/biomes-spec.md` Abschnitt 3): eine von 19 Sukzessionsstufen wie Fels, Flechten & Moos,
+Farnflur, Steppe, Gebüsch, Wald oder Regenwald, dazu Untergrund (Fels, Sand, Erde, Moor) und
+Bodenreife. Das Ziel eines Feldes ergibt sich aus geglättetem Klima (7 × 7 Felder) und den Pflanzengruppen,
+die auf ihm oder auf mindestens 3 seiner 8 Nachbarn wachsen. Fehlt eine Gruppe, gilt die nächstniedrigere
+Stufe derselben Kette: Offenland vor den Gräsern ist Farnflur, vor den Gefäßpflanzen Moos oder Flechten,
+Holzpflanzen ohne Kräuter ergeben Gebüsch. Bewachsenes Land wird außer kurz nach einer Störung nicht als
+nackter Fels gezeigt.
+Die Landschaft wechselt stufenweise: mindestens 3 Ticks pro Stufe (in den Zeitskalen Zivilisation und
+Technologie echte Jahre), pro Feld leicht gestreut, an Fronten schneller. Roden, Feuer, Lava, Vereisung und
+Überflutung setzen sofort zurück; danach wächst das Land über die Stufen nach.
+
+Das **Biom** (der Lebensraum der Tiere, weiterhin 11 Werte) wird aus der Landschaft abgeleitet und hängt
+damit weiter davon ab, welche Pflanzen das Feld prägen: Wald, Regenwald und Nadelwald brauchen baumbildende
+Gruppen (Nadelwald: Nadelbäume), kalte bemooste Ebenen werden zur Tundra, offenes Land heißt „Offenland“
+(nicht „Grasland“, solange es keine Gräser gibt). Neu seit 14. 10. 2026: Regenwald beginnt bei 16 °C statt
+21 °C, oberhalb der Baumgrenze liegt alpine Tundra statt Fels, und Kälte trägt schon ab mäßiger Feuchte
+Nadelwald. Ein Breitenfaktor im Niederschlag (Regler „Klimazonen“) macht den Äquator feuchter und die
+Subtropen (20–35°) und Pole trockener; das verschiebt, wo Pflanzen wachsen.
 
 ## Pflanzen und Tiere greifen ineinander
 

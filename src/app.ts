@@ -38,10 +38,15 @@ namespace SE {
   interface Settings {
     relativeDate: boolean;
     pauseOnMilestone: boolean;
+    pauseOnDiscovery: boolean;
     dockCollapsed: boolean;
     lastSlot: number;
     /** The chime when a new step arises. */
     sound: boolean;
+    /** Sea share new planets are made with, OCEAN_SHARE_MIN..OCEAN_SHARE_MAX. */
+    oceanShare: number;
+    /** The planet new games start on: random, or the Earth in an epoch. */
+    epoch: EpochId;
   }
 
   export class App {
@@ -94,12 +99,13 @@ namespace SE {
       omega: HTMLElement; omegaBar: HTMLElement; ep: HTMLElement; epRate: HTMLElement;
       o2: HTMLElement; co2: HTMLElement; temp: HTMLElement; date: HTMLElement; scale: HTMLElement;
       play: HTMLButtonElement; evoBadge: HTMLElement; evoBtn: HTMLButtonElement;
+      oceanO2: HTMLElement;
     };
 
     /* ---- state ---- */
     private speed = 3;
     private lastRunningSpeed = 3;
-    private settings: Settings = { relativeDate: true, pauseOnMilestone: false, dockCollapsed: false, lastSlot: 1, sound: true };
+    private settings: Settings = { relativeDate: true, pauseOnMilestone: false, pauseOnDiscovery: false, dockCollapsed: false, lastSlot: 1, sound: true, oceanShare: OCEAN_FRACTION, epoch: 'random' };
     private mapShowsInfo = false;
     private selection: ToolSelection = {
       tool: Tool.Examine, altitudeRaise: true, flora: Flora.LandPlants, clearing: false,
@@ -122,6 +128,12 @@ namespace SE {
     /** Model panels already paid for on this planet. */
     private readonly paidModels = new Set<string>();
     private speedBeforeMilestone = 3;
+    readonly fauna = new FaunaDex();
+    private lexicon!: LexiconPanel;
+    private speciesInfo!: SpeciesInfoPanel;
+    private readonly discoveries: DiscoveryToasts;
+    private screenHeld = false;
+    private discoveryPaused = false;
 
     private lastFrame = 0;
     private accumulator = 0;
@@ -139,7 +151,7 @@ namespace SE {
       this.notifier = new Notifier(el<HTMLElement>('toasts'), el<HTMLElement>('milestones'), {
         reported: (key) => this.world.evo.reported.add(key),
         view: (id) => this.openTree(id),
-        milestone: (open) => this.onMilestone(open),
+        milestone: (open) => { this.screenHeld = open; this.onMilestone(open); this.discoveries.setHeld(open); },
         narrow: () => this.windows.narrow,
         showcase: new Showcase(document.body, {
           view: (id) => this.openTree(id),
@@ -149,6 +161,13 @@ namespace SE {
         }),
       });
       this.notifier.pauseOnMilestone = this.settings.pauseOnMilestone;
+      this.discoveries = new DiscoveryToasts(el<HTMLElement>('toasts'), {
+        open: (c, s) => { this.speciesInfo.show(c, s); this.windows.show('species'); },
+        openLexicon: () => this.windows.show('lexicon'),
+        held: () => this.screenHeld,
+        shown: (events) => { this.fauna.markAnnounced(events); this.onDiscovery(true); },
+        closed: (clicked) => this.onDiscovery(false, clicked),
+      });
 
       this.buildStage();
       this.buildMapWindow();
@@ -531,6 +550,15 @@ namespace SE {
       chron.body.appendChild(chronBody);
       this.chroniclePanel = new ChroniclePanel(chronBody);
       this.chroniclePanel.onOpenNode = (id) => this.openTree(id);
+
+      // Species lexicon and the info box of one sub-species
+      const lex = this.windows.create({ id: 'lexicon', title: 'Arten-Lexikon', icon: uiIcon('layer-life'), x: 0.06, y: 0.06, width: 560, height: 640, onShow: () => this.lexicon.update() });
+      this.lexicon = new LexiconPanel(lex.body, { world: () => this.world, dex: () => this.fauna, open: (c, s) => { this.speciesInfo.show(c, s); this.windows.show('species'); } });
+      const sp = this.windows.create({ id: 'species', title: 'Art', icon: uiIcon('tool-life'), x: -16, y: 0.06, width: 540, height: 680 });
+      this.speciesInfo = new SpeciesInfoPanel(sp.body, {
+        world: () => this.world, params: () => this.params, dex: () => this.fauna,
+        jump: (c, s) => this.jumpToSpecies(c, s), openTree: (id) => this.openTree(id),
+      });
     }
 
     private buildModelWindows(): void {
@@ -613,7 +641,10 @@ namespace SE {
       const ep = chip(resIcon('ep'), 'Evolutionspunkte – entstehen aus der Vielfalt lebender Gruppen', 'hud-ep');
       const epRate = make('span', 'hud-sub');
       ep.el.appendChild(epRate);
-      const o2 = chip(resIcon('oxygen'), 'Sauerstoff in der Atmosphäre', 'hud-minor hud-o2');
+      const o2 = chip(resIcon('oxygen'), 'O₂ Luft: Sauerstoff in der Atmosphäre, in Prozent', 'hud-minor hud-o2');
+      o2.el.appendChild(make('span', 'hud-tag', 'Luft'));
+      const oceanO2 = chip(uiIcon('layer-oceans'), 'O₂ Meer: gelöster Sauerstoff, in Prozent der heutigen Sättigung. Er steigt erst, wenn das gelöste Eisen im Meer verbraucht ist.', 'hud-minor hud-o2');
+      oceanO2.el.appendChild(make('span', 'hud-tag', 'Meer'));
       const co2 = chip(resIcon('co2'), 'Kohlendioxid in der Atmosphäre', 'hud-minor');
       const temp = chip(resIcon('temperature'), 'Mittlere Temperatur des Planeten', 'hud-minor');
 
@@ -621,7 +652,7 @@ namespace SE {
       const scale = make('span', 'hud-scale');
       const date = make('span', 'hud-date');
       time.append(scale, date);
-      time.title = 'Zeitalter und Planetenalter (Optionen: relatives/absolutes Datum)';
+      time.title = 'Erdzeit und Zeitalter (Optionen: Datum vor heute oder Planetenalter)';
 
       const speed = make('div', 'speed seg');
       speed.setAttribute('role', 'group');
@@ -653,10 +684,11 @@ namespace SE {
       const evoBadge = make('span', 'badge');
       evoBtn.appendChild(evoBadge);
 
-      hud.append(omega.el, ep.el, o2.el, co2.el, temp.el, time, speed, evoBtn);
+      hud.append(omega.el, ep.el, o2.el, oceanO2.el, co2.el, temp.el, time, speed, evoBtn);
       this.hud = {
         omega: omega.value, omegaBar: omegaBar.firstChild as HTMLElement, ep: ep.value, epRate,
         o2: o2.value, co2: co2.value, temp: temp.value, date, scale, play, evoBadge, evoBtn,
+        oceanO2: oceanO2.value,
       };
       this.syncSpeedButtons();
     }
@@ -723,6 +755,7 @@ namespace SE {
           items: [
             winItem('Evolutionsbaum', 'evolution', 'evolution', 'E'),
             winItem('Chronik', 'chronicle', 'chronicle', 'C'),
+            winItem('Arten-Lexikon', 'lexicon', 'layer-life', 'A'),
             winItem('Übersichtskarte', 'map', 'map', 'M'),
             winItem('Gaia', 'gaia', 'gaia'),
             winItem('Verlauf', 'history', 'history'),
@@ -766,12 +799,12 @@ namespace SE {
             },
             { separator: true, label: '' },
             {
-              label: 'Datum seit Zeitalter-Beginn', icon: uiIcon('history'),
+              label: 'Datum als „vor … Jahren“ mit Erdzeitalter', icon: uiIcon('history'),
               action: () => { this.settings.relativeDate = true; this.saveSettings(); },
               checked: () => this.settings.relativeDate,
             },
             {
-              label: 'Datum seit Entstehung des Planeten', icon: uiIcon('globe'),
+              label: 'Datum als Planetenalter', icon: uiIcon('globe'),
               action: () => { this.settings.relativeDate = false; this.saveSettings(); },
               checked: () => !this.settings.relativeDate,
             },
@@ -779,6 +812,11 @@ namespace SE {
               label: 'Entwicklungen und Meilensteine pausieren', icon: uiIcon('bell'),
               action: () => { this.settings.pauseOnMilestone = !this.settings.pauseOnMilestone; this.notifier.pauseOnMilestone = this.settings.pauseOnMilestone; this.saveSettings(); },
               checked: () => this.settings.pauseOnMilestone,
+            },
+            {
+              label: 'Bei Entdeckung pausieren', icon: uiIcon('pause'),
+              action: () => { this.settings.pauseOnDiscovery = !this.settings.pauseOnDiscovery; this.saveSettings(); },
+              checked: () => this.settings.pauseOnDiscovery,
             },
             { separator: true, label: '' },
             {
@@ -838,6 +876,7 @@ namespace SE {
             return;
           case 'e': case 'E': this.windows.toggle('evolution'); return;
           case 'c': case 'C': this.windows.toggle('chronicle'); return;
+          case 'a': case 'A': this.windows.toggle('lexicon'); return;
           case 'm': case 'M': this.windows.toggle('map'); return;
           case 'b': case 'B': this.windows.toggle('report'); return;
           case 's': case 'S': void this.openSaves(); return;
@@ -1088,7 +1127,7 @@ namespace SE {
           if (!this.spend(ALTITUDE_COST)) return;
           for (const [j, v] of changes) w.elevation[j] = v;
           RiverSystem.rebuild(w);
-          BiomeSystem.step(w);
+          BiomeSystem.step(w, false);
           this.afterEdit();
           break;
         }
@@ -1135,7 +1174,7 @@ namespace SE {
         if (targets.length === 0) { this.notifier.message('Hier wächst nichts, was gerodet werden könnte.', 'warn'); return; }
         if (!this.spend(BIOME_COST)) return;
         for (const j of targets) this.flora.clear(w, j);
-        BiomeSystem.step(w);
+        BiomeSystem.step(w, false);
         this.afterEdit();
         return;
       }
@@ -1161,7 +1200,7 @@ namespace SE {
       let changed = 0;
       for (const j of targets) if (this.flora.plant(w, s.flora, j, 0.7)) changed++;
       this.flora.step(w, this.params);
-      BiomeSystem.step(w);
+      BiomeSystem.step(w, false);
       this.afterEdit();
       this.notifier.message(`${n.name} auf ${changed} ${changed === 1 ? 'Feld' : 'Feldern'} angesiedelt.`, 'ok');
     }
@@ -1392,6 +1431,28 @@ namespace SE {
       this.notifier.push(entries, this.world.evo.reported);
     }
 
+    /** Fly the map to the densest population of a sub-species; false if none lives. */
+    private jumpToSpecies(c: Life, stage: number): boolean {
+      const i = FaunaDex.findTile(this.world, c, stage);
+      if (i < 0) return false;
+      const x = i % GRID_W;
+      const y = Math.floor(i / GRID_W);
+      if (this.windows.narrow) { this.windows.hide('species'); this.windows.hide('lexicon'); }
+      flyTo(this.editView, x, y, () => this.editView.ping(x, y, KINGDOM_COLOR[nodeForLife(c)?.kingdom ?? 'animal']));
+      return true;
+    }
+
+    /** Pause for a discovery notice (an option); resume unless the player opened it. */
+    private onDiscovery(shown: boolean, clicked = false): void {
+      if (shown && this.settings.pauseOnDiscovery && this.speed !== 0) {
+        this.setSpeed(0, true);
+        this.discoveryPaused = true;
+      } else if (!shown && this.discoveryPaused) {
+        this.discoveryPaused = false;
+        if (!clicked && this.speed === 0) this.setSpeed(this.lastRunningSpeed, true);
+      }
+    }
+
     private onMilestone(open: boolean): void {
       if (!this.settings.pauseOnMilestone) return;
       if (open && this.speed !== 0) {
@@ -1406,11 +1467,16 @@ namespace SE {
 
     /* ====================================================== lifecycle === */
 
-    newPlanet(): void {
+    /** `keepSeed` remakes the same planet (another sea share); `quiet` skips the toast. */
+    newPlanet(opts: { quiet?: boolean; keepSeed?: boolean } = {}): void {
       this.notifier.clear();
+      this.discoveries.clear();
+      this.fauna.reset();
       this.paidModels.clear();
-      this.world.reset((Math.random() * 0xffffffff) >>> 0);
+      const seed = opts.keepSeed ? this.world.seed : (Math.random() * 0xffffffff) >>> 0;
+      this.world.reset(seed, this.settings.oceanShare, this.settings.epoch);
       this.params.reset();
+      applyEpochParams(this.params, this.settings.epoch);
       this.geo.resetDrift();
       this.history.reset();
       this.sliderPanels.forEach((p) => p.sync());
@@ -1428,27 +1494,43 @@ namespace SE {
       this.buildToolOptions();
       this.refreshMapLegend();
       this.unsaved = false;
-      this.notifier.message('Ein neuer Planet verdichtet sich aus Staub und Gas. Öffne den Evolutionsbaum, um das Leben zu beginnen.');
+      if (!opts.quiet) this.notifier.message(`${epochOf(this.settings.epoch).greeting} Öffne den Evolutionsbaum, um das Leben zu beginnen.`);
     }
 
     private async confirmNewPlanet(): Promise<void> {
-      if (this.unsaved && this.world.evo.developed.size > 0) {
-        const choice = await Modal.show({
-          title: 'Neuen Planeten erschaffen?', icon: uiIcon('new-planet'),
-          body: 'Der aktuelle Planet hat ungespeicherte Fortschritte. Sie gehen verloren, wenn du jetzt einen neuen Planeten erschaffst.',
-          actions: [
+      const risky = this.unsaved && this.world.evo.developed.size > 0;
+      const body = make('div', 'new-planet-body');
+      body.appendChild(make('p', undefined, risky
+        ? 'Der aktuelle Planet hat ungespeicherte Fortschritte. Sie gehen verloren, wenn du jetzt einen neuen Planeten erschaffst.'
+        : 'Ein neuer Planet ersetzt den jetzigen. Wie viel seiner Oberfläche soll Meer sein?'));
+      const sea = buildOceanSlider(this.settings.oceanShare);
+      body.appendChild(sea.el);
+      const choice = await Modal.show({
+        title: 'Neuen Planeten erschaffen?', icon: uiIcon('new-planet'), body,
+        actions: risky
+          ? [
             { label: 'Abbrechen', value: '', kind: 'ghost' },
             { label: 'Erst speichern', value: 'save', kind: 'secondary' },
             { label: 'Neuer Planet', value: 'new', kind: 'danger' },
+          ]
+          : [
+            { label: 'Abbrechen', value: '', kind: 'ghost' },
+            { label: 'Neuer Planet', value: 'new', kind: 'primary' },
           ],
-        });
-        if (choice === '') return;
-        if (choice === 'save') {
-          const ok = await this.saveTo(this.settings.lastSlot);
-          if (!ok) return;
-        }
+      });
+      if (choice === '') return;
+      if (choice === 'save') {
+        const ok = await this.saveTo(this.settings.lastSlot);
+        if (!ok) return;
       }
+      this.setOceanShare(sea.value);
       this.newPlanet();
+    }
+
+    private setOceanShare(share: number): void {
+      if (!Number.isFinite(share)) return;
+      this.settings.oceanShare = clamp(share, OCEAN_SHARE_MIN, OCEAN_SHARE_MAX);
+      this.saveSettings();
     }
 
     /** Open the edit view over a temperate continent rather than open sea. */
@@ -1470,7 +1552,7 @@ namespace SE {
       if (i > 0) this.lastRunningSpeed = i;
       this.speed = i;
       this.accumulator = 0;
-      if (i !== 0) this.milestonePaused = false;
+      if (i !== 0) this.milestonePaused = this.discoveryPaused = false;
       this.syncSpeedButtons();
       if (!quiet) this.notifier.message(i === 0 ? 'Pausiert.' : `Tempo: ${SPEED_NAMES[i]}`);
     }
@@ -1479,9 +1561,12 @@ namespace SE {
       this.setSpeed(this.speed === 0 ? this.lastRunningSpeed : 0);
     }
 
+    /** `relativeDate` picks the Earth date with its era over the planet age. */
     private dateText(): string {
-      const w = this.world;
-      return formatYears(this.settings.relativeDate ? w.scaleYears : w.absoluteYears);
+      const age = this.world.absoluteYears;
+      if (!this.settings.relativeDate) return `Planetenalter ${formatYears(age)}`;
+      const era = eraAt(age);
+      return `${formatEarthDate(age, true)} · ${this.windows.narrow ? era.short : era.name}`;
     }
 
     /* =========================================================== tick === */
@@ -1497,6 +1582,7 @@ namespace SE {
       this.flora.step(w, p);
       BiomeSystem.step(w);
       this.life.stepLife(w, p, this.atmo); // also refreshes derived aggregates
+      this.fauna.step(w);
       this.evolution.step(w, p);
       this.civ.step(w, p, this.atmo);
       this.atmo.step(w, p);
@@ -1555,13 +1641,14 @@ namespace SE {
       if (next !== w.timeScale) {
         w.timeScale = next;
         w.scaleYears = 0;
-        const years = ['', '10.000 Jahre', '100 Jahre', '10 Jahre'][next];
         this.evolution.record(w, {
           key: `timescale:${next}`, kind: 'milestone', title: `Zeitalter: ${TIMESCALE_NAMES[next]}`,
           text: next === TimeScale.Evolution ? 'Mit dem ersten Leben beginnt das Zeitalter der Evolution.'
             : next === TimeScale.Civilized ? 'Eine intelligente Art prägt nun den Planeten.'
               : 'Die Industrialisierung verändert Atmosphäre und Klima.',
-          change: `Ein Zeitschritt entspricht jetzt ${years}.`,
+          change: next === TimeScale.Evolution
+            ? 'Die Zeit folgt dem Kalender der Erde: in der Urzeit große Schritte, ab dem Kambrium feine.'
+            : `Ein Zeitschritt umfasst jetzt ${fmt.int(YEARS_PER_TICK[next])} Jahre.`,
           icon: eventIcon('timescale'), tick: w.ticks, years: w.absoluteYears, major: false,
         });
       }
@@ -1599,6 +1686,8 @@ namespace SE {
       if (this.windows.isVisible('report')) this.reportPanel.update(w);
       if (this.windows.isVisible('history')) this.historyPanel.render();
       if (this.windows.isVisible('chronicle')) this.chroniclePanel.update(w);
+      if (this.windows.isVisible('lexicon')) this.lexicon.update();
+      if (this.windows.isVisible('species')) this.speciesInfo.update();
       if (this.mapShowsInfo || this.mapView.mode === MapMode.LifeMap || this.mapView.mode === MapMode.Biomes) {
         if ((w.ticks & 15) === 0 || this.mapShowsInfo) this.refreshMapLegend();
       }
@@ -1609,6 +1698,8 @@ namespace SE {
         if (this.windows.isVisible(`graph-${kind === 'biomes' ? 'biomes' : kind}`)) graph.render(w);
       }
       this.flushChronicle();
+      if (this.fauna.pending.length > 0) this.discoveries.push(this.fauna.pending.splice(0));
+      h.oceanO2.textContent = `${fmt.int(w.oceanO2)} %`;
     }
 
     private frame = (now: number): void => {
@@ -1671,9 +1762,12 @@ namespace SE {
         const s = JSON.parse(raw) as Partial<Settings>;
         if (typeof s.relativeDate === 'boolean') this.settings.relativeDate = s.relativeDate;
         if (typeof s.pauseOnMilestone === 'boolean') this.settings.pauseOnMilestone = s.pauseOnMilestone;
+        if (typeof s.pauseOnDiscovery === 'boolean') this.settings.pauseOnDiscovery = s.pauseOnDiscovery;
         if (typeof s.sound === 'boolean') this.settings.sound = s.sound;
         if (typeof s.dockCollapsed === 'boolean') this.settings.dockCollapsed = s.dockCollapsed;
         if (typeof s.lastSlot === 'number' && s.lastSlot >= 1 && s.lastSlot <= SLOT_COUNT) this.settings.lastSlot = s.lastSlot;
+        if (typeof s.oceanShare === 'number' && Number.isFinite(s.oceanShare)) this.settings.oceanShare = clamp(s.oceanShare, OCEAN_SHARE_MIN, OCEAN_SHARE_MAX);
+        if (isEpochId(s.epoch)) this.settings.epoch = s.epoch;
       } catch {
         // Settings are a convenience; defaults are fine.
       }
@@ -1701,7 +1795,7 @@ namespace SE {
       if (this.savingNow) return false;
       this.savingNow = true;
       try {
-        const doc = SaveSystem.serialize({ world: this.world, params: this.params, geo: this.geo, history: this.history });
+        const doc = SaveSystem.serialize({ world: this.world, params: this.params, geo: this.geo, history: this.history, fauna: this.fauna });
         const text = await SaveSystem.encode(doc);
         const meta: SaveMeta = { ...SaveSystem.meta(doc), thumb: planetThumbnail(this.world) };
         window.localStorage.setItem(key, text);
@@ -1743,7 +1837,7 @@ namespace SE {
       }
       try {
         const doc = await SaveSystem.decode(raw);
-        const { notes } = SaveSystem.load(doc, { world: this.world, params: this.params, geo: this.geo, history: this.history }, this.life, this.flora);
+        const { notes } = SaveSystem.load(doc, { world: this.world, params: this.params, geo: this.geo, history: this.history, fauna: this.fauna }, this.life, this.flora);
         this.afterLoad();
         this.notifier.message(notes.length > 0 ? notes[0] : 'Planet geladen.', 'ok');
         return true;
@@ -1762,6 +1856,7 @@ namespace SE {
 
     private afterLoad(): void {
       this.notifier.clear();
+      this.discoveries.clear();
       this.paidModels.clear();
       this.evolution.pending.length = 0;
       this.milestonePaused = false;
@@ -1781,6 +1876,7 @@ namespace SE {
       // Whatever was still waiting to be shown when the planet was saved.
       const unseen = this.world.evo.chronicle.filter((e) => !this.world.evo.reported.has(e.key));
       this.notifier.push(unseen, this.world.evo.reported);
+      this.discoveries.push(this.fauna.unannounced());
     }
 
     /** The save/load dialog: three slots, the autosave and any old save. True if a planet was loaded. */
@@ -1860,6 +1956,11 @@ namespace SE {
         autosave: meta,
         continueGame: () => this.loadFrom(AUTOSAVE_KEY),
         reroll: () => this.newPlanet(),
+        oceanShare: this.settings.oceanShare,
+        reshape: (share) => {
+          this.setOceanShare(share);
+          this.newPlanet({ quiet: true, keepSeed: true });
+        },
         openSaves: () => this.openSaves(),
         start: () => {
           this.title = null;

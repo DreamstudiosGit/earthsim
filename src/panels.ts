@@ -14,6 +14,8 @@ namespace SE {
     readonly max: number;
     /** A sample as the History window prints it. */
     readonly format: (v: number) => string;
+    /** For histories saved before this series existed: its value from the air's O2 then. */
+    readonly backfill?: (airO2: number) => number;
   }
 
   /** Developed groups that still live somewhere on the planet. */
@@ -27,6 +29,9 @@ namespace SE {
     return alive;
   }
 
+  /** Index of the air's oxygen among the recorded series. */
+  const AIR_O2 = 2;
+
   /** Records the planet's vital signs so the History window can graph them. */
   export class HistoryRecorder {
     private static readonly LIMIT = 400;
@@ -37,12 +42,20 @@ namespace SE {
     readonly series: HistorySeries[] = [
       { label: 'Temperatur', color: [255, 122, 107], data: [], min: -20, max: 40, format: (v) => `${fmt.one(v)} °C` },
       { label: 'CO₂', color: [200, 160, 120], data: [], min: 0, max: 2000, format: (v) => `${fmt.int(v)} ppm` },
-      { label: 'Sauerstoff', color: [127, 224, 240], data: [], min: 0, max: 30, format: (v) => `${fmt.one(v)} %` },
+      { label: 'Sauerstoff Luft', color: [127, 224, 240], data: [], min: 0, max: 30, format: (v) => `${fmt.one(v)} %` },
       { label: 'Wasserdampf', color: [110, 160, 255], data: [], min: 0, max: 1, format: (v) => fmt.pct(v) },
       { label: 'Pflanzendecke', color: [138, 209, 111], data: [], min: 0, max: 0.4, format: (v) => fmt.pct(v) },
       { label: 'Belebte Fläche', color: [242, 163, 92], data: [], min: 0, max: 0.8, format: (v) => fmt.pct(v) },
       { label: 'Städte', color: [246, 196, 83], data: [], min: 0, max: 60, format: (v) => fmt.one(v) },
       { label: 'Lebende Gruppen', color: [180, 140, 255], data: [], min: 0, max: EVO_NODES.length, format: (v) => fmt.int(v) },
+      {
+        label: 'Sauerstoff Meer', color: [76, 182, 214], data: [], min: 0, max: 120,
+        format: (v) => `${fmt.int(v)} % der heutigen Sättigung`, backfill: (o2) => seaFromAir(o2).oxygen,
+      },
+      {
+        label: 'Gelöstes Eisen', color: [196, 106, 72], data: [], min: 0, max: 1,
+        format: (v) => fmt.pct(v), backfill: (o2) => seaFromAir(o2).iron,
+      },
     ];
 
     sample(world: WorldState): void {
@@ -50,6 +63,7 @@ namespace SE {
       const values = [
         world.globalTemp, world.co2, world.o2, world.vapor,
         world.vegetationCoverage, world.lifeCover, world.totalCityPop, livingGroups(world),
+        world.oceanO2, world.oceanIron,
       ];
       this.series.forEach((s, i) => {
         s.data.push(values[i]);
@@ -72,7 +86,10 @@ namespace SE {
       };
     }
 
-    /** Restore what `toJSON` wrote, skipping anything malformed. */
+    /**
+     * Restore what `toJSON` wrote, skipping anything malformed. Histories
+     * saved before a series existed lack its column, which is backfilled.
+     */
     fromJSON(raw: unknown): void {
       if (!raw || typeof raw !== 'object') return;
       const r = raw as { years?: unknown; series?: unknown };
@@ -81,7 +98,7 @@ namespace SE {
       const ok = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
       if (!r.years.slice(0, n).every(ok)) return;
       const series = r.series as unknown[];
-      if (series.length !== this.series.length) return;
+      if (series.length > this.series.length || series.length <= AIR_O2) return;
       for (let k = 0; k < series.length; k++) {
         const col = series[k];
         if (!Array.isArray(col) || col.length !== r.years.length || !col.slice(0, n).every(ok)) return;
@@ -89,7 +106,10 @@ namespace SE {
       this.reset();
       for (let i = 0; i < n; i++) this.years.push(r.years[i] as number);
       this.series.forEach((s, k) => {
-        for (let i = 0; i < n; i++) s.data.push((series[k] as number[])[i]);
+        for (let i = 0; i < n; i++) {
+          const air = (series[AIR_O2] as number[])[i];
+          s.data.push(k < series.length ? (series[k] as number[])[i] : s.backfill ? s.backfill(air) : 0);
+        }
       });
     }
   }
@@ -98,7 +118,6 @@ namespace SE {
 
   /** The Examine readout: ground, plants and animals of one tile. */
   export class ExaminePanel {
-    private readonly portraits = new SpriteAtlas(8);
     private selected: Life = Life.None;
     private signature = '';
     onShowInTree: ((id: string) => void) | null = null;
@@ -131,6 +150,7 @@ namespace SE {
         // Figures that creep are part of the digest only as shown: rounded.
         cls === Life.None ? 0 : Math.round((world.lifeCounts[cls] / TILE_COUNT) * 1000),
         cls === Life.None ? 0 : ExaminePanel.roughAge(world, cls),
+        world.landscape[i], world.landscapeDensity[i], world.substrate[i], landDigest(world, x, y),
       ].join('|');
       if (sig === this.signature) return;
       this.signature = sig;
@@ -141,6 +161,9 @@ namespace SE {
       this.host.innerHTML = '';
       const cols = make('div', 'ex-cols');
       cols.append(this.groundCard(world, i, y), this.plantCard(world, i), this.animalCard(world, i, cls));
+      // The window may still be hidden on its first update: then the screen decides.
+      const land = landSection(world, x, y, (this.host.clientWidth || window.innerWidth) >= 640);
+      if (land) this.host.appendChild(land);
       this.host.append(cols, this.speciesStrip(world, i, species), this.footer(world, i, x, y));
       if (focusKey) this.host.querySelector<HTMLElement>(`[data-focus-key="${focusKey}"]`)?.focus({ preventScroll: true });
     }
@@ -224,8 +247,11 @@ namespace SE {
       const stage = world.stage(i, cls);
       const hero = make('div', 'ex-hero');
       const text = make('div', 'ex-hero-text');
-      text.append(make('div', 'ex-title', SUBSPECIES[cls][stage]), make('div', 'ex-sub', `${LIFE[cls].name} · Unterart ${stage + 1} von ${SUBSPECIES_PER_CLASS}`));
-      hero.append(this.blit(this.portraits.get(`l${cls}_${stage}`, LIFE_SPRITES[cls][stage]), 'ex-portrait'), text);
+      text.append(make('div', 'ex-title', subspeciesName(cls, stage)), make('div', 'ex-sub', `${LIFE[cls].name} · Unterart ${stage + 1} von ${SUBSPECIES_PER_CLASS}`));
+      const portrait = make('div', 'ex-portrait');
+      const art = SPECIES[cls]?.stages[stage]?.art;
+      if (art) portrait.innerHTML = artSvg(art, CREATURE_LOOK);
+      hero.append(portrait, text);
       body.appendChild(hero);
       const density = world.density(i, cls);
       const age = ExaminePanel.roughAge(world, cls);
@@ -297,19 +323,6 @@ namespace SE {
       if (world.tech[i] !== Tech.None) foot.appendChild(make('span', undefined, `${TECH_NAMES[world.tech[i]]}-Stadt, ${fmt.int(world.cityPop[i] * 100)} %`));
       if (world.eventTtl[i] > 0) foot.appendChild(make('span', 'ex-event', `Ereignis: ${EVENT_NAMES[world.eventKind[i]]}`));
       return foot;
-    }
-
-    /** Copy a cached atlas sprite into a fresh canvas (cloneNode leaves it blank). */
-    private blit(src: HTMLCanvasElement, cls: string): HTMLCanvasElement {
-      const c = make('canvas', cls);
-      c.width = src.width;
-      c.height = src.height;
-      const ctx = c.getContext('2d');
-      if (ctx) {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(src, 0, 0);
-      }
-      return c;
     }
   }
 
@@ -385,7 +398,7 @@ namespace SE {
         li.appendChild(img(e.icon, 'chron-art'));
         const body = make('div', 'chron-body');
         body.append(
-          make('div', 'chron-when', `Planetenalter ${formatYears(e.years)}`),
+          make('div', 'chron-when', `${formatEarthDate(e.years)} · ${eraAt(e.years).name}`),
           make('div', 'chron-title', e.title),
           make('p', 'chron-text', e.text),
         );

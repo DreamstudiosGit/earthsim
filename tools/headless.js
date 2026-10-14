@@ -11,13 +11,24 @@
  * end of app.ts is guarded on `typeof document`. Running the bundle therefore
  * defines everything and starts nothing.
  *
- *   node tools/headless.js [ticks] [seed ...] [--life] [--map] [--track]
+ *   node tools/headless.js [ticks] [seed ...] [--life] [--map] [--track] [--timeline] [--biomes] [--epoch=<id>]
  *
  *     --life   play the evolution tree greedily (develop the cheapest
  *              available step every few ticks), so the planet grows a
- *              biosphere the way a player's planet does
+ *              biosphere the way a player's planet does; reports plants,
+ *              biomes and, per animal class, tiles, map icons and stages
  *     --map    print an ASCII relief map of the first planet
  *     --track  watch relief and drainage over a long run
+ *     --timeline  after the report, list every developed tree step with its
+ *              tick, calendar date and real date on Earth, and the ticks
+ *              at which air O2 first reaches 1, 5, 10 and 15 %
+ *     --biomes how coherent the habitats and landscapes are at ticks 800,
+ *              1500, 2500, 3500, 4500 and the last one: boundary edges, lone
+ *              tiles, small regions, area-weighted region size, unnatural
+ *              neighbours, shares and the latitude profile against the
+ *              targets of docs/biomes-spec.md §3.7/§3.8
+ *     --epoch  start on an epoch's planet (random, youngEarth, today; see
+ *              src/epochs.ts) with the Geosphere sliders it opens with
  *
  * ========================================================================== */
 'use strict';
@@ -26,7 +37,8 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const BUNDLE = path.join(__dirname, '..', 'simulation.js');
+// SE_BUNDLE lets parallel work probe its own build without touching simulation.js.
+const BUNDLE = process.env.SE_BUNDLE || path.join(__dirname, '..', 'simulation.js');
 
 /**
  * Load into *this* realm's global scope, not a fresh `vm` context.
@@ -50,6 +62,9 @@ function loadBundle() {
  * life starts when the player develops the first cells, and the plants
  * follow step by step — so `--life` plays the tree greedily.
  */
+/** Set from --epoch in main(). */
+let EPOCH = 'random';
+
 function makePlanet(SE, seed, withLife) {
   const p = {
     world: new SE.WorldState(),
@@ -64,7 +79,8 @@ function makePlanet(SE, seed, withLife) {
   };
   p.evo = new SE.EvolutionSystem(p.life, p.flora);
   SE.civEventSink = (k, x, y) => p.events.trigger(p.world, k, x, y);
-  p.world.reset(seed);
+  p.world.reset(seed, SE.OCEAN_FRACTION, EPOCH);
+  SE.applyEpochParams(p.params, EPOCH);
   if (withLife) p.evo.develop(p.world, p.params, 'cells');
   return p;
 }
@@ -93,11 +109,14 @@ function step(SE, p, withLife) {
   }
 }
 
-/** Drive one planet for `ticks`. */
-function simulate(SE, seed, ticks, withLife) {
+/** Drive one planet for `ticks`; `onTick` sees the world after every tick. */
+function simulate(SE, seed, ticks, withLife, onTick) {
   const p = makePlanet(SE, seed, withLife);
   const started = Date.now();
-  for (let t = 0; t < ticks; t++) step(SE, p, withLife);
+  for (let t = 0; t < ticks; t++) {
+    step(SE, p, withLife);
+    if (onTick) onTick(p.world);
+  }
   return { world: p.world, msPerTick: (Date.now() - started) / Math.max(1, ticks) };
 }
 
@@ -164,8 +183,257 @@ function biomeLine(SE, world, land) {
     .join('  ');
 }
 
-function report(SE, seed, ticks, withLife) {
-  const { world, msPerTick } = simulate(SE, seed, ticks, withLife);
+/**
+ * One line per living animal class: tiles held, summed density, map icons
+ * and how many tiles stand at each sub-species stage. Shows at a glance which
+ * classes dominate, which never make it onto the map and how far up its
+ * ladder each lineage has climbed.
+ */
+function faunaLines(SE, world) {
+  const markers = new Array(SE.LIFE_COUNT).fill(0);
+  const herds = new SE.HerdLayer(true);
+  herds.update(world, 0);
+  for (const m of herds.markers) markers[m.c]++;
+  const lines = [`    fauna     ${'class'.padEnd(15)} ${'tiles'.padStart(6)} ${'biomass'.padStart(8)} ${'icons'.padStart(6)}  stages 1..${SE.SUBSPECIES_PER_CLASS}`];
+  for (let c = 1; c < SE.LIFE_COUNT; c++) {
+    if (world.lifeCounts[c] === 0) continue;
+    const stages = [];
+    for (let s = 0; s < SE.SUBSPECIES_PER_CLASS; s++) stages.push(world.lifeStageCounts[c * SE.SUBSPECIES_PER_CLASS + s]);
+    lines.push(`              ${SE.LIFE[c].id.padEnd(15)} ${String(world.lifeCounts[c]).padStart(6)} ` +
+      `${world.lifeBiomass[c].toFixed(0).padStart(8)} ${String(markers[c]).padStart(6)}  ${stages.join('/')}`);
+  }
+  return lines;
+}
+
+/* ------------------------------------------------------------- biomes -- */
+
+const BIOME_CHECKPOINTS = [800, 1500, 2500, 3500, 4500];
+
+/**
+ * How fragmented a per-tile field is over land. Boundary edges: share of
+ * 4-neighbour land pairs with different values. Lone: tiles none of whose 8
+ * neighbours shares their value. Outvoted: tiles where >= 5 of 8 neighbours
+ * agree on another value. Regions: 4-connected areas of one value; weighted:
+ * the region size an average land tile sits in.
+ */
+function patchiness(SE, world, field) {
+  const W = SE.GRID_W;
+  const H = SE.GRID_H;
+  const water = (i) => world.elevation[i] < 0;
+  let land = 0, lone = 0, outvoted = 0, pairs = 0, diff = 0;
+  const tally = new Map();
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = SE.idx(x, y);
+    if (water(i)) continue;
+    land++;
+    let same = 0;
+    tally.clear();
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const ny = y + dy;
+      if (ny < 0 || ny >= H) continue;
+      const j = SE.idx(SE.wrapX(x + dx), ny);
+      if (water(j)) continue;
+      if (field[j] === field[i]) same++;
+      tally.set(field[j], (tally.get(field[j]) || 0) + 1);
+    }
+    if (same === 0) lone++;
+    let best = -1, bestN = 0;
+    for (const [k, v] of tally) if (v > bestN) { bestN = v; best = k; }
+    if (best !== field[i] && bestN >= 5) outvoted++;
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      const ny = y + dy;
+      if (ny >= H) continue;
+      const j = SE.idx(SE.wrapX(x + dx), ny);
+      if (water(j)) continue;
+      pairs++;
+      if (field[j] !== field[i]) diff++;
+    }
+  }
+  const seen = new Uint8Array(SE.TILE_COUNT);
+  const q = new Int32Array(SE.TILE_COUNT);
+  const sizes = [];
+  for (let st = 0; st < SE.TILE_COUNT; st++) {
+    if (seen[st] || water(st)) continue;
+    let h = 0, t = 0;
+    q[t++] = st;
+    seen[st] = 1;
+    while (h < t) {
+      const i = q[h++];
+      const x = i % W, y = (i / W) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= H) continue;
+        const j = SE.idx(SE.wrapX(x + dx), ny);
+        if (seen[j] || water(j) || field[j] !== field[st]) continue;
+        seen[j] = 1;
+        q[t++] = j;
+      }
+    }
+    sizes.push(t);
+  }
+  return {
+    land,
+    boundary: (100 * diff) / Math.max(1, pairs),
+    lone: (100 * lone) / Math.max(1, land),
+    outvoted: (100 * outvoted) / Math.max(1, land),
+    regions: sizes.length,
+    tiny: sizes.filter((n) => n <= 3).length,
+    weighted: sizes.reduce((a, n) => a + n * n, 0) / Math.max(1, land),
+  };
+}
+
+/** 8-neighbour land pairs whose landscapes never border each other in nature. */
+function unnaturalPairs(SE, world) {
+  let n = 0;
+  const kinds = new Map();
+  for (let y = 0; y < SE.GRID_H; y++) for (let x = 0; x < SE.GRID_W; x++) {
+    const i = SE.idx(x, y);
+    if (world.elevation[i] < 0) continue;
+    const a = world.landscape[i];
+    for (const [dx, dy] of [[1, 0], [1, 1], [0, 1], [-1, 1]]) {
+      const ny = y + dy;
+      if (ny >= SE.GRID_H) continue;
+      const j = SE.idx(SE.wrapX(x + dx), ny);
+      if (world.elevation[j] < 0) continue;
+      const b = world.landscape[j];
+      if (!(SE.LANDSCAPE_CLASH[a] & (1 << b))) continue;
+      n++;
+      const key = [SE.LANDSCAPE_IDS[a], SE.LANDSCAPE_IDS[b]].sort().join('/');
+      kinds.set(key, (kinds.get(key) || 0) + 1);
+    }
+  }
+  return { n, kinds: [...kinds].sort((p, q) => q[1] - p[1]).map(([k, v]) => `${k} ${v}`).join(', ') };
+}
+
+function shares(names, counts, total) {
+  return counts.map((c, k) => [names[k], c]).filter(([, c]) => c > 0).sort((a, b) => b[1] - a[1])
+    .map(([nm, c]) => `${nm} ${((100 * c) / total).toFixed(0)}%`).join('  ');
+}
+
+/** Land tiles per value of `field` in the latitude band lo..hi (absolute degrees, both hemispheres). */
+function bandCounts(SE, world, field, count, lo, hi) {
+  const c = new Array(count).fill(0);
+  for (let y = 0; y < SE.GRID_H; y++) {
+    const l = Math.abs(SE.latitudeDeg(y));
+    if (l < lo || l >= hi) continue;
+    for (let x = 0; x < SE.GRID_W; x++) {
+      const i = SE.idx(x, y);
+      if (world.elevation[i] >= 0) c[field[i]]++;
+    }
+  }
+  return c;
+}
+
+function biomeLines(SE, world) {
+  const hab = patchiness(SE, world, world.biome);
+  const lsc = patchiness(SE, world, world.landscape);
+  const fmt = (m) => `boundary ${m.boundary.toFixed(1)}%  lone ${m.lone.toFixed(2)}%  outvoted ${m.outvoted.toFixed(1)}%  ` +
+    `regions ${m.regions} (<=3: ${m.tiny})  weighted ${m.weighted.toFixed(0)}`;
+  const bad = unnaturalPairs(SE, world);
+  const habCounts = new Array(SE.BIOME_COUNT).fill(0);
+  const lsCounts = new Array(SE.LANDSCAPE_COUNT).fill(0);
+  // Plants the landscape does not show: cover >= 0.3 still drawn as rock, bare soil or lichen.
+  let covered = 0, hidden = 0;
+  const L = SE.Landscape;
+  for (let i = 0; i < SE.TILE_COUNT; i++) {
+    if (world.elevation[i] < 0) continue;
+    habCounts[world.biome[i]]++;
+    lsCounts[world.landscape[i]]++;
+    if (world.vegetation[i] < 0.3) continue;
+    covered++;
+    const l = world.landscape[i];
+    if (l === L.Rock || l === L.Barren || l === L.Lichen) hidden++;
+  }
+  const lines = [
+    `  biomes @ tick ${world.ticks}  ${SE.formatEarthDate(world.absoluteYears)}  ${world.evo.developed.size} steps developed`,
+    `    habitat    ${fmt(hab)}`,
+    `    landscape  ${fmt(lsc)}`,
+    `    unnatural neighbours ${bad.n}${bad.n ? ` (${bad.kinds})` : ''}`,
+    `    hidden plants  ${covered ? ((100 * hidden) / covered).toFixed(1) : '0.0'}% of land with cover >= 0.3 is Fels/Rohboden/Flechten (${hidden} of ${covered})`,
+    `    habitats   ${shares(SE.BIOME_NAMES, habCounts, hab.land)}`,
+    `    landscapes ${shares(SE.LANDSCAPE_NAMES, lsCounts, lsc.land)}`,
+  ];
+  // Habitat leaders per 15° band, north to south, as the spec's baseline was taken.
+  const bands = [];
+  for (let lat = 90; lat > -90; lat -= 15) {
+    const c = new Array(SE.BIOME_COUNT).fill(0);
+    for (let y = 0; y < SE.GRID_H; y++) {
+      const l = SE.latitudeDeg(y);
+      if (l > lat || l <= lat - 15) continue;
+      for (let x = 0; x < SE.GRID_W; x++) { const i = SE.idx(x, y); if (world.elevation[i] >= 0) c[world.biome[i]]++; }
+    }
+    const tot = c.reduce((a, v) => a + v, 0);
+    const top = c.map((v, k) => [k, v]).sort((a, z) => z[1] - a[1]).slice(0, 2).filter(([, v]) => v > 0)
+      .map(([k, v]) => `${SE.BIOME_NAMES[k]} ${((100 * v) / tot).toFixed(0)}`).join('/');
+    bands.push(`${lat}..${lat - 15}: ${top || '-'}`);
+  }
+  lines.push(`    latitude   ${bands.join(' | ')}`);
+  // The latitude targets of spec §3.8, on landscapes, both hemispheres together.
+  const pct = (part, whole) => (whole ? `${((100 * part) / whole).toFixed(0)}%` : '-');
+  const eq = bandCounts(SE, world, world.landscape, SE.LANDSCAPE_COUNT, 0, 10);
+  const eqVeg = eq.reduce((a, v, k) => a + (SE.LANDSCAPE_LEVEL[k] >= 1 ? v : 0), 0);
+  const sub = bandCounts(SE, world, world.landscape, SE.LANDSCAPE_COUNT, 15, 35);
+  const subLand = sub.reduce((a, v) => a + v, 0);
+  const mid = bandCounts(SE, world, world.landscape, SE.LANDSCAPE_COUNT, 40, 60);
+  const midLand = mid.reduce((a, v) => a + v, 0);
+  const pol = bandCounts(SE, world, world.landscape, SE.LANDSCAPE_COUNT, 60, 90);
+  const polLand = pol.reduce((a, v) => a + v, 0);
+  const top3 = (c) => shares(SE.LANDSCAPE_NAMES, c, c.reduce((a, v) => a + v, 0)).split('  ').slice(0, 3).join(', ');
+  lines.push(`    zones      ±10°: Regenwald+Wald ${pct(eq[L.Rainforest] + eq[L.Forest], eqVeg)} of vegetated (target >=40%; Regenwald ${pct(eq[L.Rainforest], eqVeg)}) — ${top3(eq)}`);
+  lines.push(`               15-35°: Wüste+Halbwüste+Savanne ${pct(sub[L.Desert] + sub[L.Semidesert] + sub[L.Savanna], subLand)} (target >=40%) — ${top3(sub)}`);
+  lines.push(`               40-60°: Wald+Steppe+Wiese ${pct(mid[L.Forest] + mid[L.Steppe] + mid[L.Meadow], midLand)} — ${top3(mid)}`);
+  lines.push(`               >60°: Nadelwald+Tundra+Eis ${pct(pol[L.Taiga] + pol[L.Tundra] + pol[L.Ice], polLand)} — ${top3(pol)}`);
+  return lines;
+}
+
+const O2_MARKS = [1, 5, 10, 15];
+
+/** First tick at which the Earth calendar reaches a planet age. */
+function calendarTick(SE, age) {
+  let t = 0;
+  for (let a = 0; a < age; t++) a += SE.yearsPerTickAt(a);
+  return t;
+}
+
+/**
+ * When each developed step arrived on the calendar against when it happened
+ * on Earth. Deviation is relative to the real date: + came too early (an
+ * older date), - too late. `target` is the tick the calendar reaches the
+ * real date — what the balance aims for.
+ */
+function timelineLines(SE, world, o2Ticks) {
+  const ma = (age) => SE.yearsAgo(age) / 1e6;
+  const fmtMa = (v) => v.toFixed(1).padStart(8);
+  const rows = [...world.evo.developed.entries()].sort((a, b) => a[1].tick - b[1].tick);
+  const lines = [`    timeline  ${'step'.padEnd(16)} ${'tick'.padStart(5)} ${'game Ma'.padStart(8)} ${'Earth Ma'.padStart(8)} ${'dev'.padStart(6)} ${'target'.padStart(6)}`];
+  for (const [id, rec] of rows) {
+    const real = SE.EARTH_DATES_MA[id];
+    const game = ma(rec.years);
+    const dev = real === undefined ? '' : `${game >= real ? '+' : ''}${(((game - real) / real) * 100).toFixed(0)}%`;
+    const target = real === undefined ? '' : String(calendarTick(SE, SE.PLANET_AGE - real * 1e6));
+    lines.push(`              ${id.padEnd(16)} ${String(rec.tick).padStart(5)} ${fmtMa(game)} ${real === undefined ? '       ?' : fmtMa(real)} ` +
+      `${dev.padStart(6)} ${target.padStart(6)}${rec.spontaneous ? '  (spontaneous)' : ''}`);
+  }
+  for (let k = 0; k < O2_MARKS.length; k++) {
+    const t = o2Ticks[k];
+    lines.push(`    O2 ${String(O2_MARKS[k]).padStart(2)} %   ${t === undefined ? 'not reached' : `tick ${String(t.tick).padStart(5)}  ${t.date}`}`);
+  }
+  return lines;
+}
+
+function report(SE, seed, ticks, withLife, withTimeline, withBiomes) {
+  const o2Ticks = [];
+  const biomeReports = [];
+  const watch = (world) => {
+    for (let k = o2Ticks.length; k < O2_MARKS.length && world.o2 >= O2_MARKS[k]; k++) {
+      o2Ticks.push({ tick: world.ticks, date: SE.formatEarthDate(world.absoluteYears) });
+    }
+    if (withBiomes && (BIOME_CHECKPOINTS.includes(world.ticks) || world.ticks === ticks)) {
+      biomeReports.push(...biomeLines(SE, world));
+    }
+  };
+  const { world, msPerTick } = simulate(SE, seed, ticks, withLife, watch);
   const s = survey(SE, world);
   const pct = (n) => `${((n / s.land) * 100).toFixed(1)}%`;
 
@@ -185,6 +453,7 @@ function report(SE, seed, ticks, withLife) {
     console.log(`    plants    mean cover ${(s.vegetation / s.land).toFixed(3)}`);
     console.log(`    biomes    ${biomeLine(SE, world, s.land)}`);
     console.log(`    tree      ${world.evo.developed.size} of ${SE.EVO_NODES.length} steps developed, ${world.evo.ep.toFixed(0)} EP banked`);
+    for (const line of faunaLines(SE, world)) console.log(line);
   }
 
   const problems = [];
@@ -193,6 +462,8 @@ function report(SE, seed, ticks, withLife) {
   if (s.dryRiver > 0) problems.push(`${s.dryRiver} unfrozen river tiles are too dry to grow grass`);
   if (s.river === 0) problems.push('no rivers at all');
   console.log(problems.length ? `    !! ${problems.join('; ')}` : '    ok');
+  if (withTimeline) for (const line of timelineLines(SE, world, o2Ticks)) console.log(line);
+  for (const line of biomeReports) console.log(line);
   return s;
 }
 
@@ -263,17 +534,22 @@ function main() {
   const seeds = args.slice(1).map(Number);
   const planets = seeds.length ? seeds : [12345, 777, 42];
   const withLife = flags.has('--life');
+  const epochFlag = [...flags].find((f) => f.startsWith('--epoch='));
+  if (epochFlag) {
+    EPOCH = epochFlag.slice('--epoch='.length);
+    if (!SE.isEpochId(EPOCH)) throw new Error(`unknown epoch ${EPOCH}: ${SE.EPOCHS.map((e) => e.id).join(', ')}`);
+  }
 
   console.log(
     `grid ${SE.GRID_W}x${SE.GRID_H} = ${SE.TILE_COUNT} tiles, ${ticks} ticks` +
-    `${withLife ? ', evolution tree played greedily' : ''}\n`);
+    `${withLife ? ', evolution tree played greedily' : ''}${EPOCH !== 'random' ? `, epoch ${EPOCH}` : ''}\n`);
 
   if (flags.has('--track')) {
     for (const seed of planets) track(SE, seed, ticks, withLife);
     return;
   }
 
-  for (const seed of planets) report(SE, seed, ticks, withLife);
+  for (const seed of planets) report(SE, seed, ticks, withLife, flags.has('--timeline'), flags.has('--biomes'));
 
   if (flags.has('--map')) {
     const { world } = simulate(SE, planets[0], ticks, withLife);

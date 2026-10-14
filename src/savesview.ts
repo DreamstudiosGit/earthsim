@@ -27,7 +27,9 @@ namespace SE {
     fill.style.width = `${Math.round((meta.developed / Math.max(1, meta.totalNodes)) * 100)}%`;
     bar.appendChild(fill);
     return [
-      make('div', 'save-name', `${meta.name} · ${formatYears(meta.years)}`),
+      // Saves from before the Earth calendar store no tick count, and their
+      // years ran on the old scale; they are re-dated only when loaded.
+      make('div', 'save-name', meta.ticks === undefined ? `${meta.name} · älterer Spielstand` : `${meta.name} · ${formatEarthDate(meta.years)}`),
       bar,
       make('div', 'save-meta', `${meta.developed} von ${meta.totalNodes} entwickelt · ${formatDate(meta.savedAt)}`),
     ];

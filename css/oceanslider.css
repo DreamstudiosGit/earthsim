@@ -1,0 +1,54 @@
+/* =============================================================================
+   Sea share slider: how much of a new planet lies under the sea. The small
+   bar beside the value shows the true proportions; the track's notch marks
+   an Earth-like planet, as on the model sliders.
+   ========================================================================== */
+
+.ocean-slider {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px 6px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  transition: border-color 140ms;
+}
+/* An epoch with its own sea hides it. */
+.ocean-slider[hidden] { display: none; }
+.ocean-slider:focus-within { border-color: color-mix(in srgb, var(--water) 55%, transparent); }
+
+.ocean-slider-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.ocean-slider-label { font-weight: 650; color: var(--ink); cursor: pointer; }
+.ocean-slider-reading { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; }
+.ocean-slider-bar {
+  --sea: 0.58;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg,
+    var(--water) 0 calc(var(--sea) * 100%),
+    var(--plant) calc(var(--sea) * 100%) 100%);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+}
+.ocean-slider-value {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 44 px tall: the whole row is the touch target, not just the knob. */
+.ocean-slider-track input[type="range"] { --fill: var(--water); height: 44px; }
+
+.ocean-slider-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+/* The "Neuer Planet" dialog: its question above the slider. */
+.new-planet-body { display: flex; flex-direction: column; gap: 12px; }

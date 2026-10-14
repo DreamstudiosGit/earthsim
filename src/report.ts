@@ -99,7 +99,7 @@ namespace SE {
         metaRow.appendChild(card);
         this.meta.set(key, { value, sub, fill });
       };
-      metaCard('age', uiIcon('globe'), 'Planetenalter', false);
+      metaCard('age', uiIcon('globe'), 'Datum', false);
       metaCard('dev', uiIcon('evolution'), 'Evolutionsbaum', true);
       metaCard('gaia', uiIcon('gaia'), 'Gaia', true);
 
@@ -150,7 +150,7 @@ namespace SE {
           if (color) m.fill.style.background = color;
         }
       };
-      put('age', formatYears(world.absoluteYears), `Zeitalter: ${TIMESCALE_NAMES[world.timeScale]}`);
+      put('age', formatEarthDate(world.absoluteYears), `${eraAt(world.absoluteYears).name} · Planetenalter ${formatYears(world.absoluteYears)}`);
       const dev = world.evo.developed.size;
       put('dev', `${dev} von ${EVO_NODES.length}`, 'Schritte entwickelt', dev / EVO_NODES.length, 'var(--ep)');
       const mood = world.gaiaMood;

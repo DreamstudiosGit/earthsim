@@ -1,0 +1,53 @@
+/* =============================================================================
+   Examine window — the landscape card: a pixel-exact cut of the map and the
+   plant groups of the tile as the map draws them (docs/biomes-spec.md §4.9).
+   ========================================================================== */
+
+.ex-land-body { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-start; padding: 12px; }
+.ex-land-crop {
+  position: relative;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--line), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+/* Whole-number enlargement of a 1× canvas: every art pixel stays square. */
+.ex-land-crop canvas,
+.ex-land-plants canvas { display: block; image-rendering: pixelated; }
+.ex-land-crop canvas { width: 100%; height: 100%; }
+.ex-land-frame {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #ffe9a6;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(6, 14, 12, 0.6), inset 0 0 0 1px rgba(6, 14, 12, 0.6);
+  pointer-events: none;
+}
+.ex-land-info { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ex-land-plants {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+}
+.ex-land-plants li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 4px 4px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.2;
+  color: var(--ink-2);
+}
+/* A pale specimen card, so dark crowns and pale lichens alike stand out. */
+.ex-land-plants li canvas {
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: radial-gradient(circle at 50% 40%, #e3e6d3, #a9b39a 80%);
+}
+.ex-land-plants li.lead { border-color: rgba(143, 220, 154, 0.55); color: var(--ink); }

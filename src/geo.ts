@@ -91,9 +91,18 @@ namespace SE {
           // range has to travel with the continent carrying it.
           this.rollF32(world.uplift, y, shift);
           this.rollU8(world.tech, y, shift);
+          // A landscape and its soil belong to the ground they grow on.
+          this.rollU8(world.landscape, y, shift);
+          this.rollU8(world.landscapeNext, y, shift);
+          this.rollU8(world.landscapeHold, y, shift);
+          this.rollU8(world.landscapeDensity, y, shift);
+          this.rollU8(world.substrate, y, shift);
+          this.rollU8(world.soil, y, shift);
+          this.rollU16(world.landscapeZone, y, shift);
           this.rollLife(world, y, shift);
         }
         world.terrainDirty = true;
+        world.driftShifts++;
       }
     }
 
@@ -129,7 +138,7 @@ namespace SE {
 
     private readonly rowU16 = new Uint16Array(GRID_W);
 
-    /** Rotate one row of the flora bitmask, wrapping in X. */
+    /** Rotate one row of a 16-bit field (flora bitmask, climate zone), wrapping in X. */
     private rollU16(data: Uint16Array, y: number, shift: number): void {
       const base = y * GRID_W;
       const buf = this.rowU16;
@@ -314,9 +323,10 @@ namespace SE {
     }
 
     /**
-     * Strip plant cover. The biome is derived from vegetation every tick, so
+     * Strip plant cover. The biome is derived from the plants every tick, so
      * writing the biome label alone (as fire once did) was undone on the very
-     * next tick — damage has to land on the plants themselves.
+     * next tick — damage has to land on the plants themselves, and the
+     * landscape is reset with them (SuccessionSystem).
      */
     private scorch(world: WorldState, i: number, keep: number, clearMask: number): void {
       world.vegetation[i] *= keep;
@@ -346,6 +356,7 @@ namespace SE {
         world.elevation[i] = clamp(world.elevation[i] + lift, -1, 1);
         if (d <= 2) {
           this.scorch(world, i, 0, 0xffff);
+          SuccessionSystem.scour(world, i);
           this.killLife(world, i, 1);
           world.tech[i] = Tech.None;
           world.cityPop[i] = 0;
@@ -362,6 +373,7 @@ namespace SE {
         if (d <= 2) {
           world.elevation[i] = clamp(world.elevation[i] - 0.25, -1, 1);
           this.scorch(world, i, 0, 0xffff);
+          SuccessionSystem.scour(world, i);
         } else {
           this.scorch(world, i, 0.5, 0);
         }
@@ -415,6 +427,7 @@ namespace SE {
         if (!world.isWater(i) && world.vegetation[i] >= BiomeSystem.VEGETATION_THRESHOLD) {
           world.co2 = clamp(world.co2 + world.vegetation[i] * 0.8, 0, 5000);
           this.scorch(world, i, 0.2, EventSystem.WOODY_MASK);
+          SuccessionSystem.burn(world, i);
           this.killLife(world, i, 0.7);
         }
         this.mark(world, i, EventKind.Fire);
@@ -428,6 +441,7 @@ namespace SE {
         world.tech[i] = Tech.None;
         world.cityPop[i] = 0;
         this.scorch(world, i, d <= 2 ? 0 : 0.4, d <= 2 ? 0xffff : 0);
+        if (d <= 2) SuccessionSystem.clear(world, i);
         this.mark(world, i, EventKind.AtomicBomb);
       });
       world.dust = clamp(world.dust + 0.15, 0, 1);

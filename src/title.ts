@@ -16,6 +16,10 @@ namespace SE {
     continueGame(): Promise<boolean>;
     /** Replace the waiting planet with a new one. */
     reroll(): void;
+    /** Sea share new planets are made with, 0..1. */
+    readonly oceanShare: number;
+    /** Remake the waiting planet from its own seed with another sea share. */
+    reshape(oceanShare: number): void;
     /** The Saves dialog; true if a planet was loaded from it. */
     openSaves(): Promise<boolean>;
     /** The title is gone: start playing. */
@@ -25,6 +29,11 @@ namespace SE {
   /** Radians the title globe turns per frame drawn. */
   const SPIN_STEP = 0.004;
   const FRAME_MS = 33;
+  /**
+   * Remaking a planet takes about 30 ms, so a dragged sea slider remakes it at
+   * most this often; the share it ends on is always applied.
+   */
+  const RESHAPE_MS = 90;
 
   export class TitleScreen {
     private readonly root: HTMLElement;
@@ -32,6 +41,8 @@ namespace SE {
     private globe: MapView;
     private last = 0;
     private closed = false;
+    private reshapeTimer = 0;
+    private pendingShare = 0;
 
     constructor(host: HTMLElement, private readonly hooks: TitleHooks) {
       this.root = make('div', 'title-screen');
@@ -57,14 +68,15 @@ namespace SE {
       if (resume) actions.appendChild(resume);
       const start = button({
         label: hooks.autosave ? 'Diesen neuen Planeten beginnen' : 'Planet erwecken', icon: uiIcon('play'),
-        cls: `btn ${hooks.autosave ? '' : 'btn-primary '}btn-wide title-start`, onClick: () => this.close(),
+        cls: `btn ${hooks.autosave ? '' : 'btn-primary '}btn-wide title-start`, onClick: () => this.begin(),
       });
+      const sea = buildOceanSlider(hooks.oceanShare, (share) => this.reshape(share));
       const row = make('div', 'title-row');
       row.append(
         button({ label: 'Anderer Planet', icon: uiIcon('new-planet'), cls: 'btn btn-ghost', title: 'Einen neuen Planeten aus Staub und Gas formen', onClick: () => this.reroll() }),
         button({ label: 'Spielstände …', icon: uiIcon('slot'), cls: 'btn btn-ghost', onClick: () => void this.saves() }),
       );
-      actions.append(start, row);
+      actions.append(sea.el, start, row);
 
       const keys = make('ul', 'title-keys');
       for (const [key, what] of [['E', 'Evolutionsbaum'], ['M', 'Übersichtskarte'], ['Leertaste', 'Pause']]) {
@@ -112,7 +124,30 @@ namespace SE {
       if (await this.hooks.openSaves()) this.close();
     }
 
+    private reshape(share: number): void {
+      this.pendingShare = share;
+      if (this.reshapeTimer) return;
+      this.reshapeTimer = window.setTimeout(() => {
+        this.reshapeTimer = 0;
+        if (!this.closed) this.hooks.reshape(this.pendingShare);
+      }, RESHAPE_MS);
+    }
+
+    /** Apply a sea share still waiting out the throttle, so it is not lost. */
+    private flushReshape(): void {
+      if (!this.reshapeTimer) return;
+      window.clearTimeout(this.reshapeTimer);
+      this.reshapeTimer = 0;
+      this.hooks.reshape(this.pendingShare);
+    }
+
+    private begin(): void {
+      this.flushReshape();
+      this.close();
+    }
+
     private reroll(): void {
+      this.flushReshape();
       this.hooks.reroll();
       const spin = this.globe.spin;
       this.globe = this.makeGlobe();
@@ -136,6 +171,8 @@ namespace SE {
     close(): void {
       if (this.closed) return;
       this.closed = true;
+      // A loaded save must not be overwritten by a slider move still pending.
+      window.clearTimeout(this.reshapeTimer);
       this.setBackgroundInert(false);
       this.root.classList.add('leaving');
       window.setTimeout(() => this.root.remove(), 480);

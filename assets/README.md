@@ -13,6 +13,7 @@ abgestimmte Naturpalette statt reiner EGA-Farben (siehe `docs/grafik-2026-10/ber
 | `resources/` | Energie (Ω), Evolutionspunkte, Sauerstoff, CO₂, Temperatur, Pflanzendecke, Vielfalt, Bevölkerung | 24 × 24, gefüllt | Statusleiste, Bericht, Diagramme |
 | `habitats/` | 11 Biome + 9 Lebensraum-Bedingungen (Ufer, Süßwasser, Feuchtgebiet …) | 32 × 32, Badge | Baumknoten, Detailansicht, Untersuchen, Diagramme |
 | `events/` | 8 Katastrophen, Meilensteine und Hinweise (Leben, Intelligenz, Zeitalter, Ausgestorben, Fehler …) | 48 × 48, Badge | Ereignis-Palette, Chronik, Hinweise, Dialoge |
+| `terrain/` | **Ausnahme, PNG:** Landschafts-Pixelkunst der Karte (Böden, Übergangsmasken, Pflanzen-Objekte, Wasser-Overlays) als ein Atlas `atlas.png` mit `manifest.json`. **Generiert** von `tools/terrain-atlas.js --write` aus den Rezepten in `tools/terrain/`, nie von Hand bearbeiten. Stil: `docs/landschaft-2026-10/stil.md` | 16 × 16 je Kachel | Karte (`src/land*.ts`), Untersuchen-Fenster |
 
 ## Bildsprache
 

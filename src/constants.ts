@@ -24,8 +24,15 @@ namespace SE {
   export const GRID_H = 128;
   export const TILE_COUNT = GRID_W * GRID_H;
 
-  /** Fraction of the surface below sea level on a freshly generated planet. */
+  /**
+   * Fraction of the surface below sea level on a freshly generated planet,
+   * unless the player picks another share. The mantle field is always cut at
+   * this value so volcanism does not shift with the sea.
+   */
   export const OCEAN_FRACTION = 0.58;
+  /** The range the player may choose for a new planet's sea share. */
+  export const OCEAN_SHARE_MIN = 0.30;
+  export const OCEAN_SHARE_MAX = 0.85;
 
   /** Elevation 1.0 corresponds to this many kilometres above sea level. */
   export const ELEVATION_KM = 4.5;
@@ -76,8 +83,8 @@ namespace SE {
 
   /**
    * Habitats. A biome is the *structure* of a place — wet, dry, wooded, open —
-   * derived each tick from climate and from which plant groups grow there.
-   * Which plants those are is the flora layer's business (see Flora).
+   * derived each tick from the tile's landscape (src/landscape.ts), which in
+   * turn follows climate and the plant groups growing there.
    *
    * Water zones come first and stay contiguous, so "biome index below
    * WATER_BIOME_COUNT" is the test for wet. Tundra was appended last so that
@@ -150,6 +157,92 @@ namespace SE {
     0.14,  // Swamp
     0.22,  // Tundra
   ];
+
+  /* ----------------------------------------------- landscapes, succession -- */
+  /*
+   * The landscape of a land tile (src/landscape.ts) is read off its smoothed
+   * climate on the matrix of docs/biomes-spec.md §3.4. Boundaries in °C
+   * between frozen | cold | cool | warm | tropical, and in moisture between
+   * dry | semi-arid | moderate | moderate-moist | humid | wet.
+   */
+  export const FROZEN_TEMP = -12;
+  export const COLD_TEMP = 4;
+  export const COOL_TEMP = 14;
+  /**
+   * Where warm becomes tropical (rainforest). Lower than Whittaker's ~20 °C
+   * on purpose, so the wet equatorial lowland always qualifies once the
+   * broadleaf trees are there: its smoothed temperature has a median of
+   * 23-25 °C but a 5th percentile of only 16.6 °C (seeds 12345/777, 21 Ma),
+   * because the 7×7 mean takes in the ~1 km high land around it.
+   */
+  export const TROPICAL_TEMP = 16;
+  export const MOISTURE_BOUNDS: readonly number[] = [0.16, 0.24, 0.30, 0.38, 0.50];
+  /** Above this elevation no trees grow: alpine tundra, lichen or rock. */
+  export const TREE_LINE = 0.5;
+  /** Standing water on flat ground: wetland (substrate Moor). */
+  export const WETLAND_MOISTURE = 0.70;
+  export const WETLAND_MAX_ELEVATION = 0.14;
+  /** Plant cover below which land is bare (Fels, Rohboden or Wüste). */
+  export const BARE_COVER = 0.12;
+  /** Schmitt-trigger bands, each in favour of a tile's current class. */
+  export const SCHMITT_TEMP = 1.5;
+  export const SCHMITT_MOISTURE = 0.03;
+  export const SCHMITT_ELEVATION = 0.02;
+  export const SCHMITT_COVER = 0.04;
+  /** Half-width of the box climate and plant cover are averaged over for the landscape (7×7). */
+  export const LANDSCAPE_SMOOTH_RADIUS = 3;
+  /** Plant cover at which open land turns medium and dense; forests use the upper one. */
+  export const DENSITY_BOUNDS: readonly number[] = [0.30, 0.60];
+  export const DENSITY_BAND = 0.04;
+  /** Below this moisture and elevation bare lowland is sand. */
+  export const SAND_MOISTURE = 0.24;
+  export const SAND_MAX_ELEVATION = 0.15;
+
+  /** Soil maturity (0..1) from which the ground counts as Erde. */
+  export const SOIL_EARTH = 0.35;
+  /**
+   * What mosses and the first land plants build on their own: a thin crust.
+   * Just above SOIL_EARTH so a moss carpet can follow lichen on rock.
+   */
+  export const SOIL_CRUST_MAX = 0.38;
+  /** Soil built per tick at full plant cover (geologic ticks). */
+  export const SOIL_BUILD_RATE = 0.08;
+  /** Soil lost per tick on bare ground, before the slope adds to it. */
+  export const SOIL_EROSION_RATE = 0.01;
+  /** Erosion multiplier per unit of elevation difference to the steepest neighbour. */
+  export const SOIL_SLOPE_FACTOR = 10;
+  /** Soil an ice sheet scrapes off per tick. */
+  export const SOIL_ICE_SCOUR = 0.05;
+  /**
+   * Years soil processes need to run their per-tick rates in full. Shorter
+   * ticks (Civilization, Technology) scale the rates down, so soil forms
+   * and wears in real years there.
+   */
+  export const SOIL_YEARS = 1000;
+  /** Soil a migrated planet is assumed to have per unit of rooted plant cover. */
+  export const SOIL_ROOT_FACTOR = 1.5;
+
+  /** Minimum ticks a tile holds a stage before the next one (spec §6.3). */
+  export const SUCCESSION_MIN_HOLD = 3;
+  /** Extra ticks the per-tile hash adds to the minimum hold (0..this). */
+  export const SUCCESSION_HOLD_SPREAD = 2;
+  /** ± share by which the per-tile hash spreads holds measured in real years. */
+  export const SUCCESSION_YEAR_SPREAD = 0.3;
+  /** Neighbours already at the next stage that make a tile a front (halved hold). */
+  export const SUCCESSION_FRONT = 3;
+  /**
+   * The landscape filters revisit every n-th row each tick besides the tiles
+   * that just changed, so a lone tile is never left alone for long.
+   */
+  export const SUCCESSION_SWEEP_ROWS = 8;
+  /**
+   * Ticks between two recomputations of the climax targets in a running
+   * game; stepping and the landscape filters run every tick. The climate
+   * moves far slower than a hold of three or more ticks.
+   */
+  export const SUCCESSION_TARGET_INTERVAL = 2;
+  /** Rounds of the mode filter on the targets. */
+  export const SUCCESSION_MODE_PASSES = 2;
 
   /* ---------------------------------------------------------------- flora -- */
 
@@ -554,34 +647,14 @@ namespace SE {
   /* ----------------------------------------------------------- subspecies -- */
 
   /**
-   * Every class runs through three sub-species. They are cosmetic — name and
-   * sprite only — and show a lineage settling in over time.
+   * Every class runs through eight sub-species, oldest first — a lineage
+   * settling in and diversifying over time. Names, dates and pictures live
+   * in src/species/; the simulation only counts the stage index.
    */
-  export const SUBSPECIES_PER_CLASS = 3;
+  export const SUBSPECIES_PER_CLASS = 8;
 
   /** Largest share of a class that may stand at or above each stage. */
-  export const STAGE_MAX_SHARE: readonly number[] = [1.0, 0.55, 0.25];
-
-  export const SUBSPECIES: Readonly<Record<Life, readonly string[]>> = {
-    [Life.None]: ['—', '—', '—'],
-    [Life.Prokaryote]: ['Archaeen', 'Cyanobakterien', 'Stromatolithen'],
-    [Life.Eukaryote]: ['Amöben', 'Geißeltierchen', 'Wimpertierchen'],
-    [Life.Radiate]: ['Schwämme', 'Quallen', 'Korallenpolypen'],
-    [Life.Arthropod]: ['Trilobiten', 'Seeskorpione', 'Krebstiere'],
-    [Life.Mollusc]: ['Meeresschnecken', 'Ammoniten', 'Kopffüßer'],
-    [Life.Fish]: ['Kieferlose Fische', 'Panzerfische', 'Knochenfische'],
-    [Life.Cetacean]: ['Urwale', 'Delfine', 'Großwale'],
-    [Life.LandArthropod]: ['Tausendfüßer', 'Skorpione', 'Spinnen'],
-    [Life.Insect]: ['Urinsekten', 'Libellen', 'Käfer'],
-    [Life.Amphibian]: ['Ichthyostega', 'Salamander', 'Frösche'],
-    [Life.Reptile]: ['Ursaurier', 'Eidechsen', 'Archosaurier'],
-    [Life.Dinosaur]: ['Coelophysis', 'Stegosaurier', 'Tyrannosaurier'],
-    [Life.Avian]: ['Archaeopteryx', 'Seevögel', 'Singvögel'],
-    [Life.Mammal]: ['Spitzmäuse', 'Primaten', 'Hominiden'],
-    [Life.Bilateria]: ['Plattwürmer', 'Ringelwürmer', 'Röhrenwürmer'],
-    [Life.Pollinator]: ['Wildbienen', 'Schmetterlinge', 'Honigbienen'],
-    [Life.Grazer]: ['Urpferde', 'Antilopen', 'Bisons'],
-  };
+  export const STAGE_MAX_SHARE: readonly number[] = [1.0, 0.8, 0.62, 0.48, 0.36, 0.27, 0.2, 0.14];
 
   /** True for the marine classes. */
   export function isSeaLife(c: Life): boolean {

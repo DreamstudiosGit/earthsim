@@ -11,6 +11,8 @@
 @import url("css/models.css");
 @import url("css/panels.css");
 @import url("css/title.css");
+@import url("css/oceanslider.css");
+@import url("css/planetpicker.css");
 @import url("css/films.css");
 @import url("css/films-origin.css");
 @import url("css/films-sea.css");
@@ -18,6 +20,9 @@
 @import url("css/films-bloom.css");
 @import url("css/films-land.css");
 @import url("css/showcase.css");
+@import url("css/speciesstrip.css");
+@import url("css/fauna.css");
+@import url("css/examine-land.css");
 
 :root {
   --bg-0: #061210;
@@ -430,6 +435,7 @@ p { margin: 0; }
 .hud-omega .hud-value { color: var(--energy); }
 .hud-ep .hud-value { color: #d2bcff; }
 .hud-minor .hud-value { font-weight: 600; font-size: 14px; color: var(--ink-2); }
+.hud-tag { font-size: 10.5px; font-weight: 700; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.6px; }
 .hud-bar {
   position: absolute;
   left: 10px; right: 10px; bottom: 4px;
@@ -776,7 +782,8 @@ p { margin: 0; }
 .ex-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
 .ex-hero { display: flex; align-items: center; gap: 10px; }
 .ex-hero-img { width: 48px; height: 48px; border-radius: 10px; flex: 0 0 auto; }
-.ex-portrait { width: 64px; height: 64px; border-radius: 10px; background: radial-gradient(circle at 50% 38%, #24453c, #0a1412 75%); image-rendering: pixelated; flex: 0 0 auto; box-shadow: inset 0 0 0 1px var(--line); }
+.ex-portrait { width: 64px; height: 64px; padding: 6px; border-radius: 10px; background: radial-gradient(circle at 50% 38%, #24453c, #0a1412 75%); flex: 0 0 auto; box-shadow: inset 0 0 0 1px var(--line); }
+.ex-portrait svg { display: block; width: 100%; height: 100%; }
 .ex-hero-text { min-width: 0; }
 .ex-title { font-weight: 700; font-size: 15px; line-height: 1.2; }
 .ex-sub { color: var(--ink-3); font-size: 12.5px; }

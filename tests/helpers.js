@@ -13,7 +13,8 @@ let SE = null;
 
 function loadSE() {
   if (SE) return SE;
-  const bundle = path.join(__dirname, '..', 'simulation.js');
+  // SE_BUNDLE lets parallel work test its own build without touching simulation.js.
+  const bundle = process.env.SE_BUNDLE || path.join(__dirname, '..', 'simulation.js');
   vm.runInThisContext(fs.readFileSync(bundle, 'utf8'), { filename: bundle });
   SE = globalThis.SE;
   if (!SE) throw new Error('simulation.js defined no SE namespace — run `npm run build`');

@@ -37,6 +37,13 @@ namespace SE {
     return `Ab ${fmt.one(next)} % möglich: ${who.slice(0, 2).join(', ')}${who.length > 2 ? ' …' : ''}`;
   }
 
+  /** What the sea does with the oxygen of its producers right now. */
+  function seaOxygenNote(w: WorldState): string {
+    if (w.oceanIron >= IRON_DEPLETED) return 'Noch bindet gelöstes Eisen jeden Sauerstoff im Wasser.';
+    if (w.oceanO2 < OCEAN_O2_RISEN) return 'Das Eisen ist verbraucht – jetzt reichert sich Sauerstoff an.';
+    return 'Tauscht Sauerstoff mit der Luft aus, bis beide im Gleichgewicht sind.';
+  }
+
   function airDials(w: WorldState): Dial[] {
     const co2 = w.co2;
     return [
@@ -47,8 +54,19 @@ namespace SE {
         warn: w.globalTemp < 0 || w.globalTemp > 30,
       },
       {
-        label: 'Sauerstoff', icon: resIcon('oxygen'), value: `${fmt.one(w.o2)} %`, scale: '0 … 40 %',
+        label: 'O₂ in der Luft', icon: resIcon('oxygen'), value: `${fmt.one(w.o2)} %`, scale: '0 … 40 %',
         at: w.o2 / 40, band: [15 / 40, 25 / 40], color: '#7fe0f0', note: oxygenNote(w.o2),
+      },
+      {
+        label: 'O₂ im Meer', icon: uiIcon('layer-oceans'), value: `${fmt.int(w.oceanO2)} %`, scale: '0 … 120 % der heutigen Sättigung',
+        at: w.oceanO2 / 120, band: [70 / 120, 1], color: '#4cb6d6', note: seaOxygenNote(w),
+      },
+      {
+        label: 'Gelöstes Eisen', icon: uiIcon('map-terrain'), value: `${fmt.int(w.oceanIron * 100)} %`, scale: '0 … 100 % des Urmeers',
+        at: w.oceanIron, band: [0, 0.1], color: '#c46a48',
+        note: w.oceanIron >= IRON_DEPLETED
+          ? 'Fängt den Sauerstoff im Meer ab und sinkt als Rost zu Boden: die Bändererze.'
+          : 'Fast verbraucht – heiße Quellen am Meeresgrund liefern nur wenig nach.',
       },
       {
         label: 'Kohlendioxid', icon: resIcon('co2'), value: `${fmt.int(co2)} ppm`, scale: '0 … 2.000 ppm',

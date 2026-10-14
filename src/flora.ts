@@ -100,7 +100,7 @@ namespace SE {
           let access = 0;
           if (riverLevel[i] > 0) access = 1;
           else if (riparian[i] > 0) access = 0.85;
-          if (moisture[i] >= 0.70 && elevation[i] < 0.14) access = 1; // wetland
+          if (moisture[i] >= WETLAND_MOISTURE && elevation[i] < WETLAND_MAX_ELEVATION) access = 1;
           if (access < 0.9) {
             const coast =
               elevation[idx(wrapX(x - 1), y)] < 0 || elevation[idx(wrapX(x + 1), y)] < 0 ||
@@ -114,7 +114,7 @@ namespace SE {
 
     /** Is this land tile a wetland — a bog, a marsh, standing water? */
     static isWetland(world: WorldState, i: number): boolean {
-      return world.elevation[i] >= 0 && world.moisture[i] >= 0.70 && world.elevation[i] < 0.14;
+      return world.elevation[i] >= 0 && world.moisture[i] >= WETLAND_MOISTURE && world.elevation[i] < WETLAND_MAX_ELEVATION;
     }
 
     /* -------------------------------------------------------- suitability -- */
@@ -202,13 +202,18 @@ namespace SE {
       return this.suit(world, g, i) * FLORA[g].stature * strength > world.vegetation[i] + 1e-6;
     }
 
-    /** Clear every plant group off a land tile (the "clearing" brush). */
+    /**
+     * Clear every plant group off a land tile (the "clearing" brush). The
+     * landscape falls back to bare soil at once and has to regrow stage by
+     * stage.
+     */
     clear(world: WorldState, i: number): boolean {
       if (world.isWater(i)) return false;
       const changed = world.flora[i] !== 0 || world.vegetation[i] > 0;
       world.flora[i] = 0;
       world.vegetation[i] = 0;
       world.floraTop[i] = Flora.None;
+      SuccessionSystem.clear(world, i);
       return changed;
     }
 

@@ -11,18 +11,14 @@
 namespace SE {
   /** Rasterisation scale: the 8x8 sprites become 16x16 canvases. */
   const SCALE = 2;
-  /** Shadowed sprites reach one sprite pixel further right and down. */
-  export const SHADOW_SPAN = 9 / 8;
   /** Relief steps either side of flat, as the Edit window quantises them. */
   export const RELIEF_STEPS = 16;
   /** Ground tiles marked with this index are perpetual snow, not a biome. */
   export const SNOW_GROUND = BIOME_COUNT;
 
-  const SHADOW_ALPHA = { life: 0.35, city: 0.4, tree: 0.3 };
+  const SHADOW_ALPHA = { city: 0.4 };
   const RIPPLE_ALPHA = { coast: 0.2, ocean: 0.12 };
   const SURF_ALPHA = 0.55;
-  /** Kelp is seen through the water above it. */
-  const KELP_ALPHA = 0.45;
 
   function blank(w: number, h: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } {
     const canvas = document.createElement('canvas');
@@ -55,9 +51,12 @@ namespace SE {
   export class TileCache {
     private readonly grounds: HTMLCanvasElement[] = [];
     private readonly seas: HTMLCanvasElement[] = [];
-    private readonly creatures: HTMLCanvasElement[] = [];
     private readonly cities: HTMLCanvasElement[] = [];
-    private readonly plants: HTMLCanvasElement[] = [];
+    /** Vector art rastered per device tile size, keyed by size and picture. */
+    private readonly vectors = new Map<string, HTMLCanvasElement>();
+    /** Device pixels per tile, and the size before it (kept while zooming back). */
+    private deviceTile = 32;
+    private previousTile = 32;
     private readonly rivers: HTMLCanvasElement[] = [];
     private readonly surfs: HTMLCanvasElement[] = [];
     private readonly events: HTMLCanvasElement[] = [];
@@ -98,10 +97,40 @@ namespace SE {
       return tile;
     }
 
-    /** A creature with its shadow; draw it SHADOW_SPAN times the tile size. */
-    life(c: Life, stage: number): HTMLCanvasElement {
-      const k = c * SUBSPECIES_PER_CLASS + stage;
-      return this.creatures[k] ?? (this.creatures[k] = withShadow(LIFE_SPRITES[c][stage], SHADOW_ALPHA.life));
+    /**
+     * Rasterise vector art at this many device pixels per tile from now on.
+     * Pictures of the size before are kept, anything older is dropped.
+     */
+    setDeviceTile(px: number): void {
+      const size = Math.max(8, Math.round(px));
+      if (size === this.deviceTile) return;
+      this.previousTile = this.deviceTile;
+      this.deviceTile = size;
+      for (const key of [...this.vectors.keys()]) {
+        const at = Number(key.slice(0, key.indexOf('|')));
+        if (at !== size && at !== this.previousTile) this.vectors.delete(key);
+      }
+    }
+
+    private vector(key: string, art: Art | undefined, look: ArtLook, flip = false): HTMLCanvasElement {
+      const k = `${this.deviceTile}|${key}`;
+      let tile = this.vectors.get(k);
+      if (!tile) {
+        tile = rasterArt(art ?? [], this.deviceTile, look, flip);
+        this.vectors.set(k, tile);
+      }
+      return tile;
+    }
+
+    /**
+     * A creature with its shadow; draw it SHADOW_SPAN times the tile size.
+     * `specialist` picks one of the class's biome specialists instead of the
+     * stage's own picture; `flip` makes it face left.
+     */
+    life(c: Life, stage: number, specialist = -1, flip = false): HTMLCanvasElement {
+      const sp = SPECIES[c];
+      const art = specialist >= 0 ? sp?.specialists[specialist]?.art : sp?.stages[stage]?.art;
+      return this.vector(`l${c}|${stage}|${specialist}|${+flip}`, art, CREATURE_LOOK, flip);
     }
 
     /** A city with its shadow; draw it SHADOW_SPAN times the tile size. */
@@ -110,18 +139,15 @@ namespace SE {
     }
 
     /**
-     * A plant group's cover. Trees come with a shadow (draw them SHADOW_SPAN
-     * times the tile size); kelp comes faded by the water above it.
+     * A plant group's cover, or one of its biome specialists. Trees come with
+     * a shadow (draw them SHADOW_SPAN times the tile size); kelp comes faded
+     * by the water above it.
      */
-    plant(g: Flora, dense: number): HTMLCanvasElement {
-      const k = g * 2 + dense;
-      let tile = this.plants[k];
-      if (!tile) {
-        const rows = FLORA_SPRITES[g][dense];
-        tile = this.plants[k] = FLORA[g].woody ? withShadow(rows, SHADOW_ALPHA.tree)
-          : FLORA[g].realm === 'sea' ? faded(rows, KELP_ALPHA) : faded(rows, 1);
-      }
-      return tile;
+    plant(g: Flora, dense: number, specialist = -1): HTMLCanvasElement {
+      const fa = FLORA_ART[g];
+      const art = specialist >= 0 ? fa?.specialists[specialist]?.art : dense ? fa?.dense : fa?.sparse;
+      const look = FLORA[g].woody ? TREE_LOOK : FLORA[g].realm === 'sea' ? KELP_LOOK : PLANT_LOOK;
+      return this.vector(`p${g}|${dense}|${specialist}`, art, look);
     }
 
     river(wide: number, mask: number): HTMLCanvasElement {
@@ -130,7 +156,7 @@ namespace SE {
     }
 
     riverAlgae(): HTMLCanvasElement {
-      return this.riverAlgaeTile ?? (this.riverAlgaeTile = faded(FLORA_SPRITES[Flora.FreshwaterAlgae][0], 1));
+      return this.riverAlgaeTile ?? (this.riverAlgaeTile = faded(RIVER_ALGAE_SPRITE, 1));
     }
 
     surf(mask: number): HTMLCanvasElement {

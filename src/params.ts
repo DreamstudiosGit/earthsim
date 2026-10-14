@@ -72,6 +72,22 @@ namespace SE {
   export const MOISTURE_TRANSMISSION = 0.90;
 
   /**
+   * Rain by latitude — the circulation cells the wind model alone does not
+   * know: rising air at the equator (ITCZ), sinking dry air at 20–35°, the
+   * westerlies' storms at 45–60°, polar desert beyond 70°. A factor -1..+1
+   * per latitude (linear between these points) scales the transmission over
+   * land and adds or removes a share of the local capacity per tile. The
+   * slider "Klimazonen" scales both; 0.5 is the calibrated default.
+   */
+  export const ZONAL_RAIN_PROFILE: readonly (readonly [number, number])[] = [
+    [0, 1], [8, 1], [15, 0], [20, -1], [32, -1], [40, 0], [45, 0.7], [58, 0.7], [64, 0], [70, -1], [90, -1],
+  ];
+  /** Relative change of MOISTURE_TRANSMISSION at a zonal factor of ±1. */
+  export const ZONAL_RAIN_TRANSMISSION = 0.06;
+  /** Share of the local capacity rained in (or dried out) per tile at a factor of ±1. */
+  export const ZONAL_RAIN_SOURCE = 0.05;
+
+  /**
    * Base plate speed in tiles per tick. Tiles, so it doubled with the grid:
    * a plate crosses the planet in the same time, not in the same tile count.
    */
@@ -154,9 +170,59 @@ namespace SE {
   /** Fraction of suspended dust that settles out each tick. */
   export const DUST_SETTLING = 0.004;
   /** Free oxygen lost to surface oxidation each tick. */
-  export const OXIDATION = 0.00024 * CHEM_RATE;
+  export const OXIDATION = 0.00072 * CHEM_RATE;
   /** Silicate weathering: warm, wet, rocky worlds scrub CO2. */
   export const WEATHERING = 0.0012 * CHEM_RATE;
+
+  /* ------------------------------------------------ ocean oxygen and iron -- */
+  /*
+   * Measured with greedy play (tests/helpers `play`): the iron runs out near
+   * tick 85–90, the air passes 1 % near 115–125, plankton alone holds it near
+   * 3 % until marine algae spread (~450), algae lift it to 9–11 % by 850 and
+   * land plants to 16–19 % by 1600–2100, ~21 % by 3000. OXIDATION was tripled
+   * with these, so the air follows the biosphere in a few hundred ticks
+   * instead of a thousand. The yields are net oxygen, i.e. buried
+   * carbon: eukaryotic algae and woody land plants bury far more of what they
+   * fix than bacterial plankton, which is what ends the "boring billion".
+   */
+
+  /** Air percent the sea counts as fully saturated — today's atmosphere. */
+  export const O2_PRESENT = 21;
+  /** O2 (air percent) per tick from a sea saturated with plankton. */
+  export const PLANKTON_O2_YIELD = 0.029 * CHEM_RATE;
+  /** O2 per tick per unit of marine algae cover. */
+  export const ALGAE_O2_YIELD = 0.125 * CHEM_RATE;
+  /** O2 per tick per unit of land plant cover. */
+  export const LAND_O2_YIELD = 0.1125 * CHEM_RATE;
+  /** O2 breathed per tick per unit of animal biomass. */
+  export const RESPIRATION_O2 = 0.004 * CHEM_RATE;
+  /**
+   * Reduced volcanic gases and fresh rock: a drain on the air that saturates
+   * above a few percent. Production must outrun it before oxygen can build up
+   * at all, which is what holds the air low after the Great Oxidation Event.
+   */
+  export const REDUCING_SINK = 0.01875 * CHEM_RATE;
+  /** Air O2 (percent) at which the reducing drain runs at half strength. */
+  export const REDUCING_HALF = 2.2;
+  /** O2 (air percent) the sea holds when saturated at today's level. */
+  export const OCEAN_O2_CAPACITY = 4;
+  /**
+   * Share of the sea–air disequilibrium evened out per tick. A relaxation
+   * rate, so it does not carry CHEM_RATE (see the note there).
+   */
+  export const OCEAN_GAS_EXCHANGE = 0.5;
+  /** O2 (air percent) needed to oxidise all the dissolved iron of a young ocean. */
+  export const IRON_O2_DEMAND = 1.3;
+  /** Above 1/this much iron, every bit of free O2 in the sea is bound at once. */
+  export const IRON_REACTIVITY = 10;
+  /** Dissolved iron delivered per tick by hydrothermal vents. */
+  export const IRON_RESUPPLY = 0.0000625 * CHEM_RATE;
+  /** Iron left (0..1) below which the reservoir counts as used up. */
+  export const IRON_DEPLETED = 0.05;
+  /** Dissolved O2 (% of today's saturation) that counts as an oxygenated sea. */
+  export const OCEAN_O2_RISEN = 5;
+  /** Air O2 (percent) that marks the Great Oxidation Event. */
+  export const AIR_O2_RISEN = 1;
 
   /* ------------------------------------------------------------ interfaces -- */
 
@@ -176,6 +242,7 @@ namespace SE {
     surfaceAlbedo: number;
     thermalTransfer: number;
     rainfall: number;
+    zonalRain: number;
   }
 
   export interface BioParams {
@@ -227,6 +294,7 @@ namespace SE {
     { key: 'surfaceAlbedo', label: 'Boden-Rückstrahlung', hint: 'Wie hell Eis, Wüsten und Wälder reflektieren.' },
     { key: 'thermalTransfer', label: 'Wärmeaustausch Luft/Meer', hint: 'Wie stark Winde und Strömungen Wärme verteilen.' },
     { key: 'rainfall', label: 'Niederschlag', hint: 'Wie weit Regen ins Landesinnere reicht.' },
+    { key: 'zonalRain', label: 'Klimazonen', hint: 'Regen am Äquator und in den Westwinden, Trockenheit in den Subtropen und an den Polen.' },
   ];
 
   export const BIO_SLIDERS: readonly SliderDef<keyof BioParams>[] = [
@@ -264,7 +332,7 @@ namespace SE {
 
     readonly atmo: AtmoParams = {
       solarInput: 0.5, greenhouse: 0.5, cloudAlbedo: 0.5,
-      surfaceAlbedo: 0.5, thermalTransfer: 0.5, rainfall: 0.5,
+      surfaceAlbedo: 0.5, thermalTransfer: 0.5, rainfall: 0.5, zonalRain: 0.5,
     };
 
     readonly bio: BioParams = {

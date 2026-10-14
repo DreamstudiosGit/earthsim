@@ -323,9 +323,11 @@ namespace SE {
      * W=1 E=2 N=4 S=8. The Edit window picks its tile graphic from this, so a
      * river reads as one continuous line rather than a row of blobs.
      *
-     * A neighbour counts when it is river, when this tile drains into it, or
-     * when it is open water — the last so a river visibly meets the sea instead
-     * of stopping one tile short of the coast.
+     * A neighbour counts when the water actually flows between the two — this
+     * tile drains into it or it drains into this one — and when this tile
+     * drains into open water, so a river visibly meets the sea instead of
+     * stopping one tile short of the coast. Two rivers that merely run side by
+     * side stay apart.
      */
     static connectionMask(world: WorldState, x: number, y: number): number {
       const i = idx(x, y);
@@ -343,7 +345,7 @@ namespace SE {
     }
 
     private static connects(world: WorldState, i: number, j: number): boolean {
-      if (world.riverLevel[j] > 0) return true;
+      if (world.riverLevel[j] > 0) return world.riverDown[i] === j || world.riverDown[j] === i;
       return world.riverDown[i] === j && world.elevation[j] < 0;
     }
 

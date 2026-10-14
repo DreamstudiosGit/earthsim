@@ -38,19 +38,25 @@ test('first land plants grow only where open water is next door', () => {
 });
 
 test('biomes need the right plants: forest needs trees, taiga conifers, mosses make tundra', () => {
+  // The habitat is derived from the tile's landscape (tests/landscape.test.js
+  // has the full table). Since the landscape rework the rainforest begins at
+  // TROPICAL_TEMP instead of 21 °C, so the temperate forest case sits below it.
   const B = SE.Biome;
   const F = SE.Flora;
-  const c = (temp, moist, veg, top) => SE.BiomeSystem.classify(0.1, temp, moist, veg, top);
-  assert.equal(c(18, 0.5, 0.6, F.Ferns), B.Grass, 'ferns alone make open land, not forest');
-  assert.equal(c(18, 0.5, 0.8, F.Broadleaf), B.Forest);
+  const c = (temp, moist, veg, group, elev = 0.1) => {
+    const z = SE.landscapeZone(temp, moist, elev, veg, SE.ZONE_NONE);
+    return SE.landscapeHabitat(SE.landscapeTarget(z, group === F.None ? 0 : 1 << group, true), z);
+  };
+  assert.equal(c(16, 0.5, 0.6, F.Ferns), B.Grass, 'ferns alone make open land, not forest');
+  assert.equal(c(16, 0.45, 0.8, F.Broadleaf), B.Forest);
   assert.equal(c(25, 0.6, 0.9, F.Broadleaf), B.Jungle);
-  assert.equal(c(25, 0.6, 0.9, F.Clubmosses), B.Jungle, 'scale-tree swamp forest in the tropics');
+  assert.equal(c(25, 0.6, 0.9, F.Clubmosses), B.Jungle, 'scale-tree forest in the wet tropics');
   assert.equal(c(8, 0.5, 0.7, F.Conifers), B.Boreal);
   assert.equal(c(0, 0.4, 0.3, F.Mosses), B.Tundra);
   assert.equal(c(0, 0.4, 0.8, F.Conifers), B.Boreal);
   assert.equal(c(18, 0.5, 0.05, F.None), B.Rock, 'bare ground');
   assert.equal(c(30, 0.1, 0.05, F.None), B.Desert);
-  assert.equal(SE.BiomeSystem.classify(0.05, 20, 0.8, 0.5, F.LandPlants), B.Swamp);
+  assert.equal(c(20, 0.8, 0.5, F.LandPlants, 0.05), B.Swamp);
 });
 
 test('the planet greens from the shore inward', { timeout: 300000 }, () => {

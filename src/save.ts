@@ -1,7 +1,7 @@
 /* =============================================================================
  * SimEarth 2.0 — save files
  * -----------------------------------------------------------------------------
- * Format 5. Every per-tile field is quantised into a typed array and base64
+ * Format 7. Every per-tile field is quantised into a typed array and base64
  * encoded, the whole document is gzipped where the browser can, and classes,
  * plant groups and evolution steps are named by their stable string ids — so
  * the numeric order of an enum can change without breaking a save.
@@ -13,7 +13,9 @@
  *
  * Version 4 files — the 256x128 format before the evolution rework — are
  * migrated, never discarded: see `migrateV4`, which also explains every
- * reinterpretation it makes.
+ * reinterpretation it makes. Versions 4 and 5 then pass through `migrateV5`
+ * (eight sub-species instead of three, the sea's own oxygen and iron), and
+ * every version before 7 through `migrateV6` (landscapes and soil).
  * ========================================================================== */
 
 namespace SE {
@@ -22,7 +24,7 @@ namespace SE {
   /** A file that is damaged or fails validation. */
   export class SaveCorrupt extends Error {}
 
-  export const SAVE_FORMAT = 5;
+  export const SAVE_FORMAT = 7;
   /** Where every earlier version wrote its single save. Read, never deleted. */
   export const LEGACY_SAVE_KEY = 'simearth2.save.v2';
   export const SLOT_COUNT = 3;
@@ -41,6 +43,8 @@ namespace SE {
     readonly timeScale: number;
     readonly developed: number;
     readonly totalNodes: number;
+    /** Simulation ticks played; missing in metadata written before format 6. */
+    readonly ticks?: number;
     /** A small picture of the planet (data URL), added by the app when it saves. */
     readonly thumb?: string;
   }
@@ -57,6 +61,8 @@ namespace SE {
     null,
   ];
   const V4_CARNIFERN = 15;
+  /** Highest sub-species stage of formats 4 and 5, which had three per class. */
+  const OLD_STAGE_MAX = 2;
 
   /* ------------------------------------------------------------- base64 -- */
 
@@ -96,6 +102,20 @@ namespace SE {
     const lo = q === 'i16' ? -32768 : 0;
     const hi = q === 'i16' ? 32767 : 65535;
     for (let i = 0; i < n; i++) out[i] = clamp(Math.round(a[i] * scale + offset), lo, hi);
+    return bytesToB64(new Uint8Array(out.buffer));
+  }
+
+  /**
+   * Elevation as i16, keeping the sign: sea a hair below zero rounded to 0
+   * and came back as land, which a reloaded planet then had to start a
+   * landscape on.
+   */
+  function packElevation(a: Float32Array, scale: number): string {
+    const out = new Int16Array(a.length);
+    for (let i = 0; i < a.length; i++) {
+      const v = clamp(Math.round(a[i] * scale), -32768, 32767);
+      out[i] = a[i] < 0 && v >= 0 ? -1 : v;
+    }
     return bytesToB64(new Uint8Array(out.buffer));
   }
 
@@ -154,10 +174,11 @@ namespace SE {
     readonly params: ModelParams;
     readonly geo: GeoSystem;
     readonly history?: HistoryRecorder;
+    readonly fauna?: FaunaDex;
   }
 
   export class SaveSystem {
-    /** The planet as a plain format-5 document. */
+    /** The planet as a plain format-7 document. */
     static serialize(ctx: SaveContext): Record<string, unknown> {
       const w = ctx.world;
 
@@ -199,10 +220,11 @@ namespace SE {
         name: w.name,
         seed: w.seed, rngState: w.rng.getState(), ticks: w.ticks, omega: w.omega,
         co2: w.co2, o2: w.o2, n2: w.n2, vapor: w.vapor, dust: w.dust,
+        oceanIron: w.oceanIron, oceanO2: w.oceanO2,
         timeScale: w.timeScale, absoluteYears: w.absoluteYears, scaleYears: w.scaleYears,
         sentient: w.sentientClass === Life.None ? '' : LIFE[w.sentientClass].id,
         fields: {
-          elevation: packField(w.elevation, 'i16', 32000),
+          elevation: packElevation(w.elevation, 32000),
           temperature: packField(w.temperature, 'i16', 100),
           moisture: packField(w.moisture, 'u16', 65535),
           vegetation: packField(w.vegetation, 'u16', 65535),
@@ -212,6 +234,10 @@ namespace SE {
           biome: bytesToB64(w.biome),
           tech: bytesToB64(w.tech),
           flora: bytesToB64(new Uint8Array(w.flora.buffer.slice(0))),
+          landscape: bytesToB64(w.landscape),
+          landscapeNext: bytesToB64(w.landscapeNext),
+          landscapeHold: bytesToB64(w.landscapeHold),
+          soil: bytesToB64(w.soil),
         },
         life: {
           ids,
@@ -231,6 +257,7 @@ namespace SE {
         geo: { offsets: ctx.geo.driftOffsets },
         params,
         history: ctx.history ? ctx.history.toJSON() : null,
+        fauna: ctx.fauna ? ctx.fauna.toJSON() : undefined,
       };
     }
 
@@ -246,6 +273,7 @@ namespace SE {
         timeScale: clamp(Math.floor(Number(data.timeScale) || 0), 0, 3),
         developed,
         totalNodes: EVO_NODES.length,
+        ticks: Math.max(0, Math.floor(Number(data.ticks) || 0)),
       };
     }
 
@@ -297,7 +325,7 @@ namespace SE {
       life: LifeSystem, flora: FloraSystem,
     ): { notes: string[] } {
       const version = raw.version;
-      if (version !== SAVE_FORMAT && version !== 4) {
+      if (version !== SAVE_FORMAT && version !== 6 && version !== 5 && version !== 4) {
         throw new SaveIncompatible(version === 2 || version === 3
           ? 'Der Spielstand stammt von der alten 128 × 64-Karte und kann nicht übernommen werden.'
           : 'Unbekanntes Spielstandformat.');
@@ -320,6 +348,8 @@ namespace SE {
       // Everything below derives from validated data and cannot fail on input.
       RiverSystem.rebuild(stage);
       if (version === 4) SaveSystem.migrateV4(stage, stageParams, life, flora, raw, notes);
+      const redate = version === 4 || version === 5 ? SaveSystem.migrateV5(stage) : null;
+      if (version !== SAVE_FORMAT) SaveSystem.migrateV6(stage);
 
       // --- commit ---
       ctx.world.copyFrom(stage);
@@ -330,10 +360,21 @@ namespace SE {
       if (ctx.history) {
         ctx.history.reset();
         if (raw.history) ctx.history.fromJSON(raw.history);
+        if (redate) ctx.history.years.forEach((y, k) => { ctx.history!.years[k] = redate(y); });
       }
       RiverSystem.rebuild(ctx.world);
-      BiomeSystem.step(ctx.world);
+      BiomeSystem.step(ctx.world, false);
       ctx.world.refreshDerived();
+      // The lexicon is an optional field, so the format number stays: a save
+      // without one (older, or damaged there) adopts what lives, silently.
+      if (ctx.fauna) {
+        const dex = FaunaDex.fromJSON(raw.fauna);
+        if (dex) ctx.fauna.copyFrom(dex);
+        else {
+          ctx.fauna.reset();
+          ctx.fauna.adoptLiving(ctx.world);
+        }
+      }
       return { notes };
     }
 
@@ -348,6 +389,10 @@ namespace SE {
       w.n2 = num(raw.n2, 0, 100, 'Stickstoff');
       w.vapor = num(raw.vapor, 0, 1, 'Wasserdampf');
       w.dust = num(raw.dust, 0, 1, 'Staub');
+      if ((raw.version as number) >= 6) {
+        w.oceanIron = num(raw.oceanIron, 0, 1, 'Eisen im Meer');
+        w.oceanO2 = num(raw.oceanO2, 0, 1000, 'Sauerstoff im Meer');
+      }
       w.timeScale = int(raw.timeScale, 0, 3, 'Zeitmaßstab') as TimeScale;
       w.absoluteYears = num(raw.absoluteYears, 0, 1e15, 'Planetenalter');
       w.scaleYears = num(raw.scaleYears, 0, 1e15, 'Zeitalter-Jahre');
@@ -390,6 +435,18 @@ namespace SE {
       w.biome.set(biome);
       w.tech.set(tech);
       w.flora.set(flora);
+      if ((raw.version as number) >= 7) {
+        const landscape = rawU8(f.landscape, n);
+        const next = rawU8(f.landscapeNext, n);
+        for (let i = 0; i < n; i++) {
+          if (landscape[i] >= LANDSCAPE_COUNT) throw new SaveCorrupt('Landschaft ungültig');
+          if (next[i] >= LANDSCAPE_COUNT && next[i] !== LANDSCAPE_UNSET) throw new SaveCorrupt('Landschaft ungültig');
+        }
+        w.landscape.set(landscape);
+        w.landscapeNext.set(next);
+        w.landscapeHold.set(rawU8(f.landscapeHold, n));
+        w.soil.set(rawU8(f.soil, n));
+      }
 
       // --- life ---
       const life = (raw.life ?? {}) as Record<string, unknown>;
@@ -534,7 +591,7 @@ namespace SE {
         const i = int(t[k], 0, TILE_COUNT - 1, 'Lebensdaten');
         const old = int((life.c as unknown[])[k], 1, 15, 'Lebensdaten');
         const d = num((life.d as unknown[])[k], 0, 1, 'Lebensdaten');
-        const s = int((life.s as unknown[])[k], 0, SUBSPECIES_PER_CLASS - 1, 'Lebensdaten');
+        const s = int((life.s as unknown[])[k], 0, OLD_STAGE_MAX, 'Lebensdaten');
         if (old === V4_CARNIFERN) {
           if (w.elevation[i] >= 0) { w.flora[i] |= floraBit(Flora.Carnivorous); carniferns++; }
           continue;
@@ -635,7 +692,9 @@ namespace SE {
       // Ancestors the old model never had (the worms, for instance) get
       // their founders now, so the tree is not full of empty lineages.
       w.refreshDerived();
-      BiomeSystem.step(w);
+      // Founders are placed by habitat, so the landscapes must exist first.
+      SaveSystem.migrateV6(w);
+      BiomeSystem.step(w, false);
       life.prepare(w, params, true);
       const evoSys = new EvolutionSystem(life, flora);
       // In tree order, ancestors first: a founder needs its parent alive
@@ -661,6 +720,69 @@ namespace SE {
         icon: 'assets/events/saved.svg', tick: w.ticks, years: w.absoluteYears, major: false,
       });
       void raw;
+    }
+
+    /* ------------------------------------------------------- version 5 -- */
+
+    /**
+     * Turn a version-5 planet (or a migrated version-4 one) into a version-6
+     * one. The sub-species ladder grew from three rungs to eight: each stage
+     * keeps its relative height on it. The sea had no chemistry of its own;
+     * its iron and oxygen are read off the air (`seaFromAir`).
+     *
+     * Time ran on the old scale (half a million years a tick until the first
+     * life, ten thousand after), so the planet is re-dated on the Earth
+     * calendar: whatever kept its tick by that tick, the rest by its share of
+     * the old planet age. Returns that share mapping for the history graph.
+     */
+    private static migrateV5(w: WorldState): (oldYears: number) => number {
+      const oldAge = w.absoluteYears;
+      const ticks = w.ticks;
+      const redate = (years: number): number =>
+        ageAtTick(oldAge > 0 ? Math.round(ticks * clamp(years / oldAge, 0, 1)) : 0);
+      w.absoluteYears = ageAtTick(ticks);
+      for (let c = 0; c < LIFE_COUNT; c++) {
+        if (w.lifeFirstSeen[c] >= 0) w.lifeFirstSeen[c] = redate(w.lifeFirstSeen[c]);
+      }
+      for (const [id, rec] of w.evo.developed) w.evo.developed.set(id, { ...rec, years: ageAtTick(rec.tick) });
+      w.evo.chronicle.forEach((e, k) => { w.evo.chronicle[k] = { ...e, years: ageAtTick(e.tick) }; });
+
+      const last = SUBSPECIES_PER_CLASS - 1;
+      for (let i = 0; i < w.lifeStage.length; i++) {
+        const s = w.lifeStage[i];
+        if (s > 0) w.lifeStage[i] = Math.min(last, Math.round((s * last) / OLD_STAGE_MAX));
+      }
+
+      const sea = seaFromAir(w.o2);
+      w.oceanIron = sea.iron;
+      w.oceanO2 = sea.oxygen;
+      // Milestones the planet had already passed are history, not news.
+      for (const e of oxygenMilestones(w)) {
+        w.evo.chronicle.push(e);
+        w.evo.reported.add(e.key);
+      }
+      return redate;
+    }
+
+    /* ------------------------------------------------------- version 6 -- */
+
+    /**
+     * Give a planet from before format 7 its landscapes. Soil is estimated
+     * from the plant cover, full for rooted (vascular) plants and a crust for
+     * mosses alone; every land tile is then marked unstarted, so the first
+     * biome pass puts it straight at its target — a warm start, no hold.
+     */
+    private static migrateV6(w: WorldState): void {
+      const crust = floraBit(Flora.LandPlants) | floraBit(Flora.Mosses);
+      for (let i = 0; i < TILE_COUNT; i++) {
+        w.landscapeNext[i] = LANDSCAPE_UNSET;
+        w.landscapeHold[i] = 0;
+        w.landscapeZone[i] = ZONE_NONE;
+        if (w.elevation[i] < 0) { w.soil[i] = 0; continue; }
+        const f = w.flora[i];
+        const cap = (f & VASCULAR_FLORA_MASK) ? 1 : (f & crust) ? SOIL_CRUST_MAX : 0;
+        w.soil[i] = Math.round(clamp(w.vegetation[i] * SOIL_ROOT_FACTOR, 0, cap) * 255);
+      }
     }
   }
 }

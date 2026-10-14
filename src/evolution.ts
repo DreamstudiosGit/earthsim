@@ -820,10 +820,15 @@ namespace SE {
 
   /** Tiles a group must hold before it counts as established for others. */
   export const ECO_MIN_TILES = 24;
-  /** Founding populations placed when a step is developed. */
-  const FOUNDERS_ANIMAL = 6;
-  const FOUNDERS_PLANT = 10;
-  /** Room a founding site must leave a newcomer (see LifeSystem.roomFor). */
+  /**
+   * A step is founded at one spawn point: a centre tile and those of its
+   * direct neighbours that suit the group too. Its founders start denser
+   * than dispersal's, as a lone spawn has no second population to fall back on.
+   */
+  const SPAWN_CENTRE_DENSITY = 0.35;
+  const SPAWN_EDGE_DENSITY = 0.25;
+  const SPAWN_PLANT_COVER = 0.6;
+  /** Room a founding site must leave a newcomer once the living groups have settled there (see settledRoom). */
   const SITE_MIN_ROOM = 0.1;
   /** Suitability a plant founding site needs. */
   const SITE_MIN_SUIT = 0.35;
@@ -901,6 +906,10 @@ namespace SE {
         // Crossing between sea and land happens at the shore: look a little
         // further for the parent than within a realm.
         const radius = parent ? (parentSea !== sea ? 2 : 1) : 0;
+        // A new lineage must hold its own against the settled community;
+        // putting back one the tree already has (the v4 migration) only
+        // needs room now.
+        const settle = !world.evo.isDeveloped(n.id);
         this.life.prepare(world, params);
         // Visit the planet in a scattered order rather than row by row: with a
         // limit, a row-major scan only ever found sites in the far north, and
@@ -909,7 +918,7 @@ namespace SE {
           const i = scatter(k);
           if (world.isWater(i) !== sea) continue;
           if (parent && !this.presentNear(world, parent, i, radius)) continue;
-          const room = this.life.roomFor(world, i, c);
+          const room = settle ? this.settledRoom(world, i, c) : this.life.roomFor(world, i, c);
           if (room < SITE_MIN_ROOM) continue;
           out.push(i);
           score.push(room);
@@ -1159,39 +1168,128 @@ namespace SE {
       return null;
     }
 
-    /** Spread founders over the best sites, keeping them a few tiles apart. Returns the tiles. */
+    /**
+     * Found the group at one spawn point — a new lineage arises in one place
+     * and spreads from there. Of the sites (all next to the ancestors) in the
+     * largest stretch of habitat, the one whose centre and suitable
+     * neighbours offer the most room together wins; ties go to the planet's
+     * rng. Returns the tiles, centre first.
+     */
     private found(world: WorldState, n: EvoNode, sites: readonly number[]): number[] {
-      // Life itself starts in several seas at once, far apart; everything
-      // after it starts next to its ancestors, wherever those happen to be.
-      const root = n.parent === null;
-      const want = root ? 12 : n.flora !== undefined ? FOUNDERS_PLANT : FOUNDERS_ANIMAL;
-      const spacing = root ? 24 : n.flora !== undefined ? 6 : 8;
-      const chosen: number[] = [];
-      for (const i of sites) {
-        if (chosen.length >= want) break;
-        const x = i % GRID_W;
-        const y = (i / GRID_W) | 0;
-        let clear = true;
-        for (const j of chosen) {
-          const jx = j % GRID_W;
-          const jy = (j / GRID_W) | 0;
-          let dx = Math.abs(jx - x);
-          dx = Math.min(dx, GRID_W - dx);
-          if (Math.max(dx, Math.abs(jy - y)) < spacing) { clear = false; break; }
+      let best = -Infinity;
+      const ties: number[] = [];
+      for (const i of this.inLargestHabitat(world, n, sites)) {
+        let score = this.siteRoom(world, n, i);
+        for (const j of this.spawnNeighbours(world, n, i)) score += this.siteRoom(world, n, j);
+        if (score > best + 1e-9) {
+          best = score;
+          ties.length = 0;
         }
-        if (clear) chosen.push(i);
+        if (score >= best - 1e-9) ties.push(i);
       }
-      // Too crowded a cluster to space out: take the best ones regardless.
-      if (chosen.length === 0) chosen.push(sites[0]);
+      const centre = ties.length > 0 ? world.rng.pick(ties) : sites[0];
+      const tiles = [centre, ...this.spawnNeighbours(world, n, centre)];
 
-      for (const i of chosen) {
+      tiles.forEach((i, k) => {
         if (n.life !== undefined) {
-          LifeSystem.seed(world, n.life, i % GRID_W, (i / GRID_W) | 0);
+          const density = k === 0 ? SPAWN_CENTRE_DENSITY : SPAWN_EDGE_DENSITY;
+          LifeSystem.seed(world, n.life, i % GRID_W, (i / GRID_W) | 0, density);
         } else if (n.flora !== undefined) {
-          this.flora.plant(world, n.flora, i, 0.6);
+          this.flora.plant(world, n.flora, i, SPAWN_PLANT_COVER);
+        }
+      });
+      return tiles;
+    }
+
+    /**
+     * Room tile i leaves class `c` once every living group that could live
+     * there has moved in and grown as far as it can. Judged by the room of
+     * the moment, spawns just ahead of an advancing range died out within a
+     * few dozen ticks: that room was about to be taken back.
+     */
+    private settledRoom(world: WorldState, i: number, c: Life): number {
+      // roomFor reads the tile from the world, so the settled densities are
+      // swapped in for the one call and restored right after.
+      const d = world.lifeDensity;
+      const base = i * LIFE_COUNT;
+      const now = d.slice(base, base + LIFE_COUNT);
+      const settled = now.slice();
+      for (let k = 1; k < LIFE_COUNT; k++) {
+        if (k !== c && world.lifeCounts[k] > 0) settled[k] = Math.max(now[k], this.life.roomFor(world, i, k as Life));
+      }
+      d.set(settled, base);
+      const room = this.life.roomFor(world, i, c);
+      d.set(now, base);
+      return room;
+    }
+
+    /** Room tile i leaves the node's group: settled room for animals, suitability for plants. */
+    private siteRoom(world: WorldState, n: EvoNode, i: number): number {
+      if (n.life !== undefined) return this.settledRoom(world, i, n.life);
+      if (n.flora !== undefined) return this.flora.suit(world, n.flora, i);
+      return 0;
+    }
+
+    /** Direct neighbours of a spawn centre where the group can take hold as well. */
+    private spawnNeighbours(world: WorldState, n: EvoNode, i: number): number[] {
+      const x = i % GRID_W;
+      const y = (i / GRID_W) | 0;
+      const out: number[] = [];
+      for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= GRID_H) continue;
+        const j = idx(wrapX(x + dx), yy);
+        if (n.life !== undefined) {
+          if (world.isWater(j) !== (LIFE[n.life].realm === 'sea')) continue;
+          if (this.settledRoom(world, j, n.life) < SITE_MIN_ROOM) continue;
+        } else if (n.flora !== undefined) {
+          if ((world.flora[j] & (1 << n.flora)) !== 0) continue;
+          if (this.flora.suit(world, n.flora, j) < SITE_MIN_SUIT) continue;
+        }
+        out.push(j);
+      }
+      return out;
+    }
+
+    /**
+     * The sites in the largest stretch of habitat any of them reaches: tiles
+     * of the right realm, connected through neighbours, where the group could
+     * settle. A lone spawn can only fill the stretch it starts in — first
+     * cells founded in a closed inland sea stayed penned there for hundreds
+     * of ticks.
+     */
+    private inLargestHabitat(world: WorldState, n: EvoNode, sites: readonly number[]): readonly number[] {
+      const c = n.life;
+      const g = n.flora;
+      const habitable = (j: number): boolean => c !== undefined
+        ? world.isWater(j) === (LIFE[c].realm === 'sea') && this.life.roomFor(world, j, c) >= LifeSystem.MIN_DENSITY * 2
+        : g !== undefined && this.flora.problem(world, g, j) === null;
+      const patch = new Int32Array(TILE_COUNT).fill(-1);
+      const stack: number[] = [];
+      let best = -1;
+      let bestSize = 0;
+      for (const s of sites) {
+        if (patch[s] >= 0) continue;
+        patch[s] = s;
+        stack.push(s);
+        let size = 0;
+        while (stack.length > 0) {
+          const i = stack.pop() as number;
+          size++;
+          const x = i % GRID_W;
+          const y = (i / GRID_W) | 0;
+          for (const j of [idx(wrapX(x - 1), y), idx(wrapX(x + 1), y), y > 0 ? i - GRID_W : -1, y < GRID_H - 1 ? i + GRID_W : -1]) {
+            if (j < 0 || patch[j] >= 0 || !habitable(j)) continue;
+            patch[j] = s;
+            stack.push(j);
+          }
+        }
+        if (size > bestSize) {
+          bestSize = size;
+          best = s;
         }
       }
-      return chosen;
+      return sites.filter((i) => patch[i] === best);
     }
 
     /** Add a chronicle entry and queue it for display. */
@@ -1247,6 +1345,8 @@ namespace SE {
           }
         }
       }
+
+      for (const e of oxygenMilestones(world)) this.record(world, e);
 
       // Statuses are cheap to read and moderately costly to build: rebuild a
       // few times a second of fast play, and on demand after any action.

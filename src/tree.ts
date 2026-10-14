@@ -635,7 +635,7 @@ namespace SE {
       const st = evo.statusOf(id);
       const costCond = st.conds.find((c) => c.kind === 'cost');
       const sig = [
-        id, st.state, st.alive, world.evo.chronicle.length,
+        id, st.state, st.alive, world.evo.chronicle.length, n.life !== undefined ? highestStage(world, n.life) : -1,
         st.conds.map((c) => (c.kind === 'cost' ? `${c.met}` : `${c.met}${c.pending}${c.detail}`)).join('|'),
       ].join('#');
       if (sig === this.detailSig) {
@@ -680,14 +680,17 @@ namespace SE {
         main.appendChild(box);
       }
       main.appendChild(make('p', 'detail-desc', n.description));
+      const earthMa = EARTH_DATES_MA[id];
+      if (earthMa !== undefined) main.appendChild(make('p', 'detail-short', `Auf der Erde: vor etwa ${formatYearsAmount(earthMa * 1e6)} Jahren`));
 
       // --- action ---
       const action = make('div', 'detail-action');
       if (st.state === 'developed') {
         const rec = world.evo.developed.get(id);
+        const verb = rec?.spontaneous ? 'Von selbst entstanden' : 'Entwickelt';
         const when = !rec ? 'Entwickelt'
           : rec.migrated ? 'Entwickelt – aus einem älteren Spielstand übernommen'
-            : `${rec.spontaneous ? 'Von selbst entstanden' : 'Entwickelt'} ${formatYearsAgo(Math.max(0, world.absoluteYears - rec.years))}`;
+            : `${verb}${yearsAgo(rec.years) > 0 ? '' : ':'} ${formatEarthDate(rec.years)}`;
         action.appendChild(make('div', 'detail-when', when));
         if (!st.alive) {
           const warn = make('div', 'detail-warn');
@@ -763,6 +766,12 @@ namespace SE {
         habs.appendChild(h);
       }
       main.appendChild(habs);
+
+      // --- sub-species ---
+      if (n.life !== undefined) {
+        main.appendChild(heading('Unterarten', 'tool-life'));
+        main.appendChild(speciesStrip(n.life, highestStage(world, n.life)));
+      }
 
       // --- ecosystem ---
       main.appendChild(heading('Verbindung zum Ökosystem', 'link-food'));

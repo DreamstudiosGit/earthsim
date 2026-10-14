@@ -1,0 +1,305 @@
+/* =============================================================================
+ * SimEarth 2.0 — the pixel terrain on screen
+ * -----------------------------------------------------------------------------
+ * Chunks of 16 × 16 tiles are composed at 1× (landcompose.ts) and cached as
+ * canvases; a chunk is recomposed only when the signature of the tiles that
+ * reach into it changes. Drawing scales them to the zoom in two steps
+ * (spec §4.6): nearest neighbour up to the next whole multiple k of 16 px per
+ * tile, then smoothly down to the device tile size T. Exact multiples stay
+ * sharp; below 16 px per tile the 1× picture is smoothed down directly. The
+ * intermediate is anchored to the world, so every art pixel covers the same
+ * width wherever it is and however the map is panned.
+ *
+ * `?terrain=legacy` in the URL switches back to the sprite-and-icon map, for
+ * before/after pictures until the old path is removed.
+ * ========================================================================== */
+
+namespace SE {
+  export type TerrainStyle = 'pixel' | 'legacy';
+  export const TERRAIN_STYLE: TerrainStyle =
+    typeof location !== 'undefined' && /[?&]terrain=legacy(&|$)/.test(location.search) ? 'legacy' : 'pixel';
+
+  /** Tiles per chunk side. */
+  export const LAND_CHUNK = 16;
+  const CHUNKS_X = GRID_W / LAND_CHUNK;
+  /** Composed pixels around a chunk, so smoothing at its border reads real neighbours. */
+  const MARGIN = 2;
+  /** Art pixels each blit reaches past its tiles, so neighbouring blits overlap instead of leaving a seam. */
+  const OVERLAP = 1;
+  const SMOOTHING: ImageSmoothingQuality = 'high';
+  /**
+   * Composing stops after this long in one draw; the rest follows on the next
+   * frames, so a first zoom-out (90+ chunks) never freezes the game.
+   */
+  const COMPOSE_BUDGET_MS = 60;
+
+  interface Chunk {
+    readonly canvas: HTMLCanvasElement; readonly ctx: CanvasRenderingContext2D; sig: number;
+    /** Below 16 px per tile: the chunk already smoothed down to the device tile size it was last drawn at. */
+    small: HTMLCanvasElement | null; smallT: number; smallSig: number;
+  }
+
+  /** Where the map is looking: tiles at the top left, CSS pixels per tile, device pixel ratio. */
+  export interface LandCamera { readonly scrollX: number; readonly scrollY: number; readonly tilePx: number; readonly dpr: number }
+
+  export class PixelTerrain {
+    private static instance: PixelTerrain | null = null;
+    static shared(): PixelTerrain {
+      return PixelTerrain.instance ?? (PixelTerrain.instance = new PixelTerrain());
+    }
+
+    art: LandArt | null = null;
+    composer: LandComposer | null = null;
+    readonly field = new TerrainField();
+    private state: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
+    private readonly listeners: (() => void)[] = [];
+    private fieldKey = '';
+    private fieldWorld: WorldState | null = null;
+    private readonly chunks = new Map<number, Chunk>();
+    private seaColor: Uint32Array | null = null;
+    private image: ImageData | null = null;
+    private scratch: HTMLCanvasElement | null = null;
+    private scratchCtx: CanvasRenderingContext2D | null = null;
+    /** Chunks composed by the last draw, for measuring. */
+    composed = 0;
+    /** The last draw ran out of time: some chunks are stale or missing, draw again. */
+    pending = false;
+    private deadline = Infinity;
+    private flat: HTMLCanvasElement | null = null;
+
+    get ready(): boolean {
+      return this.state === 'ready';
+    }
+
+    /** The atlas could not be decoded: the map keeps the old look. */
+    get failed(): boolean {
+      return this.state === 'failed';
+    }
+
+    /** Decode the atlas once; `fn` runs when it is ready or has failed (at once if it already is ready). */
+    whenReady(fn: () => void): void {
+      if (this.state === 'ready') { fn(); return; }
+      this.listeners.push(fn);
+      if (this.state !== 'idle') return;
+      this.state = 'loading';
+      decodeLandAtlas((art) => {
+        this.art = art;
+        this.composer = new LandComposer(art);
+        this.state = 'ready';
+        for (const l of this.listeners.splice(0)) l();
+      }, (why) => {
+        this.state = 'failed';
+        console.warn(`SimEarth: pixel terrain unavailable (${why}), keeping the old map`);
+        for (const l of this.listeners.splice(0)) l();
+      });
+    }
+
+    /** Read the world into the field when it changed; `oceans` false draws water as flat elevation colours. */
+    refresh(world: WorldState, oceans: boolean): void {
+      const key = `${world.seed}|${world.ticks}|${world.revision}|${+oceans}`;
+      if (key === this.fieldKey && world === this.fieldWorld) return;
+      this.fieldKey = key;
+      this.fieldWorld = world;
+      this.field.refresh(world);
+      if (oceans) {
+        this.seaColor = null;
+      } else {
+        const sea = this.seaColor ?? new Uint32Array(TILE_COUNT);
+        const bytes = new Uint8Array(4);
+        const word = new Uint32Array(bytes.buffer);
+        for (let i = 0; i < TILE_COUNT; i++) {
+          const c = sampleRamp(ELEV_RAMP, Math.min(-0.01, world.elevation[i]) * 0.4);
+          bytes[0] = c[0]; bytes[1] = c[1]; bytes[2] = c[2]; bytes[3] = 255;
+          sea[i] = word[0];
+        }
+        this.seaColor = sea;
+      }
+    }
+
+    /** Read the world into the field if it describes another planet (the map keeps it current). */
+    ensure(world: WorldState): void {
+      if (this.fieldWorld !== world || !this.fieldKey.startsWith(`${world.seed}|`)) this.refresh(world, true);
+    }
+
+    /** The chunk canvas for chunk (cx, cy), composed if its tiles changed. */
+    private chunk(cx: number, cy: number): Chunk | null {
+      const composer = this.composer;
+      if (!composer) return null;
+      const n = cy * CHUNKS_X + cx;
+      let c = this.chunks.get(n);
+      const side = LAND_CHUNK * 16 + 2 * MARGIN;
+      if (!c) {
+        const canvas = document.createElement('canvas');
+        canvas.width = side;
+        canvas.height = side;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        c = { canvas, ctx, sig: -1, small: null, smallT: 0, smallSig: -1 };
+        this.chunks.set(n, c);
+      }
+      const sig = this.field.signature(cx * LAND_CHUNK, cy * LAND_CHUNK, LAND_CHUNK, LAND_CHUNK, this.seaColor ? 1 : 0);
+      if (sig !== c.sig) {
+        if (performance.now() > this.deadline) {
+          this.pending = true;
+          return c.sig === -1 ? null : c;
+        }
+        if (!this.image) this.image = c.ctx.createImageData(side, side);
+        composer.compose(this.field, cx * LAND_CHUNK, cy * LAND_CHUNK, LAND_CHUNK, LAND_CHUNK, MARGIN,
+          new Uint32Array(this.image.data.buffer), this.seaColor);
+        c.ctx.putImageData(this.image, 0, 0);
+        c.sig = sig;
+        this.composed++;
+      }
+      return c;
+    }
+
+    /**
+     * Draw the terrain into `ctx` (device pixels, identity transform), only
+     * where it meets the device-pixel rectangle [x0, x1) × [y0, y1).
+     */
+    draw(ctx: CanvasRenderingContext2D, cam: LandCamera, x0: number, y0: number, x1: number, y1: number): void {
+      if (!this.ready) return;
+      this.composed = 0;
+      this.pending = false;
+      this.deadline = performance.now() + COMPOSE_BUDGET_MS;
+      const T = cam.tilePx * cam.dpr;
+      const k = T > 16 ? Math.ceil(T / 16 - 1e-6) : 1;
+      const mode = Math.abs(T - 16 * k) < 1e-6 ? 'sharp' : T > 16 ? 'twostep' : 'smooth';
+      const txA = Math.floor(cam.scrollX + x0 / T);
+      const txB = Math.ceil(cam.scrollX + x1 / T);
+      const tyA = Math.max(0, Math.floor(cam.scrollY + y0 / T));
+      const tyB = Math.min(GRID_H, Math.ceil(cam.scrollY + y1 / T));
+      if (txB <= txA || tyB <= tyA) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x0, y0, x1 - x0, y1 - y0);
+      ctx.clip();
+      for (let cy = Math.floor(tyA / LAND_CHUNK); cy <= Math.floor((tyB - 1) / LAND_CHUNK); cy++) {
+        for (let cu = Math.floor(txA / LAND_CHUNK); cu <= Math.floor((txB - 1) / LAND_CHUNK); cu++) {
+          const c = this.chunk(((cu % CHUNKS_X) + CHUNKS_X) % CHUNKS_X, cy);
+          if (!c) {
+            this.drawFlat(ctx, cu, cy, cam);
+            continue;
+          }
+          // Visible tiles of this chunk, in art pixels from its corner.
+          const ax = (Math.max(txA, cu * LAND_CHUNK) - cu * LAND_CHUNK) * 16;
+          const bx = (Math.min(txB, (cu + 1) * LAND_CHUNK) - cu * LAND_CHUNK) * 16;
+          const ay = (Math.max(tyA, cy * LAND_CHUNK) - cy * LAND_CHUNK) * 16;
+          const by = (Math.min(tyB, (cy + 1) * LAND_CHUNK) - cy * LAND_CHUNK) * 16;
+          // Reach past the tiles, except beyond the poles.
+          const top = cy * LAND_CHUNK * 16 + ay === 0 ? 0 : OVERLAP;
+          const bottom = cy * LAND_CHUNK * 16 + by === GRID_H * 16 ? 0 : OVERLAP;
+          const sx = ax - OVERLAP;
+          const sy = ay - top;
+          const sw = bx - ax + 2 * OVERLAP;
+          const sh = by - ay + top + bottom;
+          const s = T / 16;
+          const ox = (cu * LAND_CHUNK - cam.scrollX) * T;
+          const oy = (cy * LAND_CHUNK - cam.scrollY) * T;
+          const small = mode === 'smooth' ? this.small(c, T) : null;
+          if (small) {
+            // Whole device pixels of the cached picture, copied one to one.
+            const side = small.width;
+            const ux = Math.max(0, Math.round(ax * s) - 1);
+            const vx = Math.min(side, Math.round(bx * s) + 1);
+            const uy = Math.max(0, Math.round(ay * s) - 1);
+            const vy = Math.min(side, Math.round(by * s) + 1);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(small, ux, uy, vx - ux, vy - uy, Math.round(ox) + ux, Math.round(oy) + uy, vx - ux, vy - uy);
+            continue;
+          }
+          this.blit(ctx, c.canvas, mode, k, sx, sy, sw, sh, ox + sx * s, oy + sy * s, sw * s, sh * s);
+        }
+      }
+      ctx.restore();
+    }
+
+    /** A chunk not composed yet: one flat colour per tile, from its ground or water depth. */
+    private drawFlat(ctx: CanvasRenderingContext2D, cu: number, cy: number, cam: LandCamera): void {
+      const art = this.art;
+      if (!art) return;
+      const flat = this.flat ?? (this.flat = document.createElement('canvas'));
+      flat.width = flat.height = LAND_CHUNK;
+      const fctx = flat.getContext('2d');
+      if (!fctx) return;
+      const image = fctx.createImageData(LAND_CHUNK, LAND_CHUNK);
+      const words = new Uint32Array(image.data.buffer);
+      const f = this.field;
+      for (let y = 0; y < LAND_CHUNK; y++) {
+        for (let x = 0; x < LAND_CHUNK; x++) {
+          const i = (cy * LAND_CHUNK + y) * GRID_W + wrapX(cu * LAND_CHUNK + x);
+          const key = f.key[i];
+          words[y * LAND_CHUNK + x] = art.rgba[key === 0
+            ? art.water[Math.min(LAND_SHALLOW, Math.round(f.depth[i]))]
+            : art.ground[landKeyRank(key)][landKeyDensity(key)].px[0]];
+        }
+      }
+      fctx.putImageData(image, 0, 0);
+      const T = cam.tilePx * cam.dpr;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(flat, (cu * LAND_CHUNK - cam.scrollX) * T, (cy * LAND_CHUNK - cam.scrollY) * T, LAND_CHUNK * T, LAND_CHUNK * T);
+    }
+
+    /** One chunk region, art pixels (sx, sy, sw, sh) from the chunk corner, to device pixels. */
+    private blit(
+      ctx: CanvasRenderingContext2D, src: HTMLCanvasElement, mode: string, k: number,
+      sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, dw: number, dh: number,
+    ): void {
+      if (mode !== 'twostep') {
+        ctx.imageSmoothingEnabled = mode === 'smooth';
+        if (mode === 'smooth') ctx.imageSmoothingQuality = SMOOTHING;
+        ctx.drawImage(src, MARGIN + sx, MARGIN + sy, sw, sh, dx, dy, dw, dh);
+        return;
+      }
+      // Step 1: whole pixels, k device pixels per art pixel, with the margin
+      // around so step 2 filters across the edge with real neighbours.
+      const pad = MARGIN - OVERLAP;
+      const w = (sw + 2 * pad) * k;
+      const h = (sh + 2 * pad) * k;
+      const sc = this.scratchFor(w, h);
+      if (!sc) return;
+      sc.imageSmoothingEnabled = false;
+      sc.drawImage(src, MARGIN + sx - pad, MARGIN + sy - pad, sw + 2 * pad, sh + 2 * pad, 0, 0, w, h);
+      // Step 2: smoothly down to the device tile size.
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = SMOOTHING;
+      ctx.drawImage(sc.canvas, pad * k, pad * k, sw * k, sh * k, dx, dy, dw, dh);
+    }
+
+    /**
+     * The chunk smoothed down once to T device pixels per tile, so redraws
+     * and pans below 16 px per tile only copy pixels. Null when a chunk
+     * would not span whole device pixels (an odd devicePixelRatio).
+     */
+    private small(c: Chunk, T: number): HTMLCanvasElement | null {
+      const side = 16 * LAND_CHUNK * T / 16;
+      if (Math.abs(side - Math.round(side)) > 1e-6) return null;
+      if (c.small && c.smallT === T && c.smallSig === c.sig) return c.small;
+      const canvas = c.small ?? document.createElement('canvas');
+      canvas.width = canvas.height = Math.round(side);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      const s = T / 16;
+      const n = LAND_CHUNK * 16 + 2 * OVERLAP;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = SMOOTHING;
+      ctx.drawImage(c.canvas, MARGIN - OVERLAP, MARGIN - OVERLAP, n, n, -OVERLAP * s, -OVERLAP * s, n * s, n * s);
+      c.small = canvas;
+      c.smallT = T;
+      c.smallSig = c.sig;
+      return canvas;
+    }
+
+    private scratchFor(w: number, h: number): CanvasRenderingContext2D | null {
+      const old = this.scratch;
+      if (!old || old.width < w || old.height < h) {
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(w, old ? old.width : 0);
+        canvas.height = Math.max(h, old ? old.height : 0);
+        this.scratch = canvas;
+        this.scratchCtx = canvas.getContext('2d');
+      }
+      return this.scratchCtx;
+    }
+  }
+}

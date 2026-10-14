@@ -94,7 +94,7 @@ namespace SE {
       for (const f of [0, 0.25, 0.5, 0.75, 1]) {
         const k = Math.round(f * (years.length - 1));
         ctx.textAlign = f === 0 ? 'left' : f === 1 ? 'right' : 'center';
-        ctx.fillText(formatYears(years[k]), left + f * pw, h - 8);
+        ctx.fillText(formatEarthDate(years[k], true), left + f * pw, h - 8);
       }
 
       const yOf = (s: HistorySeries, v: number): number => top + ph - clamp((v - s.min) / (s.max - s.min), 0, 1) * ph;
@@ -145,7 +145,7 @@ namespace SE {
       ctx.lineTo(Math.round(x) + 0.5, top + ph);
       ctx.stroke();
       this.tip.innerHTML = '';
-      this.tip.appendChild(make('div', 'hist-tip-when', formatYears(years[k])));
+      this.tip.appendChild(make('div', 'hist-tip-when', `${formatEarthDate(years[k])} · ${eraAt(years[k]).name}`));
       this.recorder.series.forEach((s, si) => {
         if (!this.enabled[si] || k >= s.data.length) return;
         const v = s.data[k];

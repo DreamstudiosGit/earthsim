@@ -1,29 +1,33 @@
 ## Project
 - Genre: nature and evolution sandbox, a modern successor to SimEarth: The Living Planet (Maxis, 1990)
  
-- Stack: TypeScript 5.9 (`strict`, target ES2020), no runtime dependencies, no framework, no bundler; Canvas 2D for the pixel map, hand-written SVG for assets and films; tests with `node:test` on Node 22. Use only APIs of these versions.
+- Stack: TypeScript 5.9 (`strict`, target ES2020), no runtime dependencies, no framework, no bundler; Canvas 2D for the pixel map (landscape: a generated 16×16 pixel-art PNG atlas), hand-written SVG for assets and films; tests with `node:test` on Node 22. Use only APIs of these versions.
 - Target: desktop and mobile browsers. `index.html` must keep running straight from disk over `file://`, with no server. Input: mouse and touch. Only headless Chrome has been verified so far.
 
 ## Commands
 - Build: `npm run build` (tsc → `simulation.js`) · `npm run watch` while working
 - Run the game for the user: build, then open `index.html` in the browser
 - Typecheck: `npm run typecheck`
-- Test: `npm test` (builds, then runs all 40 tests, ~4 min) · quick: `npm run test:quick` (sim + save, needs a current build) · single: `npm run build`, then `node --test tests/<name>.test.js`
-- Headless probe: `npm run probe` or `node tools/headless.js [ticks] [seed …] [--life] [--map] [--track]`. Use it for tuning results that unit tests can't show (deserts, rivers, erosion, how the biosphere grows).
+- Test: `npm test` (builds, then runs all 117 tests, ~6 min) · quick: `npm run test:quick` (sim + save, needs a current build) · single: `npm run build`, then `node --test tests/<name>.test.js` · parallel work: build to your own file (`npx tsc -p tsconfig.json --outFile <scratch>/simulation.js`) and set `SE_BUNDLE=<that file>` for tests and the probe, so the shared `simulation.js` stays untouched
+- Headless probe: `npm run probe` or `node tools/headless.js [ticks] [seed …] [--life] [--timeline] [--map] [--track]`. Use it for tuning results that unit tests can't show (deserts, rivers, erosion, how the biosphere grows, when each step lands on the Earth calendar).
+- Landscape art: `node tools/terrain-atlas.js [--check] [--sheet [dir]] [--part a,b] [--family cold|temperate|warm|wet] [--write]` builds every terrain texture, edge mask and plant object from the recipes in `tools/terrain/`, checks them and renders contact sheets; `--write` regenerates `assets/terrain/` and `src/terrainatlas.ts` (one writer at a time). `tests/terrain.test.js` fails while the committed atlas is stale.
+- Species art: `node tools/species-sheet.js <id> [--file <draft.ts>] [--out <png>]` renders a class's or plant group's icons at map size on real ground colours (headless Chrome, serialized by a lock) and prints every `PROBLEM` the art test would report.
 - Screenshots: `_preview.html` closes the title screen, fast-forwards a planet with a greedy evolution tree and sets `document.title = 'ready'`. Capture it with headless Chrome over the DevTools protocol. Window width is clamped to ≥ 500 px, so phone views (390 × 844) need CDP device emulation. Run browser checks one at a time.
 
 ## Layout
 - `src/` holds all TypeScript. Every file is one `namespace SE { … }`. `tsc` concatenates the files into one classic script, `simulation.js`, in the order of `files` in `tsconfig.json`. There are no ES modules: cross-file references go through `SE`, and a file may only use at load time what earlier files define.
   - `util` — shared helpers (`Rng`, grid math, DOM helpers)
-  - simulation: `constants`, `params`, `world`, `river`, `geo`, `climate`, `flora`, `biome`, `life`, `evolution`, `spontaneous`, `civ`, `save`. These never touch the DOM, `app` or render/UI code, because tests and the headless probe run them in Node.
-  - map rendering: `sprites`, `terrainart`, `tilecache`, `ambient`, `render`, `maplegend`
-  - UI and windows: `ui`, `charts`, `sliders`, `windows`, `panels`, `historyview`, `report`, `graphs`, `gaia`, `modelscenes`, `modelhero`, `tree`, `savesview`, `title`, `notify`
+  - simulation: `constants`, `params`, `calendar`, `world`, `river`, `geo`, `climate`, `oceanchem`, `flora`, `landscape` (landscape/substrate enums and succession tables), `succession` (landscape, soil, density per tile), `biome` (habitat derived from the landscape), `life`, `evolution`, `spontaneous`, `civ`, `save`. These never touch the DOM, `app` or render/UI code, because tests and the headless probe run them in Node.
+  - species art (pure data, Node-safe): `species/types.ts` (format, palette, registry), `species/<class-id>.ts` (8 sub-species + biome specialists per animal class), `floraart/<group-id>.ts` (sparse/dense cover + specialists per plant group)
+  - map rendering: `sprites`, `terrainatlas` (GENERATED pixel-art atlas + manifest), `artdraw` (vector icons: Path2D on canvas, inline SVG in windows), `artvariants` (biome specialists), `terrainart`, `tilecache`, `land*` (pixel-landscape compositor: `landatlas`, `landtables`, `landfield`, `landobjects`, `landwater`, `landrivers`, `landriverdraw`, `landcompose`, `landview`), `examineview` (Examine window crop), `ambient`, `herds` (wandering animal icons), `render`, `maplegend`
+  - UI and windows: `ui`, `charts`, `sliders`, `oceanslider`, `windows`, `panels`, `historyview`, `report`, `graphs`, `gaia`, `modelscenes`, `modelhero`, `speciesstrip`, `tree`, `savesview`, `title`, `notify`
   - evolution moments: `stories-*` (German texts), `scenekit`, `films/<step-id>.ts` (one film per step; shared parts in `films/parts-*.ts`), `celebrate`, `showcase`
   - `app.ts` — wiring, player actions, game loop and bootstrap; last in the build order
 - `styles.css` — design system; feature styles live in `css/*.css`, each imported at the top of `styles.css`
-- `assets/` — hand-written SVGs in `evolution/`, `ui/`, `resources/`, `habitats/`, `events/`; filename = id
+- `assets/` — hand-written SVGs in `evolution/`, `ui/`, `resources/`, `habitats/`, `events/`; filename = id. `assets/terrain/` holds the generated landscape atlas (`atlas.png`, `manifest.json`)
 - `tests/*.test.js` — `node:test` against the built `simulation.js`; `tests/helpers.js` wires a UI-free simulation (`makeSim(seed)`)
-- `tools/headless.js` — headless probe
+- `tools/terrain-atlas.js` + `tools/terrain/` — landscape art generator: `catalog.js` (the contract: material, landscape, object and plant-group ids), `palette.js`, `kit.js`, `masks.js`, family recipes `cold|temperate|warm|wet.js`, `preview.js`/`sheet.js` (contact sheets)
+- `tools/headless.js` — headless probe (`--biomes`: zone coherence, latitude profile, natural neighbours); `tools/species-sheet.js` + `tools/artcheck.js` — species art contact sheet and format check
 - `scripts/ship.mjs` — checks, commit and push (see Git)
 - `docs/<topic>-<yyyy>-<mm>/` — German reports per overhaul, with screenshots
 - `docs/done.md` — log of shipped changes, written by `scripts/ship.mjs`; don't edit it by hand
@@ -42,7 +46,11 @@
   - `docs/grafik-2026-10/evolutionsmomente.md`, `drehbuecher.md` — changing spontaneous evolution, the showcase or a film
   - section "Einschränkungen" in both `bericht.md` files — before claiming what has been tested
   - `assets/README.md` — adding or renaming assets
-- Don't read or hand-edit these unless the task targets them: `simulation.js` (generated, > 1 MB), `node_modules/`, the SVGs in `assets/`, PNG screenshots, `docs/review-2026-09-08/` (historical).
+  - `docs/oekosystem-2026-10/grafikstil.md` — drawing or changing animal/plant icons in `src/species/` or `src/floraart/`
+  - `docs/oekosystem-2026-10/bericht.md` — changing the calendar, ocean oxygen, spawning, sub-species, herds or the ocean slider
+  - `docs/biomes-spec.md` — changing landscapes, succession, soil, the latitude climate or the pixel-landscape renderer
+  - `docs/landschaft-2026-10/stil.md` — drawing or changing landscape textures and plant objects in `tools/terrain/`
+- Don't read or hand-edit these unless the task targets them: `simulation.js` (generated, > 1 MB), `src/terrainatlas.ts` (generated; read only its interface header), `assets/terrain/` (generated), `node_modules/`, the SVGs in `assets/`, PNG screenshots, `docs/review-2026-09-08/` (historical).
 - Filter long command output for errors (grep); the first error is usually the cause.
 
 ## Code
@@ -56,7 +64,7 @@
 - Balancing values (costs, rates, thresholds, tree data) live in `constants.ts`, `params.ts` and the tables in `evolution.ts`, not inline in logic. Sliders run 0..1, with 0.5 as the calibrated default.
 - Player-facing text is German and lives in the code tables (`constants.ts`, `evolution.ts`, `stories-*.ts`, UI files). There is no i18n layer; don't add one unasked.
 - Save format changes bump `SAVE_FORMAT` in `src/save.ts` and come with a migration from the previous format (see `migrateV4`). Old saves are read, never deleted.
-- Assets are SVG only, in the style of `assets/README.md`, and included via `evoIcon`, `uiIcon`, `resIcon`, `habitatAsset` and `eventIcon`.
+- Assets are SVG, in the style of `assets/README.md`, and included via `evoIcon`, `uiIcon`, `resIcon`, `habitatAsset` and `eventIcon`. Only the map's landscape (ground, transitions, plant objects) is pixel-art PNG, generated by `tools/terrain-atlas.js` from recipes; never paint it by hand. Animals and all other graphics stay SVG.
 - Films run 12 s in 4 beats, with `sparkle()` at 6–8 s. Show change across generations with `morph()` plus `timelapse()`, never an individual transforming. Phrase advantages as selection, never as purpose. No scripts, SMIL, filters or remote resources in SVG.
 - Don't drop validation or error handling when simplifying.
 

@@ -1,0 +1,187 @@
+/* =============================================================================
+   Species lexicon: discovery notices, the lexicon grid and the info box.
+   Pictures sit on one calm dark ground, so portraits, map icons and
+   silhouettes read the same everywhere; silhouettes are coloured via `color`.
+   ========================================================================== */
+
+/* ---- pictures ---- */
+.fauna-pic {
+  display: block;
+  flex: 0 0 auto;
+  padding: 6%;
+  border-radius: var(--radius-s);
+  background: radial-gradient(circle at 50% 38%, var(--bg-2), var(--bg-0) 78%);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.fauna-pic svg, .fauna-pic img { display: block; width: 100%; height: 100%; }
+.fauna-pic .is-icon { transform: scale(0.84); }
+.fauna-pic.is-unknown { color: var(--ink-3); }
+.fauna-pic.is-unknown svg { opacity: 0.5; }
+.fauna-pic.is-extinct svg { filter: grayscale(0.85); opacity: 0.75; }
+.fauna-pic-lg { width: 136px; height: 136px; border-radius: var(--radius-m); }
+.fauna-pic-md { width: 64px; height: 64px; }
+.fauna-pic-sm { width: 46px; height: 46px; border-radius: var(--radius-xs); }
+
+/* ---- status chips ---- */
+.fauna-status { background: var(--glass-soft); box-shadow: inset 0 0 0 1px currentColor; }
+.fauna-status.is-living { color: var(--ok); }
+.fauna-status.is-extinct { color: var(--amber); }
+.fauna-status.is-returned { color: var(--origin); }
+.fauna-status.is-unknown { color: var(--ink-3); }
+
+/* ---- discovery notice ---- */
+.fauna-toast { position: relative; overflow: hidden; border-color: var(--animal-deep); }
+.fauna-toast-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 44px 14px 12px;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.fauna-toast-main:hover { background: var(--glass-soft); }
+.fauna-toast-main:focus-visible { outline-offset: -3px; }
+.fauna-toast-art { display: flex; }
+.fauna-toast-pic { display: block; width: 56px; height: 56px; padding: 4px; border-radius: var(--radius-s); background: radial-gradient(circle at 50% 38%, var(--bg-2), var(--bg-0) 78%); box-shadow: inset 0 0 0 1px var(--line); }
+.fauna-toast-pic svg { display: block; width: 100%; height: 100%; }
+.fauna-toast-art.is-stack .fauna-toast-pic { width: 44px; height: 44px; }
+.fauna-toast-art.is-stack .fauna-toast-pic + .fauna-toast-pic { margin-left: -20px; }
+.fauna-toast-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.fauna-toast-kicker { font-size: 11px; font-weight: 800; color: var(--animal); text-transform: uppercase; letter-spacing: 0.8px; }
+.fauna-toast-title { font-family: var(--font-display); font-size: 16px; font-weight: 750; line-height: 1.2; overflow-wrap: break-word; hyphens: auto; }
+.fauna-toast-sub { font-size: 12.5px; color: var(--ink-2); }
+.fauna-toast .toast-timer { background: var(--animal); }
+.fauna-toast.is-held { visibility: hidden; }
+
+/* ---- lexicon ---- */
+.fauna-lex { display: flex; flex-direction: column; gap: 16px; }
+.fauna-lex-head {
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 14px;
+  margin: -14px -14px 0;
+  padding: 12px 14px 10px;
+  background: linear-gradient(var(--glass-strong), var(--glass-strong)), var(--bg-0);
+  border-bottom: 1px solid var(--line);
+}
+.fauna-lex-count { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.fauna-lex-count strong { font-family: var(--font-display); font-size: 20px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.fauna-progress { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.fauna-progress span { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--origin), var(--animal)); }
+.fauna-filters { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.fauna-filters .chip-btn { min-height: 30px; }
+
+.fauna-group { display: flex; flex-direction: column; gap: 8px; scroll-margin-top: 104px; }
+.fauna-group-head { display: flex; align-items: center; gap: 10px; padding: 2px 4px 2px 0; border-radius: var(--radius-s); }
+.fauna-group-icon { width: 30px; height: 30px; border-radius: var(--radius-xs); }
+.fauna-group-name { flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 700; }
+.fauna-group-count { font-size: 12px; color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.fauna-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+.fauna-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: var(--glass-soft);
+  color: var(--ink);
+  text-align: center;
+  cursor: pointer;
+  transition: background 140ms, border-color 140ms;
+}
+.fauna-tile:hover { background: var(--line); border-color: var(--line-2); }
+.fauna-tile-name { max-width: 100%; font-size: 12.5px; font-weight: 650; line-height: 1.2; overflow-wrap: break-word; hyphens: auto; }
+.fauna-tile.is-unknown .fauna-tile-name { color: var(--ink-3); letter-spacing: 2px; }
+.fauna-tile-hint {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--ink-3);
+}
+.fauna-tile-mark { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+.fauna-tile-mark.is-extinct { color: var(--amber); }
+.fauna-tile-mark.is-returned { color: var(--origin); }
+.fauna-tile.is-extinct .fauna-pic svg { filter: grayscale(0.85); opacity: 0.75; }
+
+/* ---- info box ---- */
+.fauna-info { display: flex; flex-direction: column; gap: 12px; }
+.fauna-info-head { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 14px; }
+.fauna-info-text { min-width: 0; }
+.fauna-info-name { font-size: 22px; font-weight: 750; line-height: 1.15; overflow-wrap: break-word; hyphens: auto; }
+.fauna-info.is-unknown .fauna-info-name { color: var(--ink-2); }
+.fauna-info-sub { margin-top: 2px; font-size: 13px; color: var(--ink-3); }
+.fauna-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 6px; }
+.fauna-info-ma { font-size: 12.5px; color: var(--ink-2); }
+.fauna-hint { font-size: 13.5px; font-style: italic; color: var(--ink-2); }
+.fauna-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.fauna-reason { flex-basis: 100%; font-size: 12px; color: var(--amber); }
+
+.fauna-sec { border-radius: var(--radius-m); background: var(--glass-soft); border: 1px solid var(--line); }
+.fauna-sec-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.fauna-sec-title { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--ink-3); }
+.fauna-sec-hint { font-size: 12px; font-style: italic; color: var(--ink-3); }
+.fauna-sec-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px 12px; }
+.fauna-sub-title { margin: 4px 0 0; font-size: 13px; font-weight: 700; color: var(--ink); }
+.fauna-text { font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.fauna-note { font-size: 12px; color: var(--ink-3); }
+
+.fauna-dl { display: grid; grid-template-columns: minmax(96px, max-content) minmax(0, 1fr); gap: 6px 12px; margin: 0; font-size: 13px; }
+.fauna-dl dt { color: var(--ink-3); }
+.fauna-dl dd { margin: 0; min-width: 0; color: var(--ink); font-variant-numeric: tabular-nums; }
+.fauna-biomes { display: flex; flex-wrap: wrap; gap: 4px; }
+.fauna-biome { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px 2px 3px; border-radius: 999px; background: var(--glass-soft); border: 1px solid var(--line); font-size: 12px; white-space: nowrap; }
+.fauna-biome .ico { width: 18px; height: 18px; border-radius: 5px; }
+.fauna-effects { display: flex; flex-direction: column; gap: 4px; margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.45; color: var(--ink-2); }
+.fauna-needed { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.fauna-lineage { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; gap: 6px; }
+.fauna-lineage-col { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
+.fauna-lineage-col > .fauna-note { text-align: center; padding-top: 12px; }
+.fauna-lineage-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-3); text-align: center; }
+.fauna-arrow { align-self: center; margin-top: 16px; color: var(--ink-3); font-size: 16px; }
+.fauna-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.fauna-link:hover { background: var(--glass-soft); border-color: var(--line-2); }
+.fauna-link.is-self { cursor: default; border-color: var(--animal-deep); background: var(--glass-soft); }
+.fauna-link-name { max-width: 100%; font-size: 12px; font-weight: 650; line-height: 1.2; overflow-wrap: break-word; hyphens: auto; }
+.fauna-link.is-unknown .fauna-link-name { color: var(--ink-3); }
+.fauna-link-label { font-size: 11px; color: var(--ink-3); }
+
+@media (max-width: 760px) {
+  .fauna-pic-lg { width: 96px; height: 96px; }
+  .fauna-info-head { gap: 10px; }
+  .fauna-info-name { font-size: 19px; }
+  .fauna-lex-head { grid-template-columns: 1fr; }
+  .fauna-group { scroll-margin-top: 132px; }
+}

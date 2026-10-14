@@ -46,12 +46,15 @@ namespace SE {
     /** Elevation added at a full-strength crest, in the -1..1 elevation space. */
     private static readonly OROGENY_AMP = 0.75;
 
-    /** Fill `out` with elevations in [-1, 1], sea level at 0. */
-    static generate(seed: number, out: Float32Array): void {
+    /** Fill `out` with elevations in [-1, 1], sea level at 0, `oceanShare` of it below. */
+    static generate(
+      seed: number, out: Float32Array, oceanShare = OCEAN_FRACTION,
+      octaves: readonly { cx: number; cy: number; amp: number }[] = TerrainGenerator.OCTAVES,
+    ): void {
       const rng = new Rng(seed);
       out.fill(0);
 
-      for (const o of TerrainGenerator.OCTAVES) {
+      for (const o of octaves) {
         const lattice = new Float32Array(o.cx * o.cy);
         for (let i = 0; i < lattice.length; i++) lattice[i] = rng.next();
 
@@ -62,7 +65,7 @@ namespace SE {
         }
       }
 
-      TerrainGenerator.normalize(out);
+      TerrainGenerator.normalize(out, oceanShare);
     }
 
     /**
@@ -93,7 +96,7 @@ namespace SE {
      * water travels *with* the crust and puts cordilleras where they belong,
      * a little back from the coast.
      */
-    static orogeny(seed: number, elevation: Float32Array, uplift: Float32Array): void {
+    static orogeny(seed: number, elevation: Float32Array, uplift: Float32Array, amp = TerrainGenerator.OROGENY_AMP): void {
       const ridge = TerrainGenerator.ridgeField(seed ^ 0x5bf03635);
       const shore = TerrainGenerator.distanceToWater(elevation);
       const crest = TerrainGenerator.CREST;
@@ -110,8 +113,14 @@ namespace SE {
 
         const u = sharp * sharp * band;
         uplift[i] = u;
-        elevation[i] = Math.min(1, elevation[i] + u * TerrainGenerator.OROGENY_AMP);
+        elevation[i] = Math.min(1, elevation[i] + u * amp);
       }
+    }
+
+    /** Mantle upwelling: a smooth field so volcanism clusters into belts instead of speckling the planet at random. */
+    static mantle(seed: number, magma: Float32Array): void {
+      TerrainGenerator.generate(seed ^ 0x9e3779b9, magma, OCEAN_FRACTION);
+      for (let i = 0; i < TILE_COUNT; i++) magma[i] = clamp(magma[i] * 0.5 + 0.5, 0, 1);
     }
 
     /** Ridged multifractal in 0..1, wrapped across the cylinder join. */
@@ -147,7 +156,7 @@ namespace SE {
      * Tiles from each land cell to the nearest water, by breadth-first search
      * from every sea tile at once. Water reads 0, its neighbours 1, and so on.
      */
-    private static distanceToWater(elevation: Float32Array): Int32Array {
+    static distanceToWater(elevation: Float32Array): Int32Array {
       const dist = new Int32Array(TILE_COUNT).fill(-1);
       const queue = new Int32Array(TILE_COUNT);
       let head = 0;
@@ -204,9 +213,9 @@ namespace SE {
 
     /**
      * Rescale raw fBm to [-1, 1] with sea level at exactly 0, placing the
-     * shoreline at the OCEAN_FRACTION percentile so every planet is habitable.
+     * shoreline at the `oceanShare` percentile so every planet is habitable.
      */
-    private static normalize(out: Float32Array): void {
+    private static normalize(out: Float32Array, oceanShare: number): void {
       let min = Infinity;
       let max = -Infinity;
       for (let i = 0; i < out.length; i++) {
@@ -221,7 +230,7 @@ namespace SE {
         sorted[i] = out[i];
       }
       sorted.sort();
-      const seaLevel = sorted[Math.floor(OCEAN_FRACTION * (sorted.length - 1))];
+      const seaLevel = sorted[Math.floor(oceanShare * (sorted.length - 1))];
 
       const above = Math.max(1e-4, 1 - seaLevel);
       const below = Math.max(1e-4, seaLevel);
@@ -258,6 +267,34 @@ namespace SE {
     readonly flora = new Uint16Array(TILE_COUNT);
     /** The plant group that shapes the tile — drawn, and read by the biome. */
     readonly floraTop = new Uint8Array(TILE_COUNT);
+    /**
+     * The succession stage of a land tile (`Landscape`): what the map draws and
+     * what the habitat biome is derived from. Unused on water.
+     */
+    readonly landscape = new Uint8Array(TILE_COUNT);
+    /**
+     * The stage a land tile is heading for next, or LANDSCAPE_UNSET on water
+     * and on land that has no succession state yet (a new planet, a migrated
+     * save, land just risen from the sea) — such tiles start at their target.
+     */
+    readonly landscapeNext = new Uint8Array(TILE_COUNT).fill(LANDSCAPE_UNSET);
+    /** Ticks `landscapeNext` has been the next stage without interruption. */
+    readonly landscapeHold = new Uint8Array(TILE_COUNT);
+    /** Density step of the landscape, 0..LANDSCAPE_DENSITIES[landscape]-1. */
+    readonly landscapeDensity = new Uint8Array(TILE_COUNT);
+    /** What the ground is made of (`Substrate`). Derived each tick. */
+    readonly substrate = new Uint8Array(TILE_COUNT);
+    /** Soil maturity, 0..255: built up by roots, lost to erosion and ice. */
+    readonly soil = new Uint8Array(TILE_COUNT);
+    /**
+     * Climate zone per land tile (see `landscapeZone`): the memory of the
+     * landscape's Schmitt triggers. Derived, not saved.
+     */
+    readonly landscapeZone = new Uint16Array(TILE_COUNT).fill(ZONE_NONE);
+    /** Tick at which succession last advanced; it advances once per tick. */
+    successionTick = -1;
+    /** Plate shifts so far (bookkeeping): tells caches keyed by tile that the crust moved. */
+    driftShifts = 0;
     /**
      * The animal layer, as a community rather than a single occupant: every
      * class carries its own density on every tile, indexed by `lifeIdx(i, c)`.
@@ -303,10 +340,16 @@ namespace SE {
 
     /* ---- global atmosphere ---- */
     co2 = 400;    // parts per million
-    o2 = 1;       // percent
+    o2 = 0;       // percent
     n2 = 78;      // percent
     vapor = 0.45; // 0 .. 1 saturation
     dust = 0.02;  // 0 .. 1 opacity
+
+    /* ---- ocean chemistry (see OceanChemistry) ---- */
+    /** Dissolved iron (Fe²⁺) left in the sea, 1 = a young ocean's full load. */
+    oceanIron = 1;
+    /** Dissolved oxygen in percent of today's saturation (can pass 100). */
+    oceanO2 = 0;
 
     /* ---- evolution ---- */
     /** The tree: developed steps, evolution points, chronicle. */
@@ -355,15 +398,6 @@ namespace SE {
     readonly dominantLife = new Uint8Array(TILE_COUNT);
     /** Summed density of every class on the tile. Derived. */
     readonly tileBiomass = new Float32Array(TILE_COUNT);
-    /**
-     * The class whose abundance peaks locally on this tile, or Life.None.
-     *
-     * The Edit window draws one creature per marker, so the map reads as
-     * scattered populations the way the original's does, while the simulation
-     * underneath stays continuous and fills every habitable tile. Computed once
-     * per tick because the render loop runs sixty times a second.
-     */
-    readonly lifeMarker = new Uint8Array(TILE_COUNT);
     /** Land plant cover summed over the planet, per tile of planet, 0..1. */
     vegetationCoverage = 0;
     /** Marine algae cover summed over the planet, per tile of planet, 0..1. */
@@ -376,21 +410,23 @@ namespace SE {
     /** 0 = horror, 1 = bliss. Drives the Gaia face. */
     gaiaMood = 0.5;
 
-    /** Build a brand new planet from a seed. */
-    reset(seed: number): void {
+    /**
+     * Build a brand new planet from a seed, with `oceanShare` of it under the
+     * sea unless the epoch sets its own sea.
+     */
+    reset(seed: number, oceanShare = OCEAN_FRACTION, epoch: EpochId = 'random'): void {
       this.seed = seed >>> 0;
       this.rng = new Rng(this.seed);
 
-      TerrainGenerator.generate(this.seed, this.elevation);
-      // After the coastlines exist, never before: the belts are placed by
-      // distance from the sea, so they need to know where the sea ended up.
-      TerrainGenerator.orogeny(this.seed, this.elevation, this.uplift);
+      shapeCrust(this, epoch, clamp(oceanShare, OCEAN_SHARE_MIN, OCEAN_SHARE_MAX));
 
       this.co2 = 400;
-      this.o2 = 1;
+      this.o2 = 0;
       this.n2 = 78;
       this.vapor = 0.45;
       this.dust = 0.02;
+      this.oceanIron = 1;
+      this.oceanO2 = 0;
       this.ticks = 0;
       this.omega = OMEGA_START;
       this.timeScale = TimeScale.Geologic;
@@ -401,6 +437,15 @@ namespace SE {
       this.vegetation.fill(0);
       this.flora.fill(0);
       this.floraTop.fill(0);
+      this.landscape.fill(0);
+      this.landscapeNext.fill(LANDSCAPE_UNSET);
+      this.landscapeHold.fill(0);
+      this.landscapeDensity.fill(0);
+      this.substrate.fill(0);
+      this.soil.fill(0);
+      this.landscapeZone.fill(ZONE_NONE);
+      this.successionTick = -1;
+      this.driftShifts = 0;
       this.evo.reset();
       this.lifeDensity.fill(0);
       this.lifeStage.fill(0);
@@ -415,14 +460,6 @@ namespace SE {
       this.riverLevel.fill(0);
       this.riparian.fill(0);
       this.terrainDirty = true;
-
-      // Mantle upwelling: a smooth field so volcanism clusters into belts
-      // instead of speckling the planet at random.
-      const magmaSeed = new Float32Array(TILE_COUNT);
-      TerrainGenerator.generate(this.seed ^ 0x9e3779b9, magmaSeed);
-      for (let i = 0; i < TILE_COUNT; i++) {
-        this.magma[i] = clamp(magmaSeed[i] * 0.5 + 0.5, 0, 1);
-      }
 
       // Seed the climate on the WARM branch of the ice-albedo feedback. Seeding
       // it cold instead freezes half the world permanently, because a frozen
@@ -447,7 +484,7 @@ namespace SE {
       // Classify first, then count: the derived tallies describe the biomes,
       // so the other order showed the previous planet's distribution until
       // the first tick.
-      BiomeSystem.step(this);
+      BiomeSystem.step(this, false);
       this.refreshDerived();
     }
 
@@ -464,6 +501,15 @@ namespace SE {
       this.vegetation.set(o.vegetation);
       this.flora.set(o.flora);
       this.floraTop.set(o.floraTop);
+      this.landscape.set(o.landscape);
+      this.landscapeNext.set(o.landscapeNext);
+      this.landscapeHold.set(o.landscapeHold);
+      this.landscapeDensity.set(o.landscapeDensity);
+      this.substrate.set(o.substrate);
+      this.soil.set(o.soil);
+      this.landscapeZone.set(o.landscapeZone);
+      this.successionTick = o.successionTick;
+      this.driftShifts = o.driftShifts;
       this.lifeDensity.set(o.lifeDensity);
       this.lifeStage.set(o.lifeStage);
       this.tech.set(o.tech);
@@ -480,6 +526,8 @@ namespace SE {
       this.n2 = o.n2;
       this.vapor = o.vapor;
       this.dust = o.dust;
+      this.oceanIron = o.oceanIron;
+      this.oceanO2 = o.oceanO2;
       this.ticks = o.ticks;
       this.omega = o.omega;
       this.seed = o.seed;
@@ -501,9 +549,12 @@ namespace SE {
       for (const [k, v] of o.evo.readySince) evo.readySince.set(k, v);
     }
 
-    /** Years advanced by one tick at the current time scale. */
+    /**
+     * Years advanced by one tick: the Earth calendar until a civilization
+     * runs the clock, then the fixed steps of its time scale.
+     */
     get yearsPerTick(): number {
-      return YEARS_PER_TICK[this.timeScale];
+      return this.timeScale <= TimeScale.Evolution ? yearsPerTickAt(this.absoluteYears) : YEARS_PER_TICK[this.timeScale];
     }
 
     /**
@@ -617,83 +668,7 @@ namespace SE {
         }
       }
 
-      this.refreshLifeMarkers();
       this.gaiaMood = this.computeGaiaMood();
-    }
-
-    /** A marker needs at least this much of the dominant class to be drawn. */
-    private static readonly MARKER_MIN_DENSITY = 0.05;
-    /**
-     * How much per-tile noise is mixed into the peak test.
-     *
-     * Without it a saturated region is one flat plateau of identical densities
-     * and elects a single winner for the whole ocean — two percent of inhabited
-     * tiles drew a creature. Real density differences larger than this still
-     * decide the peak; inside a plateau the noise decides, which scatters the
-     * markers the way the original's map looks.
-     */
-    private static readonly MARKER_JITTER = 0.02;
-
-    /**
-     * Deterministic per-tile noise. Must not use the world RNG: markers are
-     * recomputed every tick and read by a 60 fps render loop, so anything that
-     * changed between frames would make the wildlife flicker.
-     */
-    private static jitter(i: number): number {
-      let h = Math.imul(i ^ 0x9e3779b9, 0x85ebca6b);
-      h ^= h >>> 13;
-      h = Math.imul(h, 0xc2b2ae35);
-      return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
-    }
-
-    /**
-     * Elect the tiles that get to show a creature: those where the dominant
-     * class is at a local maximum among its four neighbours.
-     *
-     * Only the dominant class is a candidate, which keeps this at four
-     * comparisons per tile rather than four per class per tile. Four neighbours
-     * rather than eight because on a flat field one tile in five wins instead of
-     * one in nine, which is the density the map wants.
-     */
-    /** Reused by `refreshLifeMarkers`, which runs once per tile per tick. */
-    private readonly markerNeighbours = new Int32Array(4);
-
-    private refreshLifeMarkers(): void {
-      const neighbours = this.markerNeighbours;
-
-      for (let y = 0; y < GRID_H; y++) {
-        for (let x = 0; x < GRID_W; x++) {
-          const i = idx(x, y);
-          const c = this.dominantLife[i];
-          if (c === Life.None) {
-            this.lifeMarker[i] = Life.None;
-            continue;
-          }
-
-          const raw = this.lifeDensity[i * LIFE_COUNT + c];
-          if (raw < WorldState.MARKER_MIN_DENSITY) {
-            this.lifeMarker[i] = Life.None;
-            continue;
-          }
-
-          const mine = raw + WorldState.jitter(i) * WorldState.MARKER_JITTER;
-          neighbours[0] = idx(wrapX(x - 1), y);
-          neighbours[1] = idx(wrapX(x + 1), y);
-          neighbours[2] = idx(x, clampY(y - 1));
-          neighbours[3] = idx(x, clampY(y + 1));
-
-          let peak = true;
-          for (let n = 0; n < 4; n++) {
-            const j = neighbours[n];
-            if (j === i) continue;
-            const theirs = this.lifeDensity[j * LIFE_COUNT + c] +
-              WorldState.jitter(j) * WorldState.MARKER_JITTER;
-            if (theirs > mine) { peak = false; break; }
-          }
-
-          this.lifeMarker[i] = peak ? c : Life.None;
-        }
-      }
     }
 
     /**

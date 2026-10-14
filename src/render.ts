@@ -293,7 +293,9 @@ namespace SE {
     static readonly MAX_TILE = 48;
 
     private readonly tiles = new TileCache();
+    private readonly regions = new BiomeRegions();
     private readonly ambient = new AmbientLayer();
+    private readonly herds = new HerdLayer();
     private readonly canvas: HTMLCanvasElement;
     private readonly ctx: CanvasRenderingContext2D;
     /** The world drawn once; frames only add the cursor on top. */
@@ -313,6 +315,7 @@ namespace SE {
     private zoomedAt = -Infinity;
     private readonly swap: HTMLCanvasElement;
     private readonly swapCtx: CanvasRenderingContext2D;
+    private readonly land = PixelTerrain.shared();
 
     constructor(canvas: HTMLCanvasElement) {
       this.canvas = canvas;
@@ -327,11 +330,17 @@ namespace SE {
       const sctx = this.swap.getContext('2d');
       if (!sctx) throw new Error('SimEarth: offscreen 2D context unavailable');
       this.swapCtx = sctx;
+      if (TERRAIN_STYLE === 'pixel') this.land.whenReady(() => this.markDirty());
     }
 
     /** Force a full redraw on the next frame (after a tool changed the world). */
     markDirty(): void {
       this.dirty = true;
+    }
+
+    /** The pixel terrain draws the ground; with the Biomes layer off the map shows flat colours as before. */
+    private get pixelTerrain(): boolean {
+      return TERRAIN_STYLE === 'pixel' && this.layers.biomes && !this.land.failed;
     }
 
     private get viewW(): number {
@@ -454,11 +463,17 @@ namespace SE {
           this.baseTilePx = this.tilePx;
           this.dirty = false;
         }
+        // The terrain ran out of time for composing: finish it next frame.
+        if (this.pixelTerrain && this.land.pending) this.dirty = true;
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.drawImage(this.base, 0, 0);
       }
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (this.layers.life) {
+        this.herds.update(world, now);
+        this.herds.draw(ctx, this, world, now, this.tiles, this.regions);
+      }
       this.ambient.draw(ctx, this, world, now, this.layers.oceans, this.layers.clouds);
       this.drawCursor(ctx, this.tilePx);
     }
@@ -494,6 +509,8 @@ namespace SE {
       const w = this.viewW;
       const h = this.viewH;
       if (Math.abs(dx) >= w * 0.5 || Math.abs(dy) >= h * 0.5) return false;
+      this.tiles.setDeviceTile(size * dpr);
+      this.regions.refresh(world);
 
       this.swap.width = this.base.width;
       this.swap.height = this.base.height;
@@ -518,6 +535,10 @@ namespace SE {
 
     /** Redraw every tile overlapping a rectangle of the view (CSS pixels). */
     private drawRegion(world: WorldState, x0: number, y0: number, x1: number, y1: number): void {
+      if (this.pixelTerrain) {
+        this.drawLandRegion(world, x0, y0, x1, y1);
+        return;
+      }
       const ctx = this.baseCtx;
       const size = this.tilePx;
       const tx0 = Math.floor(this.scrollX);
@@ -543,11 +564,17 @@ namespace SE {
     }
 
     private drawBase(world: WorldState, dpr: number): void {
+      this.tiles.setDeviceTile(this.tilePx * dpr);
+      this.regions.refresh(world);
       const ctx = this.baseCtx;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;
       ctx.fillStyle = '#05090c';
       ctx.fillRect(0, 0, this.viewW, this.viewH);
+      if (this.pixelTerrain) {
+        this.drawLandRegion(world, 0, 0, this.viewW, this.viewH);
+        return;
+      }
 
       const size = this.tilePx;
       const x0 = Math.floor(this.scrollX);
@@ -618,8 +645,10 @@ namespace SE {
           g = world.floraTop[i] as Flora;
         }
         if (g !== Flora.None) {
-          const reach = FLORA[g].woody ? big : size;
-          ctx.drawImage(tiles.plant(g, veg >= 0.45 ? 1 : 0), px, py, reach, reach);
+          const picture = plantPicture(world, i, g);
+          const shown = (picture >> 4) as Flora;
+          const reach = FLORA[shown].woody ? big : size;
+          ctx.drawImage(tiles.plant(shown, veg >= 0.45 ? 1 : 0, (picture & 15) - 1), px, py, reach, reach);
         }
       }
 
@@ -633,21 +662,56 @@ namespace SE {
         }
       }
 
-      // --- life: one creature per local population peak ---
-      if (this.layers.life) {
-        const c = world.lifeMarker[i] as Life;
-        if (c !== Life.None) ctx.drawImage(tiles.life(c, world.lifeStage[lifeIdx(i, c)]), px, py, big, big);
-      }
+      this.drawTileTop(ctx, world, i, px, py, size);
+    }
 
-      // --- cities ---
+    /** What stands on the ground of a tile: its city and its event. */
+    private drawTileTop(ctx: CanvasRenderingContext2D, world: WorldState, i: number, px: number, py: number, size: number): void {
       if (this.layers.cities) {
         const t = world.tech[i] as Tech;
-        if (t !== Tech.None) ctx.drawImage(tiles.city(t), px, py, big, big);
+        if (t !== Tech.None) ctx.drawImage(this.tiles.city(t), px, py, size * SHADOW_SPAN, size * SHADOW_SPAN);
       }
-
-      // --- events ---
       if (this.layers.events && world.eventTtl[i] > 0) {
-        ctx.drawImage(tiles.event(world.eventKind[i] as EventKind), px, py, size, size);
+        ctx.drawImage(this.tiles.event(world.eventKind[i] as EventKind), px, py, size, size);
+      }
+    }
+
+    /**
+     * The pixel terrain over every tile overlapping a rectangle of the view
+     * (CSS pixels), then cities, events and the climate overlay on top.
+     */
+    private drawLandRegion(world: WorldState, x0: number, y0: number, x1: number, y1: number): void {
+      const ctx = this.baseCtx;
+      const dpr = window.devicePixelRatio || 1;
+      const size = this.tilePx;
+      const T = size * dpr;
+      const txA = Math.floor(this.scrollX + x0 / size);
+      const txB = Math.ceil(this.scrollX + x1 / size);
+      const tyA = Math.max(0, Math.floor(this.scrollY + y0 / size));
+      const tyB = Math.min(GRID_H, Math.ceil(this.scrollY + y1 / size));
+      if (txB <= txA || tyB <= tyA) return;
+      const land = this.land;
+      land.refresh(world, this.layers.oceans);
+      const cam: LandCamera = { scrollX: this.scrollX, scrollY: this.scrollY, tilePx: size, dpr };
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      if (land.ready) {
+        land.draw(ctx, cam, (txA - this.scrollX) * T, (tyA - this.scrollY) * T, (txB - this.scrollX) * T, (tyB - this.scrollY) * T);
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      for (let ty = tyA; ty < tyB; ty++) {
+        const py = Math.round((ty - this.scrollY) * size);
+        for (let tx = txA; tx < txB; tx++) {
+          const px = Math.round((tx - this.scrollX) * size);
+          const i = idx(wrapX(tx), ty);
+          // Until the atlas has decoded (a few milliseconds), flat colours.
+          if (!land.ready) {
+            ctx.fillStyle = rgbCss(mapColor(world, i, MapMode.Biomes));
+            ctx.fillRect(px, py, size, size);
+          }
+          this.drawTileTop(ctx, world, i, px, py, size);
+          if (this.overlay !== Overlay.None) this.drawOverlayTile(ctx, world, i, wrapX(tx), ty, px, py, size);
+        }
       }
     }
 

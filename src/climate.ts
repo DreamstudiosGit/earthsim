@@ -105,6 +105,13 @@ namespace SE {
      * moisture 0.12-0.20 against a desert threshold of 0.16, so half of every
      * continent was desert by construction, and raising transmission to 1.0
      * changed the figure by 0.01.
+     *
+     * The wind model knows no circulation cells, so a zonal factor stands in
+     * for them over land (ZONAL_RAIN_PROFILE): rising air at the equator
+     * carries rain further inland, sinking air in the subtropics and at the
+     * poles dries it out. Measured at 21 Ma (seeds 12345/777): land moisture
+     * at the equator 0.41-0.45/0.30-0.33 before, 0.48-0.57 after; at 30-40°
+     * 0.16-0.23; at 40-60° 0.34-0.48.
      */
     private updateMoisture(world: WorldState, params: ModelParams): void {
       const { elevation, temperature, moisture, riparian } = world;
@@ -112,12 +119,16 @@ namespace SE {
       scratch.set(moisture);
 
       const rainMul = mul(params.atmo.rainfall);
-      const transmission = clamp(MOISTURE_TRANSMISSION * rainMul, 0, 0.999);
+      const zonalMul = mul(params.atmo.zonalRain);
       // A dry atmosphere cannot rain, however warm it is.
       const vaporGate = clamp(0.25 + 1.35 * world.vapor, 0, 1);
 
       for (let y = 0; y < GRID_H; y++) {
         const wind = windDirection(y);
+        const zonal = ClimateSystem.zonalRain(y) * zonalMul;
+        const transmission = clamp(MOISTURE_TRANSMISSION * rainMul * (1 + ZONAL_RAIN_TRANSMISSION * zonal), 0, 0.999);
+        // Rising air only carries the rain further inland; sinking air dries out.
+        const source = ZONAL_RAIN_SOURCE * Math.min(0, zonal);
 
         for (let x = 0; x < GRID_W; x++) {
           const i = idx(x, y);
@@ -138,7 +149,7 @@ namespace SE {
             // Air forced up a slope dumps its load on the windward side.
             const rise = Math.max(0, e - Math.max(0, elevation[upwind]));
             const orographic = Math.min(0.35, rise * 1.6);
-            target = clamp(Math.min(capacity, carried + orographic), 0, 1);
+            target = clamp(Math.min(capacity, carried + orographic + source * capacity), 0, 1);
 
             // A river is a moisture source of its own, so its channel and banks
             // stay green even where the wind arrives with nothing left — which
@@ -150,6 +161,22 @@ namespace SE {
           moisture[i] = scratch[i] + (target - scratch[i]) * MOISTURE_RATE;
         }
       }
+    }
+
+    /**
+     * Zonal rain factor of a row, -1..+1 (ZONAL_RAIN_PROFILE): wet where air
+     * rises (equator, westerlies), dry where it sinks (subtropics, poles).
+     */
+    static zonalRain(y: number): number {
+      const lat = Math.abs(latitudeDeg(y));
+      const p = ZONAL_RAIN_PROFILE;
+      for (let k = 1; k < p.length; k++) {
+        if (lat <= p[k][0]) {
+          const t = (lat - p[k - 1][0]) / (p[k][0] - p[k - 1][0]);
+          return lerp(p[k - 1][1], p[k][1], t);
+        }
+      }
+      return p[p.length - 1][1];
     }
 
     /* ------------------------------------------------- overlay derivations -- */
@@ -186,6 +213,8 @@ namespace SE {
   export class AtmosphereSystem {
     /** Net gas exchange computed by the biosphere this tick. */
     o2Delta = 0;
+    /** Marine net O2 production: it enters the sea, not the air. */
+    oceanO2Delta = 0;
     co2Delta = 0;
     dustDelta = 0;
 
@@ -202,10 +231,12 @@ namespace SE {
       world.co2 += volcanic + this.co2Delta - weathering;
 
       // --- Oxygen ---
+      // Marine oxygen reaches the air only through the sea (OceanChemistry).
       // The oxidation sink grows faster than linearly: the more free oxygen
       // there is, the more aggressively it attacks rock and dead organics.
+      const outgassing = OceanChemistry.step(world, params, this.oceanO2Delta);
       const oxidation = world.o2 * OXIDATION * (0.5 + world.o2 / 40);
-      world.o2 += this.o2Delta - oxidation;
+      world.o2 += this.o2Delta + outgassing - oxidation - OceanChemistry.reducingSink(world.o2);
 
       // --- Water vapour ---
       // Equilibrium humidity rises with sea area and global temperature. The
@@ -227,6 +258,7 @@ namespace SE {
       world.dust = clamp(world.dust, 0, 1);
 
       this.o2Delta = 0;
+      this.oceanO2Delta = 0;
       this.co2Delta = 0;
       this.dustDelta = 0;
     }

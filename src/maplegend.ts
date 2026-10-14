@@ -34,7 +34,8 @@ namespace SE {
       const stats: [string, string][] = [
         [resIcon('temperature'), `${fmt.one(world.globalTemp)} °C`],
         [resIcon('co2'), `${fmt.int(world.co2)} ppm CO₂`],
-        [resIcon('oxygen'), `${fmt.one(world.o2)} % O₂`],
+        [resIcon('oxygen'), `${fmt.one(world.o2)} % O₂ Luft`],
+        [uiIcon('layer-oceans'), `${fmt.int(world.oceanO2)} % O₂ Meer`],
         [resIcon('biomass'), `${fmt.pct(world.lifeCover)} belebt`],
       ];
       for (const [icon, s] of stats) {

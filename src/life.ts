@@ -450,11 +450,12 @@ namespace SE {
     private exchangeGases(world: WorldState, params: ModelParams, atmo: AtmosphereSystem): void {
       world.refreshDerived();
 
-      let consumers = world.landLifeCoverage;
+      let seaConsumers = 0;
       for (let c = 1; c < LIFE_COUNT; c++) {
         if (c === Life.Prokaryote || c === Life.Eukaryote) continue;
-        if (LIFE[c as Life].realm === 'sea') consumers += world.lifeBiomass[c] / TILE_COUNT;
+        if (LIFE[c as Life].realm === 'sea') seaConsumers += world.lifeBiomass[c] / TILE_COUNT;
       }
+      const consumers = world.landLifeCoverage + seaConsumers;
 
       const plankton = (world.lifeBiomass[Life.Prokaryote] + world.lifeBiomass[Life.Eukaryote]) / TILE_COUNT;
       const oceanProductivity = world.oceanFraction * clamp(plankton / 0.15, 0, 1);
@@ -467,7 +468,13 @@ namespace SE {
         world.algaeCoverage * 0.25
       ) * carbon;
 
-      atmo.o2Delta += CHEM_RATE * (photosynthesis * 0.028 * absorption - consumers * 0.004);
+      // Oxygen follows the carbon that is buried, not all that is fixed, so
+      // its yields differ by producer. Marine oxygen enters the sea first.
+      const fixing = carbon * absorption;
+      atmo.oceanO2Delta +=
+        fixing * (oceanProductivity * PLANKTON_O2_YIELD + world.algaeCoverage * ALGAE_O2_YIELD) -
+        seaConsumers * RESPIRATION_O2;
+      atmo.o2Delta += fixing * world.vegetationCoverage * LAND_O2_YIELD - world.landLifeCoverage * RESPIRATION_O2;
       atmo.co2Delta += CHEM_RATE * (-photosynthesis * 2.0 * absorption + consumers * 0.5);
     }
 
@@ -478,12 +485,12 @@ namespace SE {
      * changed — a tile already holding a founder's worth is left alone, and
      * the tool must not charge for that.
      */
-    static seed(world: WorldState, c: Life, x: number, y: number): boolean {
+    static seed(world: WorldState, c: Life, x: number, y: number, density = LifeSystem.FOUNDER_DENSITY): boolean {
       const i = idx(x, y);
       if (world.isWater(i) !== (LIFE[c].realm === 'sea')) return false;
       const li = lifeIdx(i, c);
-      if (world.lifeDensity[li] >= LifeSystem.FOUNDER_DENSITY) return false;
-      world.lifeDensity[li] = LifeSystem.FOUNDER_DENSITY;
+      if (world.lifeDensity[li] >= density) return false;
+      world.lifeDensity[li] = density;
       world.lifeStage[li] = 0;
       return true;
     }

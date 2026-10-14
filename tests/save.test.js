@@ -136,7 +136,8 @@ function v4Doc(s) {
     for (let k = 1; k < SE.LIFE_COUNT; k++) {
       const v = w.lifeDensity[i * SE.LIFE_COUNT + k];
       if (v <= 0 || k > 14) continue;
-      t.push(i); c.push(k); d.push(Math.round(v * 1000) / 1000); st.push(w.lifeStage[i * SE.LIFE_COUNT + k]);
+      // Version 4 had three sub-species per class.
+      t.push(i); c.push(k); d.push(Math.round(v * 1000) / 1000); st.push(Math.min(2, w.lifeStage[i * SE.LIFE_COUNT + k]));
     }
   }
   t.push(land); c.push(15); d.push(0.4); st.push(1);   // a carnifern stand
@@ -180,6 +181,11 @@ test('version-4 saves are migrated with every reinterpretation explained', () =>
   assert.ok(w.flora[carniTile] & (1 << SE.Flora.Carnivorous), 'carnifern tile carries carnivorous plants');
   assert.ok(w.lifeDensity[trichTile * SE.LIFE_COUNT + SE.Life.LandArthropod] > 0, 'trichordates became land arthropods');
   assert.equal(w.lifeDensity[carniTile * SE.LIFE_COUNT + SE.Life.Bilateria], 0, 'slot 15 is not misread as worms');
+  // Three sub-species became eight; the sea is read off the air.
+  const top = doc.life.s.findIndex((s, k) => s === 2 && doc.life.c[k] !== 8);
+  assert.ok(top >= 0, 'the old planet has top-rung sub-species');
+  assert.equal(w.lifeStage[doc.life.t[top] * SE.LIFE_COUNT + doc.life.c[top]], SE.SUBSPECIES_PER_CLASS - 1);
+  assert.ok(Number.isFinite(w.oceanIron) && Number.isFinite(w.oceanO2));
 
   // The tree is consistent: everything developed has its whole lineage.
   assert.ok(w.evo.developed.size > 3);

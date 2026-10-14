@@ -13,7 +13,7 @@ namespace SE {
     drift: 'map-drift', coreHeat: 'overlay-magma', volcanoes: 'model-volcano',
     erosion: 'model-erosion', meteors: 'model-meteor', axialTilt: 'model-tilt',
     solarInput: 'model-sun', greenhouse: 'model-greenhouse', cloudAlbedo: 'layer-clouds',
-    surfaceAlbedo: 'model-albedo', thermalTransfer: 'overlay-seaflow', rainfall: 'overlay-rain',
+    surfaceAlbedo: 'model-albedo', thermalTransfer: 'overlay-seaflow', rainfall: 'overlay-rain', zonalRain: 'overlay-rain',
     evolutionRate: 'evolution', mutationRate: 'model-dna', reproductionRate: 'tool-plant',
     tolerance: 'overlay-heat', co2Absorption: 'model-leaf',
     solarWind: 'energy-solar', hydroGeo: 'energy-hydro', fossilFuel: 'energy-fossil', nuclear: 'energy-nuclear',
