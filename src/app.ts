@@ -48,6 +48,8 @@ namespace SE {
     lastSlot: number;
     /** The chime when a new step arises. */
     sound: boolean;
+    /** Background music on the title screen and in the game. */
+    music: boolean;
     /** Sea share new planets are made with, OCEAN_SHARE_MIN..OCEAN_SHARE_MAX. */
     oceanShare: number;
     /** The planet new games start on: random, or the Earth in an epoch. */
@@ -94,6 +96,7 @@ namespace SE {
     private readonly notifier: Notifier;
     private menuBar!: MenuBar;
     private title: TitleScreen | null = null;
+    private readonly music: MusicPlayer;
     private canvas!: HTMLCanvasElement;
     private dock!: HTMLElement;
     private toolTitle!: HTMLElement;
@@ -117,7 +120,7 @@ namespace SE {
     /* ---- state ---- */
     private speed = 3;
     private lastRunningSpeed = 3;
-    private settings: Settings = { relativeDate: true, pauseOnMilestone: false, pauseOnDiscovery: false, dockCollapsed: false, lastSlot: 1, sound: true, oceanShare: OCEAN_FRACTION, epoch: 'random', reduceEffects: prefersReducedMotion() };
+    private settings: Settings = { relativeDate: true, pauseOnMilestone: false, pauseOnDiscovery: false, dockCollapsed: false, lastSlot: 1, sound: true, music: true, oceanShare: OCEAN_FRACTION, epoch: 'random', reduceEffects: prefersReducedMotion() };
     private mapShowsInfo = false;
     private selection: ToolSelection = {
       tool: Tool.Examine, altitudeRaise: true, flora: Flora.LandPlants, clearing: false,
@@ -158,6 +161,7 @@ namespace SE {
       this.stage = el<HTMLElement>('desktop');
       Modal.attach(el<HTMLElement>('modal-root'));
       this.loadSettings();
+      this.music = new MusicPlayer(this.settings.music);
 
       this.windows = new WindowManager(this.stage);
       this.notifier = new Notifier(el<HTMLElement>('toasts'), el<HTMLElement>('milestones'), {
@@ -864,6 +868,11 @@ namespace SE {
           kind: 'toggle', label: 'Klang bei neuen Entwicklungen', icon: uiIcon('menu-sound'),
           on: () => this.settings.sound,
           toggle: () => { this.settings.sound = !this.settings.sound; this.saveSettings(); },
+        },
+        {
+          kind: 'toggle', label: 'Musik', icon: uiIcon('menu-sound'),
+          on: () => this.settings.music,
+          toggle: () => { this.settings.music = !this.settings.music; this.music.setEnabled(this.settings.music); this.saveSettings(); },
         },
       ];
     }
@@ -1893,6 +1902,7 @@ namespace SE {
         if (typeof s.pauseOnMilestone === 'boolean') this.settings.pauseOnMilestone = s.pauseOnMilestone;
         if (typeof s.pauseOnDiscovery === 'boolean') this.settings.pauseOnDiscovery = s.pauseOnDiscovery;
         if (typeof s.sound === 'boolean') this.settings.sound = s.sound;
+        if (typeof s.music === 'boolean') this.settings.music = s.music;
         if (typeof s.dockCollapsed === 'boolean') this.settings.dockCollapsed = s.dockCollapsed;
         if (typeof s.lastSlot === 'number' && s.lastSlot >= 1 && s.lastSlot <= SLOT_COUNT) this.settings.lastSlot = s.lastSlot;
         if (typeof s.oceanShare === 'number' && Number.isFinite(s.oceanShare)) this.settings.oceanShare = clamp(s.oceanShare, OCEAN_SHARE_MIN, OCEAN_SHARE_MAX);
@@ -2086,6 +2096,7 @@ namespace SE {
       } catch {
         // Storage blocked: there is simply nothing to continue.
       }
+      this.music.play('title');
       this.title = new TitleScreen(document.body, {
         world: () => this.world,
         autosave: meta,
@@ -2107,6 +2118,7 @@ namespace SE {
         reduceEffects: () => this.settings.reduceEffects,
         start: () => {
           this.title = null;
+          this.music.play('game');
           this.setSpeed(running, true);
           if (!this.windows.narrow) this.windows.show('map', false);
           this.canvas.focus({ preventScroll: true });

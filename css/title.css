@@ -283,14 +283,9 @@
   z-index: 2;
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px;
+  justify-content: flex-end;
   padding-top: clamp(8px, 1.6vh, 20px);
 }
-.title-foot-left { display: flex; flex-direction: column; gap: 6px; }
-.title-keys { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 12.5px; color: var(--ink-2); }
-.title-keys li { display: inline-flex; align-items: center; gap: 7px; }
-.title-credit { margin: 0; font-size: 11.5px; color: var(--ink-3); }
 .title-motto { margin: 0; font-size: 13px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud); }
 .title-motto::before { content: "/// "; color: var(--accent); }
 

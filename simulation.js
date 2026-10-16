@@ -49557,7 +49557,7 @@ var SE;
      * The version from package.json, written into simulation.js by
      * tools/stamp-version.js after every build; 'dev' in a bare `tsc` build.
      */
-    SE.APP_VERSION = '0.8.2';
+    SE.APP_VERSION = '0.8.3';
     function titleArt(name) {
         return `assets/title/${name}.svg`;
     }
@@ -49890,17 +49890,8 @@ var SE;
             if (resume)
                 panel.appendChild(resume);
             panel.append(buttons, planet.panel);
-            const keys = SE.make('ul', 'title-keys');
-            keys.setAttribute('aria-label', 'Tastenkürzel');
-            for (const [key, what] of [['E', 'Evolutionsbaum'], ['M', 'Übersichtskarte'], ['Leertaste', 'Pause']]) {
-                const li = SE.make('li');
-                li.append(SE.make('kbd', undefined, key), SE.make('span', undefined, what));
-                keys.appendChild(li);
-            }
             const foot = SE.make('footer', 'title-foot');
-            const left = SE.make('div', 'title-foot-left');
-            left.append(keys, SE.make('p', 'title-credit', 'Ein moderner Nachfolger von SimEarth: The Living Planet (Maxis, 1990).'));
-            foot.append(left, SE.make('p', 'title-motto', 'Kleine Anfänge. Große Welten.'));
+            foot.appendChild(SE.make('p', 'title-motto', 'Kleine Anfänge. Große Welten.'));
             const frame = SE.make('div', 'title-frame');
             frame.append(SE.titleSky(), SE.titleHud(), panel, space, foot);
             this.root.appendChild(frame);
@@ -50002,6 +49993,89 @@ var SE;
     SE.TitleScreen = TitleScreen;
 })(SE || (SE = {}));
 /* =============================================================================
+ * SimEarth 2.0 — background music
+ * -----------------------------------------------------------------------------
+ * One looping track per scene (title screen, main game), played through an
+ * <audio> element: over file:// browsers refuse fetch() and so WebAudio's
+ * decodeAudioData, but a plain media element loads local files fine.
+ * ========================================================================== */
+var SE;
+(function (SE) {
+    /** Track per scene: a file name in assets/audio/music/ without ".mp3". */
+    SE.MUSIC_TRACKS = {
+        title: 'lumiere-du-matin',
+        game: 'lumiere-du-matin',
+    };
+    /** Below the chime and effects, so the music stays in the background. */
+    const MUSIC_VOLUME = 0.45;
+    const MUSIC_FADE_MS = 1200;
+    class MusicPlayer {
+        constructor(enabled) {
+            this.audio = new Audio();
+            this.track = '';
+            this.fadeTimer = 0;
+            this.enabled = enabled;
+            this.audio.loop = true;
+            this.audio.preload = 'auto';
+            this.audio.volume = 0;
+            // Autoplay is blocked until the player has touched the page: retry on the first gesture.
+            const unlock = () => {
+                if (!this.audio.paused || !this.wantsSound())
+                    return;
+                this.resume();
+            };
+            for (const type of ['pointerdown', 'keydown'])
+                document.addEventListener(type, unlock, { capture: true });
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden)
+                    this.audio.pause();
+                else if (this.wantsSound())
+                    this.resume();
+            });
+        }
+        /** Switch to a scene's track; the same track simply keeps playing. */
+        play(scene) {
+            const track = SE.MUSIC_TRACKS[scene];
+            if (track !== this.track) {
+                this.track = track;
+                this.audio.src = `assets/audio/music/${track}.mp3`;
+                this.audio.volume = 0;
+            }
+            if (this.enabled)
+                this.resume();
+        }
+        setEnabled(on) {
+            this.enabled = on;
+            if (on)
+                this.resume();
+            else
+                this.fadeTo(0, () => this.audio.pause());
+        }
+        wantsSound() {
+            return this.enabled && this.track !== '' && !document.hidden;
+        }
+        resume() {
+            const started = this.audio.play();
+            // Rejected while autoplay is still blocked or the file is missing: the game runs silent.
+            started.then(() => this.fadeTo(MUSIC_VOLUME), () => undefined);
+        }
+        fadeTo(target, done) {
+            window.clearInterval(this.fadeTimer);
+            const from = this.audio.volume;
+            const start = performance.now();
+            this.fadeTimer = window.setInterval(() => {
+                const t = Math.min(1, (performance.now() - start) / MUSIC_FADE_MS);
+                this.audio.volume = from + (target - from) * t;
+                if (t < 1)
+                    return;
+                window.clearInterval(this.fadeTimer);
+                done?.();
+            }, 50);
+        }
+    }
+    SE.MusicPlayer = MusicPlayer;
+})(SE || (SE = {}));
+/* =============================================================================
  * SimEarth 2.0 — application wiring
  * -----------------------------------------------------------------------------
  * Builds the stage (the living map with its tool dock), the status bar, the
@@ -50057,7 +50131,7 @@ var SE;
             /* ---- state ---- */
             this.speed = 3;
             this.lastRunningSpeed = 3;
-            this.settings = { relativeDate: true, pauseOnMilestone: false, pauseOnDiscovery: false, dockCollapsed: false, lastSlot: 1, sound: true, oceanShare: SE.OCEAN_FRACTION, epoch: 'random', reduceEffects: prefersReducedMotion() };
+            this.settings = { relativeDate: true, pauseOnMilestone: false, pauseOnDiscovery: false, dockCollapsed: false, lastSlot: 1, sound: true, music: true, oceanShare: SE.OCEAN_FRACTION, epoch: 'random', reduceEffects: prefersReducedMotion() };
             this.mapShowsInfo = false;
             this.selection = {
                 tool: SE.Tool.Examine, altitudeRaise: true, flora: SE.Flora.LandPlants, clearing: false,
@@ -50138,6 +50212,7 @@ var SE;
             this.stage = SE.el('desktop');
             SE.Modal.attach(SE.el('modal-root'));
             this.loadSettings();
+            this.music = new SE.MusicPlayer(this.settings.music);
             this.windows = new SE.WindowManager(this.stage);
             this.notifier = new SE.Notifier(SE.el('toasts'), SE.el('milestones'), {
                 reported: (key) => this.world.evo.reported.add(key),
@@ -50816,6 +50891,11 @@ var SE;
                     kind: 'toggle', label: 'Klang bei neuen Entwicklungen', icon: SE.uiIcon('menu-sound'),
                     on: () => this.settings.sound,
                     toggle: () => { this.settings.sound = !this.settings.sound; this.saveSettings(); },
+                },
+                {
+                    kind: 'toggle', label: 'Musik', icon: SE.uiIcon('menu-sound'),
+                    on: () => this.settings.music,
+                    toggle: () => { this.settings.music = !this.settings.music; this.music.setEnabled(this.settings.music); this.saveSettings(); },
                 },
             ];
         }
@@ -51911,6 +51991,8 @@ var SE;
                     this.settings.pauseOnDiscovery = s.pauseOnDiscovery;
                 if (typeof s.sound === 'boolean')
                     this.settings.sound = s.sound;
+                if (typeof s.music === 'boolean')
+                    this.settings.music = s.music;
                 if (typeof s.dockCollapsed === 'boolean')
                     this.settings.dockCollapsed = s.dockCollapsed;
                 if (typeof s.lastSlot === 'number' && s.lastSlot >= 1 && s.lastSlot <= SE.SLOT_COUNT)
@@ -52133,6 +52215,7 @@ var SE;
             catch {
                 // Storage blocked: there is simply nothing to continue.
             }
+            this.music.play('title');
             this.title = new SE.TitleScreen(document.body, {
                 world: () => this.world,
                 autosave: meta,
@@ -52154,6 +52237,7 @@ var SE;
                 reduceEffects: () => this.settings.reduceEffects,
                 start: () => {
                     this.title = null;
+                    this.music.play('game');
                     this.setSpeed(running, true);
                     if (!this.windows.narrow)
                         this.windows.show('map', false);

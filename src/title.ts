@@ -112,17 +112,8 @@ namespace SE {
       if (resume) panel.appendChild(resume);
       panel.append(buttons, planet.panel);
 
-      const keys = make('ul', 'title-keys');
-      keys.setAttribute('aria-label', 'Tastenkürzel');
-      for (const [key, what] of [['E', 'Evolutionsbaum'], ['M', 'Übersichtskarte'], ['Leertaste', 'Pause']]) {
-        const li = make('li');
-        li.append(make('kbd', undefined, key), make('span', undefined, what));
-        keys.appendChild(li);
-      }
       const foot = make('footer', 'title-foot');
-      const left = make('div', 'title-foot-left');
-      left.append(keys, make('p', 'title-credit', 'Ein moderner Nachfolger von SimEarth: The Living Planet (Maxis, 1990).'));
-      foot.append(left, make('p', 'title-motto', 'Kleine Anfänge. Große Welten.'));
+      foot.appendChild(make('p', 'title-motto', 'Kleine Anfänge. Große Welten.'));
 
       const frame = make('div', 'title-frame');
       frame.append(titleSky(), titleHud(), panel, space, foot);

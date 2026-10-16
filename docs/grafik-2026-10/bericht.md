@@ -110,7 +110,7 @@ auch keinen Button. Darunter „Planet anpassen“:
 
 Rechts der echte Globus des gewählten Planeten (größer, gröber gepixelt, mit Atmosphärenleuchten),
 Umlaufbahnen, zwei Monde und ein Asteroid. Oben rechts eine Infokarte mit Satellit und der Version aus
-`package.json`, unten Zitat, Leitspruch, Tastenkürzel und der Hinweis auf das Original.
+`package.json`, unten Zitat und Leitspruch.
 
 - **Einstellungen:** ein Dialog mit denselben Optionen wie das Menü „Optionen“ (Datumsformat, Pausen,
   Effekte reduzieren, Klang), definiert an einer Stelle (`SettingDef`, `src/settingsview.ts`).
