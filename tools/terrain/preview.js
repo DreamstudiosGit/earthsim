@@ -93,12 +93,16 @@ function composeGround(art, W, H, cellAt) {
 const CACTUS_LANDSCAPES = ['desert', 'semidesert'];
 const CACTUS_SHARE = 0.5;
 const CACTUS_IDS = C.OBJECTS.filter((o) => o.kind === 'cactus').map((o) => o.id);
+/** Savanna trees (src/savannatrees.ts): a Schirmbaum, about every eighth a baobab. */
+const BAOBAB_SHARE = 1 / 8;
 
 /**
  * Pick and place objects for every tile. `tileAt(x, y)` → { landscape, d, groups: Set, sea?, cacti? }.
  * `cacti` false or true: before or after the first cacti (src/cacti.ts).
  * Flowering plants take no slot on desert ground; once cacti exist, some of
- * those tiles carry a cactus. Returns placements { sprite, fx, fy, kind } sorted for drawing.
+ * those tiles carry a cactus. `treeShare`: the chance a savanna tile with
+ * flowering plants carries a savanna tree (undefined: none yet).
+ * Returns placements { sprite, fx, fy, kind } sorted for drawing.
  */
 function placeObjects(art, W, H, tileAt, cellAt) {
   const placed = [];
@@ -135,6 +139,10 @@ function placeObjects(art, W, H, tileAt, cellAt) {
       }
       if (desert && tile.cacti && hash(x, y, 820) < CACTUS_SHARE) {
         placed.push(spot(art, CACTUS_IDS[Math.floor(hash(x, y, 821) * CACTUS_IDS.length)], 'cactus', x, y, 10, 2));
+      }
+      if (tile.treeShare !== undefined && tile.landscape === 'savanna' && tile.groups.has('flowering') && hash(x, y, 830) < tile.treeShare) {
+        const id = OBJECT.baobab && hash(x, y, 831) < BAOBAB_SHARE ? 'baobab' : 'acacia';
+        placed.push(spot(art, id, 'tree', x, y, 11, edge));
       }
       const ab = LANDSCAPE[tile.landscape]?.abiotic ?? 0;
       if (ab > 0 && hash(x, y, 800) < ab) {
@@ -239,9 +247,11 @@ function drawObjects(ground, placed) {
 /**
  * Bands of landscapes across a strip, with frayed borders, like a slice
  * along a climate gradient. `bands` = [[landscape | 'water', widthInTiles, substrate?]];
- * `cacti` as in placeObjects (undefined: no cactus rule).
+ * `cacti` as in placeObjects (undefined: no cactus rule); a band's fourth
+ * entry fixes its density. `treeShare(dDesert, dForest)`: the savanna-tree
+ * chance by the distance in tiles to the nearest desert and forest band.
  */
-function bandScene(art, W, H, bands, groups, seed, cacti) {
+function bandScene(art, W, H, bands, groups, seed, cacti, treeShare) {
   const starts = [];
   let acc = 0;
   for (const b of bands) { starts.push(acc); acc += b[1]; }
@@ -261,12 +271,20 @@ function bandScene(art, W, H, bands, groups, seed, cacti) {
     return 2;
   };
   const tileAt = (x, y) => {
-    const [ls, , substrate] = bands[bandAt(x, y)];
+    const [ls, , substrate, fixed] = bands[bandAt(x, y)];
     if (ls === 'water') return { sea: true, landscape: 'water', d: 0, groups: new Set(groups) };
     const l = LANDSCAPE[ls];
     const mat = l.materials[substrate || 'soil'];
     const max = C.MATERIALS.find((m) => m.id === mat).densities - 1;
-    return { landscape: ls, mat, d: Math.min(max, distToBorder(x, y)), groups: new Set(groups), cacti };
+    const d = fixed ?? Math.min(max, distToBorder(x, y));
+    const reach = (pred) => {
+      for (let r = 0; r <= 6; r++) if (pred(bands[bandAt(x - r, y)][0]) || pred(bands[bandAt(x + r, y)][0])) return r;
+      return 7;
+    };
+    const share = treeShare && ls === 'savanna'
+      ? treeShare(reach((l) => l === 'desert' || l === 'semidesert'), reach((l) => l === 'forest' || l === 'rainforest'))
+      : undefined;
+    return { landscape: ls, mat, d: Math.min(max, d), groups: new Set(groups), cacti, treeShare: share };
   };
   const cellAt = (x, y) => {
     const t = tileAt(x, y);

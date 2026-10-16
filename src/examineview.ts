@@ -42,4 +42,12 @@ namespace SE {
     land.ensure(world);
     return String(land.field.signature(x, y, 1, 1, 0));
   }
+
+  /** Does the map draw a savanna tree on tile i? Part of the tile's signature, so landDigest follows it. */
+  export function landShowsSavannaTree(world: WorldState, i: number): boolean {
+    const land = PixelTerrain.shared();
+    if (TERRAIN_STYLE !== 'pixel' || !land.ready) return false;
+    land.ensure(world);
+    return land.field.savannaTree[i] === 1;
+  }
 }

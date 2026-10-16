@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 20 20" shape-rendering="crispEdges">
+  <title>Asteroid, groß</title>
+  <path fill="#737885" d="M10 2h1v1h-1zM11 3h1v1h-1zM12 4h1v1h-1zM12 5h1v1h-1zM12 6h1v1h-1zM9 7h1v1h-1zM11 7h2v1h-2zM8 8h2v1h-2zM11 8h2v1h-2zM7 9h3v1h-3zM11 9h2v1h-2zM10 10h3v1h-3zM8 11h3v1h-3zM6 12h3v1h-3zM3 13h5v1h-5zM4 14h3v1h-3z"/>
+  <path fill="#9aa0ab" d="M8 3h3v1h-3zM6 4h1v1h-1zM9 4h3v1h-3zM4 5h1v1h-1zM9 5h3v1h-3zM9 6h3v1h-3zM3 7h1v1h-1zM7 7h2v1h-2zM10 7h1v1h-1zM3 8h1v1h-1zM7 8h1v1h-1zM10 8h1v1h-1zM3 9h4v1h-4zM10 9h1v1h-1zM3 10h7v1h-7zM3 11h5v1h-5zM3 12h3v1h-3z"/>
+  <path fill="#c3c8cf" d="M7 4h2v1h-2zM5 5h4v1h-4zM4 6h5v1h-5zM4 7h3v1h-3zM4 8h3v1h-3z"/>
+  <path fill="#525663" d="M13 5h1v1h-1zM13 6h1v1h-1zM13 7h2v1h-2zM13 8h3v1h-3zM13 9h3v1h-3zM13 10h3v1h-3zM11 11h4v1h-4zM9 12h3v1h-3zM2 13h1v1h-1zM8 13h3v1h-3zM3 14h1v1h-1zM7 14h2v1h-2zM3 15h4v1h-4z"/>
+  <path fill="#363944" d="M15 7h1v1h-1zM16 8h1v1h-1zM16 9h2v1h-2zM16 10h2v1h-2zM15 11h2v1h-2zM12 12h4v1h-4zM11 13h2v1h-2zM14 13h1v1h-1zM9 14h3v1h-3zM13 14h1v1h-1zM7 15h1v1h-1z"/>
+  <path fill="#1f2128" d="M16 7h1v1h-1zM17 8h1v1h-1zM18 9h1v1h-1zM18 10h1v1h-1zM17 11h2v1h-2zM16 12h2v1h-2zM13 13h1v1h-1zM15 13h2v1h-2zM12 14h1v1h-1zM14 14h2v1h-2zM10 15h5v1h-5z"/>
+</svg>

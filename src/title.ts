@@ -3,8 +3,9 @@
  * -----------------------------------------------------------------------------
  * The first thing the player sees: their freshly formed planet turning in
  * space, the name of the game, and the ways in — continue the last world,
- * begin this one (or let another one form), or pick a save. The simulation
- * stays paused until the player chooses.
+ * start this one (the Earth or a random planet, see titleplanet.ts), the
+ * saves and the settings. The simulation stays paused until the player
+ * chooses. Decoration lives in titledecor.ts.
  * ========================================================================== */
 
 namespace SE {
@@ -16,6 +17,8 @@ namespace SE {
     continueGame(): Promise<boolean>;
     /** Replace the waiting planet with a new one. */
     reroll(): void;
+    /** Remake the waiting planet from an earlier seed. */
+    remake(seed: number): void;
     /** Sea share new planets are made with, 0..1. */
     readonly oceanShare: number;
     /** Remake the waiting planet from its own seed with another sea share. */
@@ -26,6 +29,9 @@ namespace SE {
     chooseEpoch(id: EpochId): void;
     /** The Saves dialog; true if a planet was loaded from it. */
     openSaves(): Promise<boolean>;
+    openSettings(): Promise<void>;
+    /** "Effekte reduzieren": the globe stands still and nothing twinkles. */
+    reduceEffects(): boolean;
     /** The title is gone: start playing. */
     start(): void;
   }
@@ -33,11 +39,22 @@ namespace SE {
   /** Radians the title globe turns per frame drawn. */
   const SPIN_STEP = 0.004;
   const FRAME_MS = 33;
+  /** A still globe is only redrawn this often, to follow a resized window. */
+  const STILL_MS = 500;
   /**
    * Remaking a planet takes about 30 ms, so a dragged sea slider remakes it at
    * most this often; the share it ends on is always applied.
    */
   const RESHAPE_MS = 90;
+
+  const LEAD = 'Forme eine lebendige Welt. Lasse aus den ersten Zellen einen Planeten erwachen. Entwickle Klima, Ozeane, Pflanzen und Tiere – und erlebe, wie aus einer Welt eine Zivilisation entstehen kann.';
+
+  /** A title button: icon, label and the chevron of the design. */
+  function titleButton(label: string, icon: string, cls: string, onClick: () => void): HTMLButtonElement {
+    const b = button({ label, icon: uiIcon(icon), cls: `btn title-btn ${cls}`, onClick });
+    b.appendChild(img(uiIcon('chevron-right'), 'ico title-btn-go'));
+    return b;
+  }
 
   export class TitleScreen {
     private readonly root: HTMLElement;
@@ -45,10 +62,11 @@ namespace SE {
     private globe: MapView;
     private last = 0;
     private closed = false;
+    private still = false;
+    /** The globe must be drawn on the next frame, even when it stands still. */
+    private dirty = true;
     private reshapeTimer = 0;
     private pendingShare = 0;
-    private readonly sea: OceanSlider;
-    private readonly other: HTMLButtonElement;
 
     constructor(host: HTMLElement, private readonly hooks: TitleHooks) {
       this.root = make('div', 'title-screen');
@@ -59,46 +77,59 @@ namespace SE {
       const stage = make('div', 'title-globe');
       this.canvas = make('canvas', 'title-globe-canvas');
       this.canvas.setAttribute('aria-hidden', 'true');
-      stage.appendChild(this.canvas);
+      const [orbits, ...moons] = globeOrbits();
+      stage.append(orbits, this.canvas, ...moons);
       this.globe = this.makeGlobe();
+      const space = make('div', 'title-space');
+      space.append(stage, titleInfoCard(), titleQuote());
 
-      const panel = make('div', 'title-panel');
       const name = make('h1', 'title-name');
       name.id = 'title-name';
-      name.append(make('span', undefined, 'SimEarth'), make('span', 'title-ver', '2.0'));
-      const tag = make('p', 'title-tag', 'Der lebende Planet');
-      const lead = make('p', 'title-lead', 'Lass aus den ersten Zellen einen lebendigen Planeten wachsen. Entwickle Pflanzen und Tiere, lenke Klima und Atmosphäre – und begleite vielleicht eines Tages eine Zivilisation.');
+      name.append(make('span', 'title-word', 'SimEarth'), make('span', 'title-two', '2'));
+      const logo = make('div', 'title-logo');
+      logo.append(logoOrbit(), name, make('p', 'title-tag', 'Der lebende Planet'));
 
-      const actions = make('div', 'title-actions');
       const resume = hooks.autosave ? this.continueCard(hooks.autosave) : null;
-      if (resume) actions.appendChild(resume);
-      const start = button({
-        label: hooks.autosave ? 'Diesen neuen Planeten beginnen' : 'Planet erwecken', icon: uiIcon('play'),
-        cls: `btn ${hooks.autosave ? '' : 'btn-primary '}btn-wide title-start`, onClick: () => this.begin(),
+      const planet = buildTitlePlanet({
+        epoch: hooks.epoch,
+        oceanShare: hooks.oceanShare,
+        seed: () => hooks.world().seed,
+        chooseEpoch: (id) => this.chooseEpoch(id),
+        reshape: (share) => this.reshape(share),
+        reroll: () => this.reroll(),
+        remake: (seed) => this.remake(seed),
       });
-      const picker = buildPlanetPicker(hooks.epoch, (id) => this.chooseEpoch(id));
-      this.sea = buildOceanSlider(hooks.oceanShare, (share) => this.reshape(share));
-      this.other = button({ label: 'Anderer Planet', icon: uiIcon('new-planet'), cls: 'btn btn-ghost', title: 'Einen neuen Planeten formen', onClick: () => this.reroll() });
-      this.showEpochControls(hooks.epoch);
-      const row = make('div', 'title-row');
-      row.append(
-        this.other,
-        button({ label: 'Spielstände …', icon: uiIcon('slot'), cls: 'btn btn-ghost', onClick: () => void this.saves() }),
+      const start = titleButton('Spiel starten', 'play', 'title-start', () => this.begin());
+      const buttons = make('div', 'title-buttons');
+      buttons.append(
+        start, planet.earth, planet.random,
+        titleButton('Spielstände …', 'slot', 'title-saves', () => void this.saves()),
+        titleButton('Einstellungen', 'menu-options', 'title-settings', () => void hooks.openSettings()),
       );
-      actions.append(picker.el, this.sea.el, start, row);
+
+      const panel = make('div', 'title-panel');
+      panel.append(logo, make('p', 'title-lead', LEAD));
+      if (resume) panel.appendChild(resume);
+      panel.append(buttons, planet.panel);
 
       const keys = make('ul', 'title-keys');
+      keys.setAttribute('aria-label', 'Tastenkürzel');
       for (const [key, what] of [['E', 'Evolutionsbaum'], ['M', 'Übersichtskarte'], ['Leertaste', 'Pause']]) {
         const li = make('li');
         li.append(make('kbd', undefined, key), make('span', undefined, what));
         keys.appendChild(li);
       }
-      panel.append(name, tag, lead, actions, keys);
-      const credit = make('p', 'title-credit', 'Ein moderner Nachfolger von SimEarth: The Living Planet (Maxis, 1990).');
-      this.root.append(stage, panel, credit);
+      const foot = make('footer', 'title-foot');
+      const left = make('div', 'title-foot-left');
+      left.append(keys, make('p', 'title-credit', 'Ein moderner Nachfolger von SimEarth: The Living Planet (Maxis, 1990).'));
+      foot.append(left, make('p', 'title-motto', 'Kleine Anfänge. Große Welten.'));
+
+      const frame = make('div', 'title-frame');
+      frame.append(titleSky(), titleHud(), panel, space, foot);
+      this.root.appendChild(frame);
       host.appendChild(this.root);
       // The game behind stays out of reach of Tab and screen readers; the
-      // dialog layer does not, because the Saves dialog opens from here.
+      // dialog layer does not, because Saves and Settings open from here.
       this.setBackgroundInert(true);
       window.requestAnimationFrame(this.loop);
       (resume ?? start).focus({ preventScroll: true });
@@ -108,7 +139,7 @@ namespace SE {
       const view = new MapView(this.canvas);
       view.globe = true;
       view.space = false;
-      view.pixelScale = 0.5;
+      view.pixelScale = 0.4;
       view.mode = MapMode.Terrain;
       view.spin = 2.4;
       return view;
@@ -138,7 +169,9 @@ namespace SE {
       if (this.reshapeTimer) return;
       this.reshapeTimer = window.setTimeout(() => {
         this.reshapeTimer = 0;
-        if (!this.closed) this.hooks.reshape(this.pendingShare);
+        if (this.closed) return;
+        this.hooks.reshape(this.pendingShare);
+        this.dirty = true;
       }, RESHAPE_MS);
     }
 
@@ -161,18 +194,16 @@ namespace SE {
       this.renewGlobe();
     }
 
-    private chooseEpoch(id: EpochId): void {
+    private remake(seed: number): void {
       this.flushReshape();
-      this.hooks.chooseEpoch(id);
-      this.showEpochControls(id);
+      this.hooks.remake(seed);
       this.renewGlobe();
     }
 
-    /** The sea slider and "Anderer Planet" only where the epoch leaves them a choice. */
-    private showEpochControls(id: EpochId): void {
-      const epoch = epochOf(id);
-      this.sea.el.hidden = !epoch.playerSea;
-      this.other.hidden = !epoch.varies;
+    private chooseEpoch(id: EpochId): void {
+      this.flushReshape();
+      this.hooks.chooseEpoch(id);
+      this.renewGlobe();
     }
 
     /** A fresh view for a new planet: the old one caches the previous terrain. */
@@ -180,13 +211,20 @@ namespace SE {
       const spin = this.globe.spin;
       this.globe = this.makeGlobe();
       this.globe.spin = spin;
+      this.dirty = true;
     }
 
     private loop = (now: number): void => {
       if (this.closed) return;
-      if (now - this.last >= FRAME_MS) {
+      const still = this.hooks.reduceEffects();
+      if (still !== this.still) {
+        this.still = still;
+        this.root.classList.toggle('title-still', still);
+      }
+      if (this.dirty || now - this.last >= (still ? STILL_MS : FRAME_MS)) {
         this.last = now;
-        this.globe.spin += SPIN_STEP;
+        this.dirty = false;
+        if (!still) this.globe.spin += SPIN_STEP;
         this.globe.render(this.hooks.world());
       }
       window.requestAnimationFrame(this.loop);

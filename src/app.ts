@@ -820,37 +820,7 @@ namespace SE {
               checked: () => this.editView.layers.events,
             },
             { separator: true, label: '' },
-            {
-              label: 'Datum als „vor … Jahren“ mit Erdzeitalter', icon: uiIcon('history'),
-              action: () => { this.settings.relativeDate = true; this.saveSettings(); },
-              checked: () => this.settings.relativeDate,
-            },
-            {
-              label: 'Datum als Planetenalter', icon: uiIcon('globe'),
-              action: () => { this.settings.relativeDate = false; this.saveSettings(); },
-              checked: () => !this.settings.relativeDate,
-            },
-            {
-              label: 'Entwicklungen und Meilensteine pausieren', icon: uiIcon('bell'),
-              action: () => { this.settings.pauseOnMilestone = !this.settings.pauseOnMilestone; this.notifier.pauseOnMilestone = this.settings.pauseOnMilestone; this.saveSettings(); },
-              checked: () => this.settings.pauseOnMilestone,
-            },
-            {
-              label: 'Bei Entdeckung pausieren', icon: uiIcon('pause'),
-              action: () => { this.settings.pauseOnDiscovery = !this.settings.pauseOnDiscovery; this.saveSettings(); },
-              checked: () => this.settings.pauseOnDiscovery,
-            },
-            { separator: true, label: '' },
-            {
-              label: 'Effekte reduzieren (kein Wackeln, keine Blitze)', icon: uiIcon('layer-events'),
-              action: () => { this.settings.reduceEffects = !this.settings.reduceEffects; this.editView.reduceEffects = this.settings.reduceEffects; this.saveSettings(); },
-              checked: () => this.settings.reduceEffects,
-            },
-            {
-              label: 'Klang bei neuen Entwicklungen', icon: uiIcon('menu-sound'),
-              action: () => { this.settings.sound = !this.settings.sound; this.saveSettings(); },
-              checked: () => this.settings.sound,
-            },
+            ...settingMenuItems(this.settingDefs()),
           ],
         },
         {
@@ -863,6 +833,39 @@ namespace SE {
         },
       ];
       this.menuBar = new MenuBar(el('menubar'), defs);
+    }
+
+    /** The lasting preferences, for the "Optionen" menu and the title's settings dialog. */
+    private settingDefs(): SettingDef[] {
+      return [
+        {
+          kind: 'choice', label: 'Datum',
+          options: [
+            { label: 'Datum als „vor … Jahren“ mit Erdzeitalter', icon: uiIcon('history'), on: () => this.settings.relativeDate, choose: () => { this.settings.relativeDate = true; this.saveSettings(); } },
+            { label: 'Datum als Planetenalter', icon: uiIcon('globe'), on: () => !this.settings.relativeDate, choose: () => { this.settings.relativeDate = false; this.saveSettings(); } },
+          ],
+        },
+        {
+          kind: 'toggle', label: 'Entwicklungen und Meilensteine pausieren', icon: uiIcon('bell'),
+          on: () => this.settings.pauseOnMilestone,
+          toggle: () => { this.settings.pauseOnMilestone = !this.settings.pauseOnMilestone; this.notifier.pauseOnMilestone = this.settings.pauseOnMilestone; this.saveSettings(); },
+        },
+        {
+          kind: 'toggle', label: 'Bei Entdeckung pausieren', icon: uiIcon('pause'),
+          on: () => this.settings.pauseOnDiscovery,
+          toggle: () => { this.settings.pauseOnDiscovery = !this.settings.pauseOnDiscovery; this.saveSettings(); },
+        },
+        {
+          kind: 'toggle', group: true, label: 'Effekte reduzieren (kein Wackeln, keine Blitze)', icon: uiIcon('layer-events'),
+          on: () => this.settings.reduceEffects,
+          toggle: () => { this.settings.reduceEffects = !this.settings.reduceEffects; this.editView.reduceEffects = this.settings.reduceEffects; this.saveSettings(); },
+        },
+        {
+          kind: 'toggle', label: 'Klang bei neuen Entwicklungen', icon: uiIcon('menu-sound'),
+          on: () => this.settings.sound,
+          toggle: () => { this.settings.sound = !this.settings.sound; this.saveSettings(); },
+        },
+      ];
     }
 
     private syncWindowButtons(): void {
@@ -1567,13 +1570,13 @@ namespace SE {
 
     /* ====================================================== lifecycle === */
 
-    /** `keepSeed` remakes the same planet (another sea share); `quiet` skips the toast. */
-    newPlanet(opts: { quiet?: boolean; keepSeed?: boolean } = {}): void {
+    /** `keepSeed` remakes the same planet (another sea share), `seed` an earlier one; `quiet` skips the toast. */
+    newPlanet(opts: { quiet?: boolean; keepSeed?: boolean; seed?: number } = {}): void {
       this.notifier.clear();
       this.discoveries.clear();
       this.fauna.reset();
       this.paidModels.clear();
-      const seed = opts.keepSeed ? this.world.seed : (Math.random() * 0xffffffff) >>> 0;
+      const seed = opts.seed !== undefined ? opts.seed >>> 0 : opts.keepSeed ? this.world.seed : (Math.random() * 0xffffffff) >>> 0;
       this.world.reset(seed, this.settings.oceanShare, this.settings.epoch);
       this.params.reset();
       applyEpochParams(this.params, this.settings.epoch);
@@ -2088,6 +2091,7 @@ namespace SE {
         autosave: meta,
         continueGame: () => this.loadFrom(AUTOSAVE_KEY),
         reroll: () => this.newPlanet(),
+        remake: (seed) => this.newPlanet({ seed }),
         oceanShare: this.settings.oceanShare,
         reshape: (share) => {
           this.setOceanShare(share);
@@ -2099,6 +2103,8 @@ namespace SE {
           this.newPlanet({ quiet: true, keepSeed: true });
         },
         openSaves: () => this.openSaves(),
+        openSettings: () => openSettings(this.settingDefs()),
+        reduceEffects: () => this.settings.reduceEffects,
         start: () => {
           this.title = null;
           this.setSpeed(running, true);

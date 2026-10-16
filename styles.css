@@ -8,9 +8,12 @@
    Larger feature areas live in css/ and are imported here.
    ========================================================================== */
 
+@import url("css/fonts.css");
 @import url("css/models.css");
 @import url("css/panels.css");
 @import url("css/title.css");
+@import url("css/titledecor.css");
+@import url("css/settings.css");
 @import url("css/oceanslider.css");
 @import url("css/planetpicker.css");
 @import url("css/films.css");

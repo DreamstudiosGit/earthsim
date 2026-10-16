@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 14 14" shape-rendering="crispEdges">
+  <title>Asteroid, mittel</title>
+  <path fill="#737885" d="M7 2h1v1h-1zM8 3h1v1h-1zM8 4h2v1h-2zM6 5h1v1h-1zM8 5h1v1h-1zM5 6h4v1h-4zM1 7h1v1h-1zM6 7h1v1h-1zM8 7h1v1h-1zM2 8h1v1h-1zM4 8h3v1h-3zM4 9h2v1h-2z"/>
+  <path fill="#9aa0ab" d="M2 3h1v1h-1zM6 3h2v1h-2zM1 4h1v1h-1zM6 4h2v1h-2zM4 5h2v1h-2zM7 5h1v1h-1zM1 6h1v1h-1zM3 6h2v1h-2zM2 7h4v1h-4zM7 7h1v1h-1zM3 8h1v1h-1z"/>
+  <path fill="#c3c8cf" d="M3 3h3v1h-3zM2 4h4v1h-4zM1 5h3v1h-3zM2 6h1v1h-1z"/>
+  <path fill="#525663" d="M9 3h1v1h-1zM9 5h2v1h-2zM9 6h2v1h-2zM9 7h2v1h-2zM7 8h3v1h-3zM3 9h1v1h-1zM6 9h2v1h-2zM5 10h1v1h-1z"/>
+  <path fill="#363944" d="M10 4h1v1h-1zM11 6h1v1h-1zM11 7h1v1h-1zM10 8h2v1h-2zM8 9h3v1h-3zM4 10h1v1h-1zM6 10h2v1h-2z"/>
+  <path fill="#1f2128" d="M11 5h1v1h-1zM12 6h1v1h-1zM12 7h1v1h-1zM12 8h1v1h-1zM11 9h2v1h-2zM8 10h4v1h-4zM6 11h1v1h-1z"/>
+</svg>

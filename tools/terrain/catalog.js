@@ -164,6 +164,8 @@ const OBJECTS = [
   { id: 'oak', name: 'Laubbaum', group: 'broadleaf', kind: 'tree', family: 'temperate' },
   { id: 'jungle_giant', name: 'Tropenriese', group: 'broadleaf', kind: 'tree', family: 'warm' },
   { id: 'acacia', name: 'Schirmbaum', group: 'broadleaf', kind: 'tree', family: 'warm' },
+  // In no group's list: only the savanna-tree rule (src/savannatrees.ts) sets it, beside the Schirmbaum.
+  { id: 'baobab', name: 'Affenbrotbaum', group: 'flowering', kind: 'tree', family: 'warm' },
   // --- bushes ---
   { id: 'tree_fern', name: 'Baumfarn', group: 'ferns', kind: 'bush', family: 'warm' },
   { id: 'seed_fern', name: 'Samenfarn-Busch', group: 'seedPlants', kind: 'bush', family: 'temperate' },

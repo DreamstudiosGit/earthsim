@@ -441,7 +441,7 @@ Die verbliebenen Einzelkacheln sind fast nur frisch gestörte Kacheln, die in we
   | dichter Wald | 2–3 Bäume pro Kachel (geschlossenes Kronendach) |
   | lichter Wald | 1–2 Bäume |
   | Gebüsch | 1–2 Büsche |
-  | Savanne | ca. 1 Baum pro 6 Kacheln, dazu Hochgras |
+  | Savanne | Gras als Fläche, Hochgras; Savannenbäume auf 8 % (am Wüstenrand) bis 35 % (am Waldrand) der Kacheln mit Blütenpflanzen, sobald es Laubbäume gibt |
   | Halbwüste | ca. 1 Busch pro 4 Kacheln |
   | Wüste, Halbwüste mit Blütenpflanzen | ein Kaktus auf jeder zweiten Kachel, sobald es Kakteen gibt |
   | Steppe, Tundra, Fels | 1 Objekt pro 4–6 Kacheln |
@@ -584,19 +584,21 @@ Jede der 14 Pflanzengruppen hat mindestens ein eigenes, erkennbares Objekt oder 
 | Urbäume | Urbaum (Archaeopteris) | gemäßigt |
 | Samenpflanzen | Palmfarn (warm); Samenfarn-Busch (gemäßigt) | warm, gemäßigt |
 | Nadelbäume | Fichte, Wacholder (kalt); Sumpfzypresse (nass) | kalt, nass |
-| Blütenpflanzen | Blumen, Blütenstrauch (gemäßigt); Zwergstrauch/Heide (kalt); Säulen-, Kugel-, Feigenkaktus (warm, nur Wüste und Halbwüste) | gemäßigt, kalt, warm |
+| Blütenpflanzen | Blumen, Blütenstrauch (gemäßigt); Zwergstrauch/Heide (kalt); Säulen-, Kugel-, Feigenkaktus (warm, nur Wüste und Halbwüste); Affenbrotbaum, dazu der Schirmbaum als Savannenbaum (warm, nur Savanne) | gemäßigt, kalt, warm |
 | Laubbäume | Laubbaum, Laubstrauch (gemäßigt); Tropenriese, Schirmbaum, Dornbusch (warm) | gemäßigt, warm |
 | Gräser | Grasbüschel (gemäßigt); Hochgras (warm); Schilf (nass) | gemäßigt, warm, nass |
 | Fleischfressende Pflanzen | Sonnentau | nass |
 | ohne Gruppe | Felsbrocken (3), Geröll (2), Eisbrocken (2) | kalt |
 
-Zählung: 8 Baumarten × 6 = 48, 18 Busch- und Kleinpflanzen-Arten × 3 = 54, 3 Kakteen × 3 = 9, Felsen und Eis 7. Summe 118.
+Zählung: 9 Baumarten × 6 = 54, 18 Busch- und Kleinpflanzen-Arten × 3 = 54, 3 Kakteen × 3 = 9, Felsen und Eis 7. Summe 124.
 
 **Welches Objekt eine Gruppe zeigt**, hängt von der Landschaft ab. Die Zuordnung steht als `where` im Katalog, z. B.:
 - Laubbäume: in der Savanne Schirmbaum, im Regenwald Tropenriese, sonst Laubbaum
 - Blütenpflanzen: in der Tundra Heide, im Gebüsch Blütenstrauch
 
-Kakteen sind keine eigene Gruppe, sondern die Form der Blütenpflanzen auf Wüsten- und Halbwüstenfeldern (`src/cacti.ts`). Sie erscheinen 95 Mio. Jahre nach den Blütenpflanzen. Vorher zeigen diese Felder keine Blütenpflanzen-Objekte. Danach steht auf jeder zweiten solchen Kachel (Kachel-Hash) ein Kaktus, als eigenes Objekt neben den Plätzen der Landschaft. Schilf erscheint nur mit Gräsern.
+Kakteen sind keine eigene Gruppe, sondern die Form der Blütenpflanzen auf Wüsten- und Halbwüstenfeldern (`src/cacti.ts`). Sie erscheinen 95 Mio. Jahre nach den Blütenpflanzen. Vorher zeigen diese Felder keine Blütenpflanzen-Objekte. Danach steht auf jeder zweiten solchen Kachel (Kachel-Hash) ein Kaktus, als eigenes Objekt neben den Plätzen der Landschaft.
+
+Savannenbäume sind ebenso die Form der Blütenpflanzen auf Savannenfeldern (`src/savannatrees.ts`), sobald es auf dem Planeten Laubbäume gibt. Ein Kachel-Hash setzt einen Schirmbaum, etwa jeder achte ein Affenbrotbaum. Der Anteil steigt mit der Lage von 8 % am Wüstenrand auf 35 % am Waldrand. Die Lage ergibt sich aus dem Abstand zur nächsten Wüste bzw. Halbwüste und zum nächsten Wald, höchstens 6 Kacheln weit. Die Abstände werden nur neu berechnet, wenn sich eine Landschaft ändert. Schilf erscheint nur mit Gräsern.
 
 Schatten zeichnet der Compositor, nicht das Sprite.
 

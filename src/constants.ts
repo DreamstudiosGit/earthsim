@@ -991,6 +991,17 @@ namespace SE {
   /** Share of desert tiles with flowering plants that show a cactus on the map. */
   export const CACTUS_SHARE = 0.5;
 
+  /* -------------------------------------------------------- savanna trees -- */
+  // src/savannatrees.ts: the flowering plants' savanna form, drawn only.
+
+  /** Share of savanna tiles with flowering plants that show a tree: next to the desert, next to the forest. */
+  export const SAVANNA_TREE_SHARE_DRY = 0.08;
+  export const SAVANNA_TREE_SHARE_FOREST = 0.35;
+  /** Tiles within which the nearest desert and forest count; beyond, a tile lies halfway. */
+  export const SAVANNA_TREE_REACH = 6;
+  /** Share of savanna trees that are baobabs; the others are Schirmbäume. */
+  export const SAVANNA_BAOBAB_SHARE = 1 / 8;
+
   /* ----------------------------------------------------------- time scale -- */
 
   export enum TimeScale {

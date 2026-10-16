@@ -59,7 +59,9 @@ namespace SE {
     const def = FLORA[g];
     const node = nodeForFlora(g);
     const lead = g === world.floraTop[i];
-    const name = g === Flora.Flowering && growsAsCacti(world, i) ? `${def.name} – hier als Kakteen` : def.name;
+    const form = g !== Flora.Flowering ? '' : growsAsCacti(world, i) ? ' – hier als Kakteen'
+      : landShowsSavannaTree(world, i) ? ' – hier als Savannenbaum' : '';
+    const name = def.name + form;
     const { el, body } = entry(`flora:${g}`, img(evoIcon(def.id)), name, lead ? 'prägend' : 'vorhanden');
     body.append(make('div', 'ex-group', 'Pflanzengruppe'));
     body.append(examineRows([

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 9 9" shape-rendering="crispEdges">
+  <title>Asteroid, klein</title>
+  <path fill="#b8a99b" d="M2 1h2v1h-2zM1 2h1v1h-1zM4 2h1v1h-1zM1 3h1v1h-1zM3 3h2v1h-2zM2 4h2v1h-2z"/>
+  <path fill="#ddd0c1" d="M2 2h2v1h-2zM2 3h1v1h-1z"/>
+  <path fill="#93857a" d="M5 2h1v1h-1zM5 3h1v1h-1zM4 4h2v1h-2zM2 5h3v1h-3z"/>
+  <path fill="#6e625b" d="M6 3h1v1h-1zM6 4h1v1h-1zM5 5h1v1h-1zM3 6h2v1h-2z"/>
+  <path fill="#2f2a29" d="M7 3h1v1h-1zM7 5h1v1h-1zM6 6h1v1h-1zM3 7h2v1h-2z"/>
+  <path fill="#4d4441" d="M7 4h1v1h-1zM6 5h1v1h-1zM5 6h1v1h-1z"/>
+</svg>

@@ -2,7 +2,7 @@
  * SimEarth 2.0 — terrain contact sheets
  * -----------------------------------------------------------------------------
  * One PNG per part, so each stays small enough to look at:
- *   palette · materials · transitions · masks · objects · scenes · desert
+ *   palette · materials · transitions · masks · objects · scenes · desert · savanna
  * Labels use a 3×5 pixel font; everything is drawn with nearest-neighbour
  * scaling, exactly as the map shows it.
  * ========================================================================== */
@@ -288,6 +288,45 @@ function partDesert(art) {
   return flow(W * 32 + 24, cells, 12);
 }
 
+/** Desert to forest through the savanna at its three densities, without and with savanna trees (×2, ×4). */
+const SAVANNA_BANDS = [['desert', 2, 'sand'], ['semidesert', 3, 'sand'], ['savanna', 4, 'soil', 0], ['savanna', 4, 'soil', 1],
+  ['savanna', 4, 'soil', 2], ['forest', 4]];
+const SAVANNA_GROUPS = ['grasses', 'flowering', 'broadleaf', 'seedPlants', 'conifers'];
+/** The savanna-tree chance by distance to desert and forest (src/savannatrees.ts). */
+function savannaTreeShare(dDesert, dForest) {
+  const t = dDesert > 6 && dForest > 6 ? 0.5 : dDesert > 6 ? 1 : dForest > 6 ? 0 : dDesert / (dDesert + dForest);
+  return 0.08 + (0.35 - 0.08) * t;
+}
+
+function partSavanna(art) {
+  const W = 21;
+  const H = 8;
+  const cells = [];
+  for (const [trees, name] of [[false, 'before the broadleaf trees'], [true, 'with savanna trees']]) {
+    cells.push({
+      w: W * 16 * 2, h: LABEL + H * 16 * 2,
+      draw(s, x, y) {
+        s.text(`desert - semidesert - savanna d0 d1 d2 - forest, ${name}, x2`, x, y, DIM);
+        const groups = trees ? SAVANNA_GROUPS : SAVANNA_GROUPS.filter((g) => g !== 'broadleaf');
+        s.blit(V.bandScene(art, W, H, SAVANNA_BANDS, groups, 53, true, trees ? savannaTreeShare : undefined), x, y + LABEL, 2);
+      },
+    });
+  }
+  const tex = V.bandScene(art, W, H, SAVANNA_BANDS, SAVANNA_GROUPS, 53, true, savannaTreeShare);
+  for (const [x0, name] of [[4, 'semidesert to savanna'], [12, 'savanna to forest']]) {
+    const part = new Tex(9 * 16, 5 * 16);
+    part.each((px, py) => tex.get(px + x0 * 16, py + 2 * 16));
+    cells.push({
+      w: part.w * 4, h: LABEL + part.h * 4,
+      draw(s, x, y) {
+        s.text(`close-up ${name}, x4`, x, y, DIM);
+        s.blit(part, x, y + LABEL, 4);
+      },
+    });
+  }
+  return flow(W * 32 + 24, cells, 12);
+}
+
 const PARTS = {
   palette: () => partPalette(),
   materials: (art) => partMaterials(art),
@@ -297,6 +336,7 @@ const PARTS = {
   'objects-light': (art) => partObjects(art, BG_LIGHT),
   scenes: (art) => partScenes(art),
   desert: (art) => partDesert(art),
+  savanna: (art) => partSavanna(art),
 };
 
 module.exports = { PARTS, Sheet };

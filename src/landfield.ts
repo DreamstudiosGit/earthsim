@@ -180,6 +180,9 @@ namespace SE {
     readonly top = new Uint8Array(TILE_COUNT);
     /** 1 where the flowering plants show as a cactus (cacti.ts). */
     readonly cactus = new Uint8Array(TILE_COUNT);
+    /** 1 where the flowering plants show as a savanna tree (savannatrees.ts). */
+    readonly savannaTree = new Uint8Array(TILE_COUNT);
+    private readonly reach = new SavannaReach();
     readonly sig = new Uint32Array(TILE_COUNT);
     private readonly rank = new Uint8Array(TILE_COUNT);
     private readonly low = new Uint8Array(TILE_COUNT);
@@ -194,6 +197,8 @@ namespace SE {
       const shown = mapFloraMask(world);
       const flowering = floraBit(Flora.Flowering);
       const cacti = cactiArrived(world);
+      const trees = savannaTreesArrived(world);
+      if (trees) this.reach.update(world);
       for (let i = 0; i < TILE_COUNT; i++) {
         const h = e[i];
         let key = 0;
@@ -201,6 +206,7 @@ namespace SE {
         let density = 0;
         let groups = 0;
         let cactus = 0;
+        let tree = 0;
         let shade = 0;
         let rugged = 0;
         let river = 0;
@@ -238,6 +244,8 @@ namespace SE {
               groups &= ~flowering;
               if (cacti && landHash(i % GRID_W, (i / GRID_W) | 0, 820) < CACTUS_SHARE) cactus = 1;
             }
+            if (trees && ls === Landscape.Savanna && (flora[i] & flowering) !== 0 &&
+              landHash(i % GRID_W, (i / GRID_W) | 0, 830) < savannaTreeShare(this.reach.toDry[i], this.reach.toForest[i])) tree = 1;
           }
           // A disaster's scar replaces the ground while it is fresh (docs/ereignisse-spec.md §4).
           const scar = scars[i];
@@ -266,6 +274,7 @@ namespace SE {
         this.groups[i] = groups;
         this.top[i] = floraTop[i];
         this.cactus[i] = scene === LAND_SCENE_NONE ? 0 : cactus;
+        this.savannaTree[i] = scene === LAND_SCENE_NONE ? 0 : tree;
       }
       this.edges();
       this.volcanoes(world);
@@ -275,7 +284,7 @@ namespace SE {
       const ridges = this.ridges.sig;
       for (let i = 0; i < TILE_COUNT; i++) {
         let s = Math.imul(this.key[i] ^ (this.river[i] << 8) ^ (this.edge[i] << 16) ^ (this.density[i] << 20) ^ (this.algae[i] << 23) ^ (this.scene[i] << 24), 0x9e3779b1);
-        s ^= Math.imul(this.groups[i] ^ (this.top[i] << 16) ^ (this.cactus[i] << 21), 0x85ebca77) ^ Math.imul(lines[i], 0x27d4eb2d);
+        s ^= Math.imul(this.groups[i] ^ (this.top[i] << 16) ^ (this.cactus[i] << 21) ^ (this.savannaTree[i] << 22), 0x85ebca77) ^ Math.imul(lines[i], 0x27d4eb2d);
         s ^= Math.imul((this.depth[i] * QUANT) ^ (((this.shade[i] + LAND_SHIFT_MAX) * QUANT) << 8), 0xc2b2ae3d);
         s ^= Math.imul(ridges[i] ^ (this.rugged[i] * 4) ^ (this.volcano[i] << 5), 0x27d4eb2d);
         this.sig[i] = (s ^ (s >>> 15)) >>> 0;

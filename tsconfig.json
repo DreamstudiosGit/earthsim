@@ -149,6 +149,7 @@
     "src/landatlas.ts",
     "src/landtables.ts",
     "src/hazardadapter.ts",
+    "src/savannatrees.ts",
     "src/landfield.ts",
     "src/landobjects.ts",
     "src/landridges.ts",
@@ -261,6 +262,9 @@
     "src/discoverytoast.ts",
     "src/tree.ts",
     "src/savesview.ts",
+    "src/settingsview.ts",
+    "src/titledecor.ts",
+    "src/titleplanet.ts",
     "src/title.ts",
     "src/app.ts"
   ]

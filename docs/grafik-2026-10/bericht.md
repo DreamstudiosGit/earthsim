@@ -94,9 +94,46 @@ Vorher/nachher: `vorher-karte.png` ↔ `nachher-karte.png`, `vorher-modell.png` 
 ## 4. Titelbildschirm
 
 Beim Start erscheint statt des Rückfrage-Dialogs ein Titel: der frisch entstandene Planet dreht sich als
-Pixel-Globus im All, daneben „Weiterspielen“ (mit Vorschaubild der Sicherung), „Planet erwecken“,
-„Anderer Planet“ und „Spielstände …“. Die Simulation ruht, bis gewählt ist; das Spiel dahinter ist für
-Tastatur und Vorleser gesperrt (`inert`).
+Pixel-Globus im All. Die Simulation ruht, bis gewählt ist; das Spiel dahinter ist für Tastatur und
+Vorleser gesperrt (`inert`).
+
+**Neugestaltung 16.10.2026** (nur Desktop, ab 1280 × 720; kleinere Fenster scrollen): ein HUD im
+Weltraum. Links das Pixel-Logo „SimEarth“ mit Verlauf, gerahmter „2“ und Umlaufbahn, „Der lebende
+Planet“, die Einleitung, „Weiterspielen“ (nur mit automatischer Sicherung) und die Buttons „Spiel
+starten“, „Erde“, „Zufallsplanet“, „Spielstände …“ und „Einstellungen“. Ein Tutorial gibt es nicht, also
+auch keinen Button. Darunter „Planet anpassen“:
+
+- **Erde:** die Epochen „Junge Erde“ und „Heute“ mit Beschreibung. Bei der Jungen Erde blättern Pfeile
+  durch Varianten, wie früher „Anderer Planet“.
+- **Zufallsplanet:** Pfeile durch neue Planeten, ◀ führt zu den schon gesehenen zurück (per Seed, nur in
+  dieser Sitzung). Dazu der Regler „Meer und Land“, der die Generierung tatsächlich steuert.
+
+Rechts der echte Globus des gewählten Planeten (größer, gröber gepixelt, mit Atmosphärenleuchten),
+Umlaufbahnen, zwei Monde und ein Asteroid. Oben rechts eine Infokarte mit Satellit und der Version aus
+`package.json`, unten Zitat, Leitspruch, Tastenkürzel und der Hinweis auf das Original.
+
+- **Einstellungen:** ein Dialog mit denselben Optionen wie das Menü „Optionen“ (Datumsformat, Pausen,
+  Effekte reduzieren, Klang), definiert an einer Stelle (`SettingDef`, `src/settingsview.ts`).
+- **Bewegung:** Nur die Sterne funkeln und der Globus dreht sich. Bei „Effekte reduzieren“ oder der
+  Systemeinstellung für reduzierte Bewegung steht beides still.
+- **Schriften:** Pixelify Sans (Logo, Überschriften) und JetBrains Mono (Text) liegen als woff2 mit
+  Lizenz (SIL OFL) in `assets/fonts/` und werden nur auf dem Titel verwendet.
+- **Grafiken:** Satellit, Monde und Asteroiden sind Pixel-SVGs in `assets/title/`.
+- **Version:** `npm run build` schreibt sie nach `tsc` mit `tools/stamp-version.js` in `simulation.js`.
+  `npm version` baut danach neu (Skript `version` in `package.json`), so trägt jede Veröffentlichung von
+  `scripts/ship.mjs` ihre eigene Nummer.
+
+Code: `src/title.ts` (Aufbau, Globus), `src/titleplanet.ts` (Planetenwahl), `src/titledecor.ts`
+(Dekoration), Stile in `css/title.css`, `css/titledecor.css`, `css/settings.css`, `css/fonts.css`.
+
+Geprüft in headless Chrome:
+
+- **Screenshots:** 1920 × 1080 mit Spielstand im Modus Erde und ohne Spielstand im Modus Zufallsplanet,
+  1280 × 800 mit Spielstand, 1280 × 720 ohne Spielstand.
+- **Automatisch:** 1280 × 720 bis 2560 × 1440 (sieben Größen, beide Modi, mit und ohne Spielstand) ohne
+  Scrollen, Überlappen oder abgeschnittene Beschriftungen. Dazu Fokus-Reihenfolge, sichtbarer Fokus,
+  alle Buttons, Pfeile, Regler und Epochen, keine laufende Animation bei reduzierten Effekten (Einstellung
+  und Systemeinstellung), Schriften über `file://`, keine Konsolenfehler.
 
 ## 5. Neue Dateien
 

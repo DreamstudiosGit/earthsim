@@ -2,7 +2,7 @@
  * SimEarth 2.0 — terrain recipes, family "warm"
  * -----------------------------------------------------------------------------
  * Sand, stony desert, semi-desert on sand and on rock, savanna and the
- * rainforest floor; cycads, rainforest giants, umbrella trees, tree ferns,
+ * rainforest floor; cycads, rainforest giants, umbrella trees, baobabs, tree ferns,
  * columnar, barrel and prickly-pear cacti, thorn bushes and tall grass. Ids and ranks are fixed in catalog.js.
  *
  *   materials[id](t, d)   paint the seamless texture `t` (Tex, wraps) for density d
@@ -175,30 +175,28 @@ function semidesert(t, d, look) {
   clean(t);
 }
 
-/** Savanna: golden grass in clumps on red laterite; cover grows with d. */
+/**
+ * Savanna: golden to olive grass from edge to edge, no bare earth. A denser
+ * cover is greener and thicker with tufts; a sparse one drier, with darker
+ * dry spots in the grass.
+ */
 function savanna(t, d) {
   const S = t.w;
-  mottle(t, 16, 341, 0.5, 'laterite1', 'laterite2');
-  const cover = k.fbm(S, 8, 3, 343);
-  const cut = quantile(cover, S, [0.4, 0.62, 0.84][d]);
-  const grass = mask(S, (x, y) => cover(x, y) < cut);
-  t.each((x, y) => {
-    if (grass(x, y)) return c(!grass(x, y - 1) ? 'straw3' : 'straw2');
-    if (grass(x - 1, y - 1) || grass(x, y - 1)) return c('laterite0');
-    return undefined;
-  });
-  // Blade marks inside the clumps, blade tips standing up over their top edge.
-  for (const p of scatter(S, 4, 345)) {
-    if (p.r < 0.7 && grass(p.x, p.y - 1) && grass(p.x + 2, p.y - 1) && grass(p.x, p.y + 1)) {
-      motif(t, p.s < 0.7 ? ['D.D', '.D.'] : ['L.', 'DL'], { D: 'straw1', L: 'straw3' }, p.x, p.y);
-    }
-  }
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
-      if (!grass(x, y) || grass(x, y - 1) || k.hash(x, y, 349) > 0.45) continue;
-      t.set(x, y - 1, c('straw2'));
-      if (k.hash(x, y, 350) < 0.6) t.set(x, y - 2, c('straw3'));
-    }
+  mottle(t, 16, 341, 0.4, 'straw1', 'straw2');
+  // Broad olive drifts where the grass stays greener.
+  const olive = k.fbm(S, 4, 2, 347);
+  const oliveCut = quantile(olive, S, [0.15, 0.25, 0.35][d]);
+  const greener = { [c('straw1')]: c('moss2'), [c('straw2')]: c('moss3') };
+  t.each((x, y) => (olive(x, y) < oliveCut ? greener[t.get(x, y)] : undefined));
+  // Dry spots: short, darker grass between the clumps.
+  const dry = k.fbm(S, 16, 3, 343);
+  const dryCut = quantile(dry, S, [0.14, 0.06, 0][d]);
+  t.each((x, y) => (dry(x, y) < dryCut && olive(x, y) >= oliveCut ? c('straw0') : undefined));
+  // Tufts all over: lit tips, blades, shaded blades.
+  const gold = { L: 'straw3', M: 'straw2', D: 'straw1', s: 'straw0' };
+  const green = { L: 'moss3', M: 'moss2', D: 'moss1', s: 'moss1' };
+  for (const p of scatter(S, 4, 348)) {
+    if (p.r < [0.35, 0.45, 0.55][d]) motif(t, TUFTS[p.s < 0.45 ? 0 : p.s < 0.85 ? 1 : 2], olive(p.x, p.y) < oliveCut ? green : gold, p.x, p.y);
   }
   clean(t);
 }
@@ -677,6 +675,124 @@ const TREE_FERN = [
 // Cacti, the flowering plants' desert form (src/cacti.ts): no slot of their own; the renderer
 // sets one on some desert tiles once cacti exist. Variant 2 of each blooms.
 
+// Baobab (a savanna tree, src/savannatrees.ts): grey bottle trunk, stubby branches, a flat crown of
+// leaf tufts; form 1 sparser, with hanging white flowers.
+const BAOBAB_KEY = { 0: 'leaf0', 1: 'leaf1', 2: 'leaf2', 3: 'leaf3', o: 'rock0', a: 'rock1', t: 'rock2', T: 'rock3', w: 'white0' };
+const BAOBAB = {
+  l0: [
+    '...11..111..11..',
+    '..1331133331331.',
+    '.133322333223320',
+    '.122212222212210',
+    '..0110.0110.010.',
+    '...ta...ta..ta..',
+    '....ta..ta.ta...',
+    '.....aTtttto....',
+    '.....aTTttto....',
+    '....aTTtttto....',
+    '....aTTttttto...',
+    '...aTTTttttto...',
+    '...aTTTtttttao..',
+    '...aTTTtttttao..',
+    '...aTTTtttttao..',
+    '...aTTttttttao..',
+    '...aTTtttttaao..',
+    '...aTtttttaaao..',
+    '...atttttaaaaoo.',
+    '...oaaaaaaaaoo..',
+  ],
+  l1: [
+    '..11....11...11.',
+    '.1331..1331.1331',
+    '.1220..1220.1220',
+    '..w0t..0tw..0t.w',
+    '...ta...ta..ta..',
+    '....ta..ta.ta...',
+    '.....aTtttto....',
+    '.....aTTttto....',
+    '....aTTtttto....',
+    '....aTTttttto...',
+    '...aTTTttttto...',
+    '...aTTTtttttao..',
+    '...aTTTtttttao..',
+    '...aTTTtttttao..',
+    '...aTTTtttttao..',
+    '...aTTttttttao..',
+    '...aTTtttttaao..',
+    '...aTtttttaaao..',
+    '...atttttaaaaoo.',
+    '...oaaaaaaaaoo..',
+  ],
+  m0: [
+    '..11..11..11.',
+    '.13311333133.',
+    '1333223322330',
+    '1222122212210',
+    '.011.011.010.',
+    '..ta..ta.ta..',
+    '....aTttto...',
+    '....aTTtto...',
+    '...aTTtttto..',
+    '...aTTtttto..',
+    '..aTTTttttao.',
+    '..aTTTttttao.',
+    '..aTTtttttao.',
+    '..aTTttttaao.',
+    '..aTttttaaao.',
+    '..atttttaaoo.',
+    '..oaaaaaaoo..',
+  ],
+  m1: [
+    '.11..11..11..',
+    '1331.1331.131',
+    '1220.1220.120',
+    '.w0t.0tw.0tw.',
+    '..ta..ta.ta..',
+    '....aTttto...',
+    '....aTttto...',
+    '....aTTtto...',
+    '...aTTtttto..',
+    '...aTTtttto..',
+    '..aTTTttttao.',
+    '..aTTTttttao.',
+    '..aTTtttttao.',
+    '..aTTttttaao.',
+    '..aTttttaaao.',
+    '..atttttaaoo.',
+    '..oaaaaaaoo..',
+  ],
+  s0: [
+    '..11.111..',
+    '.13313331.',
+    '1332233220',
+    '1221222110',
+    '.0t0.0t0..',
+    '..ta.ta...',
+    '...aTtto..',
+    '...aTtto..',
+    '..aTTttto.',
+    '..aTTttao.',
+    '..aTtttao.',
+    '..attaaoo.',
+    '..oaaaoo..',
+  ],
+  s1: [
+    '.11...11..',
+    '1331.1331.',
+    '1220w1220.',
+    '.0t0.0tw..',
+    '..ta.ta...',
+    '...aTtto..',
+    '...aTtto..',
+    '..aTTttto.',
+    '..aTTttto.',
+    '..aTTttao.',
+    '..aTtttao.',
+    '..attaaoo.',
+    '..oaaaoo..',
+  ],
+};
+
 // Columnar cactus (saguaro): ribbed column, elbowed arms; white flowers on the tips.
 const COLUMN_KEY = { 0: 'moss0', 1: 'moss1', 2: 'moss2', 3: 'moss3', w: 'white0', y: 'yellow0' };
 const COLUMN = [
@@ -899,6 +1015,7 @@ const objects = {
   cycad: (v) => sprite(CYCAD[`${v.size}${v.form}`], CYCAD_KEY),
   jungle_giant: (v) => sprite(GIANT[`${v.size}${v.form}`], GIANT_KEY),
   acacia: (v) => sprite(ACACIA[`${v.size}${v.form}`], ACACIA_KEY),
+  baobab: (v) => sprite(BAOBAB[`${v.size}${v.form}`], BAOBAB_KEY),
   tree_fern: (v) => sprite(TREE_FERN[v.index], TREE_FERN_KEY),
   cactus_column: (v) => sprite(COLUMN[v.index], COLUMN_KEY),
   cactus_barrel: (v) => sprite(BARREL[v.index], BARREL_KEY),
