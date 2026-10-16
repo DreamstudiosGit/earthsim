@@ -219,7 +219,7 @@ Abkürzungen der Pflanzengruppen:
 | 16 | Nadelwald | Erde | kalt bis kühl, feucht | Na | Nadelwald | 2 |
 | 17 | Regenwald | Erde | tropisch und nass | Lb (+ Bl) | Regenwald | 2 |
 | 18 | Sumpf | Moor | Feuchtgebiet, ohne Bäume | LP, Mo, GP, Bä, Fa oder Fl | Sumpf | 3 |
-| 19 | Sumpfwald | Moor | Feuchtgebiet mit Bäumen (Karbon: Bärlapp) | holzig | Sumpf | 2 |
+| 19 | Sumpfwald | Moor | Feuchtgebiet mit Bäumen (Karbon: Bärlapp) | holzig (Bärlapp nur bis zum Ende der Schuppenbäume) | Sumpf | 2 |
 
 Feuchte Tropen vor den Laubbäumen werden „Wald“ mit Urwald-Bild (Baumfarne, Schuppenbäume). Ihr Lebensraum bleibt Regenwald wie heute.
 
@@ -403,6 +403,9 @@ Die verbliebenen Einzelkacheln sind fast nur frisch gestörte Kacheln, die in we
    - Kleiner Schlagschatten unten rechts als Rampen-Verschiebung des Bodens darunter.
    - Auf Stadt- und Flusskacheln stehen keine Objekte.
 6. **Darüber, unverändert:** Städte, Ereignisse, Klima-Overlays, dann Tiere (`herds.ts`, eigene Ebene, immer sichtbar), Wolken, Cursor.
+   - Ergänzt am 15. 10.: Direkt über dem Gelände und vor den Ereignissen liegen Brandung und Strömung (`watermotion.ts`).
+   - Die Ebene wird jedes Bild gezeichnet; die Chunks bleiben unverändert.
+   - Ihre Daten liest `landsurf.ts` beim Komponieren aus dem fertigen Indexpuffer: drei Wasserringe vor jeder Küste und eine Bitmaske des sichtbaren Flusswassers.
 
 ### 4.3 Texturen
 
@@ -483,11 +486,13 @@ Die verbliebenen Einzelkacheln sind fast nur frisch gestörte Kacheln, die in we
     - alle SVG-Pflanzengrafiken in `src/floraart/`, `FLORA_ART`
     - der Pflanzenteil von `tools/species-sheet.js`, `tools/artcheck.js` und `tests/species.test.js`
 
-### 4.9 Untersuchen-Fenster (beschlossen 14. 10.)
+### 4.9 Untersuchen-Panel (aktualisiert 16. 10.)
 
-- **Kartenausschnitt:** ca. 3 × 3 Kacheln rund um die untersuchte Kachel, aus derselben 1×-Komposition wie die Karte. Pixelgenau ganzzahlig hochskaliert (4× oder 6×, je nach Fensterbreite), mit Untergrund, Übergängen und Pflanzen-Objekten.
-- **Pflanzengruppen der Kachel:** je Gruppe ein eigenes Pixel-Sprite oder, bei Boden-Gruppen wie Moos, Flechten oder Algenfilm, ein Texturausschnitt. Ganzzahlig skaliert, mit deutschem Namen.
-- Die Grafiken kommen aus demselben Atlas. Welche Gruppe welches Sprite bzw. welchen Ausschnitt zeigt, legt `groups` im Manifest fest.
+- **Feldbild:** nur die untersuchte 16 × 16-Kachel aus dem Landschafts-Atlas, mit ihren eigenen Pflanzen-Objekten und deren vollständigem Überstand. Ganzzahlig bis 8× vergrößert; hohe oder breite Objekte verringern den Faktor passend zum Bildplatz. Objekte benachbarter Felder entfallen.
+- **Kopf:** Feldbild links, Landschaft und Zustand rechts; Temperatur, Niederschlag, Höhe oder Tiefe, Windpfeil, Magma und Koordinaten jeweils einmal.
+- **Leben:** kompakte, aufklappbare Einträge mit Icon, Name und Bestand. Tierdetails verwenden die Lexikon-Porträts und Unterarten; Pflanzen zeigen ihre Gruppe und Lebensräume aus dem Evolutionsbaum. Leere Bereiche bestehen aus einer kurzen Zeile.
+- **Lebensraum-Eignung der Tiere:** alle elf Biome als Icons, mit gezeichnetem lachendem, neutralem oder weinendem Gesicht beziehungsweise rotem X. Der aktuelle Lebensraum ist umrahmt; Name und Bewertung erscheinen im Tooltip, auf dem Handy auch durch Antippen.
+- **Platzierung:** schmales Panel neben der Werkzeugleiste, auf kleinen Bildschirmen als begrenztes Blatt über der unteren Leiste. Das gewählte Feld wird bei Bedarf in den freien Kartenteil verschoben. Geöffnete Einträge bleiben bei laufender Simulation erhalten.
 
 ### 4.8 Asset-Pipeline
 
@@ -571,7 +576,7 @@ Jede der 14 Pflanzengruppen hat mindestens ein eigenes, erkennbares Objekt oder 
 | Erste Landpflanzen | Lebermoos-Polster | nass |
 | Moose | Moospolster, dazu die Moos- und Flechten-Texturen | kalt |
 | Frühe Gefäßpflanzen | Urfarn-Stängel (Rhynia) | gemäßigt |
-| Bärlapp | Schuppenbaum | nass |
+| Bärlapp | Schuppenbaum; nach dem Ende der Schuppenbäume kein Objekt (`src/lycopsids.ts`) | nass |
 | Farne & Schachtelhalme | Farnwedel, Schachtelhalm (gemäßigt); Baumfarn (warm) | gemäßigt, warm |
 | Urbäume | Urbaum (Archaeopteris) | gemäßigt |
 | Samenpflanzen | Palmfarn (warm); Samenfarn-Busch (gemäßigt) | warm, gemäßigt |

@@ -1,0 +1,95 @@
+# Stil der Katastrophen-Effekte
+
+Gilt für alle Effekte der Naturkatastrophen: Sprites, animierte Bodentexturen, Partikel und Ringe.
+Spezifikation: [../ereignisse-spec.md](../ereignisse-spec.md). Die Landschaftsregeln aus
+[../landschaft-2026-10/stil.md](../landschaft-2026-10/stil.md) gelten weiter, hier steht nur, was für Effekte dazukommt
+oder anders ist. Referenz für alle Ereignisse ist der Vulkanausbruch (`tools/fx/volcano.js`, `src/fxvolcano.ts`).
+
+## Palette
+
+- **Eine Palette:** `tools/terrain/palette.js`. Keine freien Farben, keine Halbtransparenz.
+- **Neue Farben schlägt man vor**, ändern darf sie nur der Lead. Der Vulkan kommt mit den vorhandenen Rampen aus:
+
+  | Zweck | Farben, von dunkel nach hell |
+  |---|---|
+  | Glut, Lava | `red0`, `red1`, `orange0`, `yellow0`, `white0` |
+  | dunkler Rand der Glut | `soil0`, `red0` |
+  | Asche, Rauch | `rock0` … `rock4`, Lichtkante `white0` |
+  | Basalt, Kruste | `pine0` (fast schwarz), `rock0`, `rock1`, `rock2` |
+  | Dampf | `ice2`, `ice3`, `ice4`, `white0` |
+
+- **Höchstens 12 Farben** je Frame (der Generator prüft das).
+
+## Licht und Leuchten
+
+- **Licht kommt von oben links**, auch bei Rauch, Wolken und Dampf: Lichtkante oben links, Schattenseite unten rechts.
+  `billow()` im Effekt-Kit macht das für Wolken aus runden Ballen.
+- **Leuchten** ist eine helle Palettenstufe innen mit einer dunkleren am Rand. Bodentexturen bekommen ihren dunklen
+  Rand vom Renderer (`rim` im Katalog), Sprites zeichnen ihn selbst.
+- **Kein Weichzeichner, kein Alpha.** Ausgeblendet wird mit Auflöse-Frames:
+  - `dissolve()`: geordnetes Raster, für kleine Wölkchen
+  - `crumble()`: zerfällt in Klumpen, für große Wolken (ein Raster wirkt dort wie ein Netz)
+
+## Größen, Anker und Ebenen
+
+- **Größen** in 8-px-Schritten: 8×8, 16×16, 16×32, 32×32, 32×48, 48×48. Kachelgebundene Objekte wie Flammen sind
+  16×20 oder 16×24, genau wie Bäume und Städte.
+- **Anker im Katalog:**
+  - `foot`: Die letzte Zeile steht unten mittig auf der Kachel und das Sprite wächst nach oben (Säule, Pilzwolke,
+    Trichter, Schlot). Die letzte Zeile darf nicht leer sein.
+  - `center`: Das Sprite liegt mittig auf der Kachel (Aschewolke, Wirbelsturm, Staubwolke).
+- **Ebene im Katalog:**
+  - `object`: Das Sprite wird mit den Kartenobjekten nach Fußzeile sortiert. Bäume und Städte der Zeile davor zeichnet
+    die Effektebene danach erneut darüber.
+  - `top`: Rauch, Asche und Wolken liegen über allem.
+- **Bodenzustände in Bewegung** (Lava, später Flutwasser und Glut) sind nahtlose Texturen. Der Renderer legt sie durch
+  die Randmasken des Geländes und zeichnet die Pflanzen darüber.
+
+## Animation
+
+- **4–8 Frames, 8–12 Bilder pro Sekunde**, stufig.
+- **Schleifen müssen nahtlos sein:**
+  - Was aufsteigt, hängt nur von der Höhe ab (Säule: Ballen steigen 1 px je Frame, 6 px Abstand, 6 Frames).
+  - Tropfen laufen auf Parabeln mit einer Phase, die je Frame um 1/Frames weiterrückt.
+  - Lava wechselt die Farbe bandweise (Palettenwechsel).
+- **`loop` im Katalog:** Die ersten `loop` Frames wiederholen sich, danach folgen einmal die Auflöse-Frames
+  (Aschewolke: 4 + 3).
+
+## Drehen und Spiegeln
+
+- **Nie zur Laufzeit drehen.** Jede Richtung ist ein eigener Frame (die Wellenkämme haben zum Beispiel 8 Richtungen).
+- **Gespiegelt wird im Generator.** Erst wird die Form gespiegelt, dann wird das Licht oben links neu angewendet. Ein
+  gespiegeltes fertiges Bild hätte sein Licht oben rechts. Beispiele: Wirbelsturm der Südhalbkugel, Rauchneigung mit
+  dem Wind.
+- **Zur Laufzeit gespiegelt** werden nur Sprites mit symmetrischem Licht (Flammen, Funken).
+
+## Partikel und Ringe
+
+- **Partikel** (Glut, Funken, Asche, Staub, Trümmer, Regen) sind einzelne Kunstpixel im Raster der Zoomstufe.
+  - Sie laufen ihre Rampe hinunter: Glut kühlt von gelb nach dunkelrot.
+  - Höchstens 384 gleichzeitig. Wird der Pool voll, verschwindet der älteste Partikel.
+- **Ringe** (Druck- und Bodenwellen) sind pixelgenaue Kreise (`drawRing`), ein Kunstpixel breit, oben links hell und
+  unten rechts dunkel.
+
+## Wackeln und Blitze
+
+- **Nur örtlich:** Es wackeln die Kacheln um das Epizentrum, ±1–2 Kunstpixel, mit 12 Schritten pro Sekunde. Ein Blitz
+  bleibt auf 32×32 begrenzt. Der Bildschirm selbst wackelt nie.
+- **„Effekte reduzieren“** schaltet Wackeln und Blitze ab (`FxScene.shake` macht dann nichts). Wer einen Blitz baut,
+  braucht einen Ersatz-Frame ohne Weiß.
+
+## Arbeitsablauf für Effekt-Agenten
+
+1. **Katalog:** Neue Einträge kommen in `tools/fx/catalog.js` (Id, Box, Frames, Anker, Ebene). Den Katalog ändert nur
+   der Lead, man schlägt Einträge vor.
+2. **Rezept:** Es kommt in die eigene Familiendatei `tools/fx/<familie>.js`. Gemeinsames gehört nach `smoke.js` oder
+   `kit.js` und geht über den Lead.
+3. **Prüfen:** `node tools/fx-atlas.js --check --sheet` meldet jedes `PROBLEM` und schreibt einen Kontaktbogen (1× und
+   4× auf Wiese und dunklem Grund).
+4. **Drehbuch:** Es kommt in eine eigene Datei `src/fx<ereignis>.ts` und meldet sich in `FX_SCRIPTS` an
+   (`omen`, `main`, `live`).
+5. **Aufnehmen:**
+   - Vorher mit eigenem Bundle bauen: `npx tsc -p tsconfig.json --outFile <scratch>/simulation.js`.
+   - Dann `SE_BUNDLE=<scratch>/simulation.js node tools/fx-record.js --kind <id> [--x --y] [--zoom] [--reduce]`.
+   - Heraus kommen ein animiertes PNG, ein Kontaktbogen und die Einzelbilder.
+6. **Schreiben:** `--write` für beide Atlanten macht nur der Lead.

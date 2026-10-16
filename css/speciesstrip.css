@@ -5,5 +5,5 @@
 .species-pic { width: 44px; height: 44px; padding: 4px; border-radius: 10px; background: radial-gradient(circle at 50% 38%, #24453c, #0a1412 75%); box-shadow: inset 0 0 0 1px var(--line); }
 .species-pic svg { display: block; width: 100%; height: 100%; }
 .species-stage figcaption { font-size: 11px; line-height: 1.2; color: var(--ink-3); overflow-wrap: anywhere; }
-.species-stage:not(.reached) .species-pic { opacity: 0.38; filter: grayscale(0.7); }
+.species-pic.is-unknown { display: grid; place-items: center; color: var(--ink-3); font-size: 26px; font-weight: 700; }
 .species-stage.reached figcaption { color: var(--ink-2, var(--ink)); }

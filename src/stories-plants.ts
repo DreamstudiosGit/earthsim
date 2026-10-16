@@ -39,7 +39,7 @@ namespace SE {
       beats: ['Bausteine im Urmeer', 'Ein Molekül kopiert sich selbst', 'Eine Hülle – die erste Zelle', 'Sie teilt sich – mit kleinen Fehlern'],
       innovation: 'Die erste Zelle',
       advantage: 'Damit begann die Evolution: Was sich vermehrt, beim Kopieren kleine Fehler macht und nicht in jeder Variante gleich gut zurechtkommt, verändert sich von selbst. Die erfolgreicheren Varianten werden häufiger – ohne Ziel und Plan.',
-      story: 'Wie das Leben begann, ist noch offen. Vermutlich entstanden im Urmeer, etwa an heißen Quellen, Bausteine wie Nukleotide. Daraus bildete sich ein Molekül, das sich selbst kopieren konnte – wohl RNA, eine nahe Verwandte der DNA. In einer Hülle aus Fettstoffen eingeschlossen, wurde es zur ersten Zelle. Später erfanden Cyanobakterien die Photosynthese und setzten Sauerstoff frei.',
+      story: 'Wie das Leben begann, ist noch offen. Vermutlich entstanden im Urmeer, etwa an heißen Quellen, Bausteine wie Nukleotide. Daraus bildete sich ein Molekül, das sich selbst kopieren konnte – wohl RNA, eine nahe Verwandte der DNA. In einer Hülle aus Fettstoffen eingeschlossen, wurde es zur ersten Zelle. Später entstanden Cyanobakterien mit sauerstoffbildender Photosynthese.',
       fact: 'Das Herzstück der Ribosomen, der Eiweißfabriken in jeder deiner Zellen, besteht bis heute aus RNA – vermutlich ein Überbleibsel aus der Zeit der ersten Zellen.',
     },
     eukaryotes: {
@@ -95,7 +95,7 @@ namespace SE {
       beats: ['Bärlappe am Sumpfrand', 'Schuppenbäume wachsen 30 m hoch', 'Riesige Sumpfwälder entstehen', 'Versunkene Stämme werden Kohle'],
       innovation: 'Baumriesen im Sumpf',
       advantage: 'Im Sumpf gab es Wasser im Überfluss, aber Gedränge ums Licht. Wer höher wuchs, beschattete die anderen – so wurden aus kleinen Bärlappen Bäume, gestützt von dicker Rinde statt von Holz.',
-      story: 'Bärlapppflanzen gehören zu den ältesten Gefäßpflanzen und trugen schon kleine, echte Blätter. Im Karbon wuchsen ihre Verwandten, die Schuppenbäume, 30 bis 40 Meter hoch. Ihre Stämme versanken im Sumpf, wurden zu Torf und unter Druck und Hitze über Jahrmillionen zu Steinkohle.',
+      story: 'Bärlapppflanzen gehören zu den ältesten Gefäßpflanzen und trugen schon kleine, echte Blätter. Im Karbon wuchsen ihre Verwandten, die Schuppenbäume, 30 bis 40 Meter hoch. Ihre Stämme versanken im Sumpf, wurden zu Torf und unter Druck und Hitze über Jahrmillionen zu Steinkohle. Als das Klima trockener wurde, setzten sich Samenpflanzen wie die Nadelbäume durch. Heute leben nur noch kleine, krautige Bärlappe.',
       fact: 'Ein großer Teil der Steinkohle, die Menschen heute verbrennen, stammt aus diesen Sumpfwäldern – gespeichertes Sonnenlicht von vor 300 Millionen Jahren.',
     },
     ferns: {

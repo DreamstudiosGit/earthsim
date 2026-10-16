@@ -20,6 +20,10 @@ namespace SE {
     readonly oceanShare: number;
     /** Remake the waiting planet from its own seed with another sea share. */
     reshape(oceanShare: number): void;
+    /** The planet new games start on. */
+    readonly epoch: EpochId;
+    /** Remake the waiting planet as another epoch's. */
+    chooseEpoch(id: EpochId): void;
     /** The Saves dialog; true if a planet was loaded from it. */
     openSaves(): Promise<boolean>;
     /** The title is gone: start playing. */
@@ -43,6 +47,8 @@ namespace SE {
     private closed = false;
     private reshapeTimer = 0;
     private pendingShare = 0;
+    private readonly sea: OceanSlider;
+    private readonly other: HTMLButtonElement;
 
     constructor(host: HTMLElement, private readonly hooks: TitleHooks) {
       this.root = make('div', 'title-screen');
@@ -70,13 +76,16 @@ namespace SE {
         label: hooks.autosave ? 'Diesen neuen Planeten beginnen' : 'Planet erwecken', icon: uiIcon('play'),
         cls: `btn ${hooks.autosave ? '' : 'btn-primary '}btn-wide title-start`, onClick: () => this.begin(),
       });
-      const sea = buildOceanSlider(hooks.oceanShare, (share) => this.reshape(share));
+      const picker = buildPlanetPicker(hooks.epoch, (id) => this.chooseEpoch(id));
+      this.sea = buildOceanSlider(hooks.oceanShare, (share) => this.reshape(share));
+      this.other = button({ label: 'Anderer Planet', icon: uiIcon('new-planet'), cls: 'btn btn-ghost', title: 'Einen neuen Planeten formen', onClick: () => this.reroll() });
+      this.showEpochControls(hooks.epoch);
       const row = make('div', 'title-row');
       row.append(
-        button({ label: 'Anderer Planet', icon: uiIcon('new-planet'), cls: 'btn btn-ghost', title: 'Einen neuen Planeten aus Staub und Gas formen', onClick: () => this.reroll() }),
+        this.other,
         button({ label: 'Spielstände …', icon: uiIcon('slot'), cls: 'btn btn-ghost', onClick: () => void this.saves() }),
       );
-      actions.append(sea.el, start, row);
+      actions.append(picker.el, this.sea.el, start, row);
 
       const keys = make('ul', 'title-keys');
       for (const [key, what] of [['E', 'Evolutionsbaum'], ['M', 'Übersichtskarte'], ['Leertaste', 'Pause']]) {
@@ -149,6 +158,25 @@ namespace SE {
     private reroll(): void {
       this.flushReshape();
       this.hooks.reroll();
+      this.renewGlobe();
+    }
+
+    private chooseEpoch(id: EpochId): void {
+      this.flushReshape();
+      this.hooks.chooseEpoch(id);
+      this.showEpochControls(id);
+      this.renewGlobe();
+    }
+
+    /** The sea slider and "Anderer Planet" only where the epoch leaves them a choice. */
+    private showEpochControls(id: EpochId): void {
+      const epoch = epochOf(id);
+      this.sea.el.hidden = !epoch.playerSea;
+      this.other.hidden = !epoch.varies;
+    }
+
+    /** A fresh view for a new planet: the old one caches the previous terrain. */
+    private renewGlobe(): void {
       const spin = this.globe.spin;
       this.globe = this.makeGlobe();
       this.globe.spin = spin;

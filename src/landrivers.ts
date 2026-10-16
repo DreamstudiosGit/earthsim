@@ -76,6 +76,9 @@ namespace SE {
     readonly ra: number[] = [];
     readonly rb: number[] = [];
     readonly green: number[] = [];
+    /** Arc length from the strand's source to a, px, and the strand's index: where moving water is along its river. */
+    readonly along: number[] = [];
+    readonly strand: number[] = [];
     private readonly buckets: number[][] = Array.from({ length: BUCKETS_X * BUCKETS_Y }, () => []);
     private readonly mainUp = new Int32Array(TILE_COUNT);
     private readonly strandOf = new Int32Array(TILE_COUNT);
@@ -90,7 +93,7 @@ namespace SE {
       strandOf.fill(-1);
       this.sig.fill(0);
       for (const b of this.buckets) b.length = 0;
-      for (const list of [this.ax, this.ay, this.bx, this.by, this.ra, this.rb, this.green]) list.length = 0;
+      for (const list of [this.ax, this.ay, this.bx, this.by, this.ra, this.rb, this.green, this.along, this.strand]) list.length = 0;
       for (let i = 0; i < TILE_COUNT; i++) {
         if (!river(i) || !river(down[i])) continue;
         const d = down[i];
@@ -117,7 +120,7 @@ namespace SE {
         strands.push(s);
       }
       for (let k = 0; k < strands.length; k++) this.shape(strands, k, world);
-      for (const s of strands) this.segments(s, world);
+      for (let k = 0; k < strands.length; k++) this.segments(strands[k], k, world);
     }
 
     /**
@@ -200,15 +203,19 @@ namespace SE {
       [s.xs, s.ys, s.ws] = pts;
     }
 
-    private segments(s: Strand, world: WorldState): void {
+    private segments(s: Strand, index: number, world: WorldState): void {
       const xs = s.xs as number[];
       const algae = floraBit(Flora.FreshwaterAlgae);
       const n = Math.max(1, xs.length - 1);
+      let along = 0;
       for (let k = 0; k < n; k++) {
         const k1 = Math.min(k + 1, xs.length - 1);
         const id = this.ax.length;
         this.ax.push(xs[k]); this.ay.push(s.ys[k]); this.bx.push(xs[k1]); this.by.push(s.ys[k1]);
         this.ra.push(s.ws[k] / 2); this.rb.push(s.ws[k1] / 2);
+        this.along.push(along);
+        this.strand.push(index);
+        along += Math.hypot(xs[k1] - xs[k], s.ys[k1] - s.ys[k]);
         const tile = idx(wrapX(Math.floor((xs[k] + xs[k1]) / 32)), clampY(Math.floor((s.ys[k] + s.ys[k1]) / 32)));
         this.green.push((world.flora[tile] & algae) !== 0 ? 1 : 0);
         const reach = Math.max(s.ws[k], s.ws[k1]) / 2 + BANK + 1;

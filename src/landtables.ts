@@ -59,7 +59,8 @@ namespace SE {
     readonly abioticRate: number[] = [];
     readonly abioticIds: string[][] = [];
 
-    private constructor(m: TerrainManifest) {
+    private constructor(private readonly manifest: TerrainManifest) {
+      const m = manifest;
       LANDSCAPE_IDS.forEach((id, ls) => {
         const land = m.landscapes[id];
         SUBSTRATE_IDS.forEach((sub, s) => {
@@ -117,6 +118,12 @@ namespace SE {
 
     groundKey(ls: number, substrate: number, density: number): number {
       return this.keys[(ls * 4 + substrate) * 4 + Math.min(3, density)];
+    }
+
+    /** Ground key of a material no landscape owns, such as basalt or scree under a scar; 0 if unknown. */
+    materialKey(id: string, density = 0): number {
+      const mat = this.manifest.materials[id];
+      return mat ? landKey(mat.rank, Math.min(density, mat.densities.length - 1)) : 0;
     }
   }
 }

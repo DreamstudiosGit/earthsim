@@ -4,11 +4,13 @@ Stand: 14. 10. 2026. Ab hier entdeckt der Spieler die 136 Unterarten der 17 Tier
 
 ![Lexikon und Infobox am Desktop](lexikon-desktop.png)
 
+Die Cyanobakterien bleiben die fünfte der acht Unterarten der „Ersten Zellen“. Seit 16. 10. 2026 ist diese Unterart spielmechanisch wirksam: Erst ihre lebende Biomasse produziert mikrobiellen Sauerstoff. Ihre Entdeckung wird weiterhin im Lexikon gespeichert.
+
 ## Regeln
 
 - **Entdeckung:** Eine Unterart gilt als entdeckt, sobald irgendwo auf dem Planeten eine Population auf ihrer Stufe lebt. Das prüft `FaunaDex.step` einmal je Tick, direkt nach `LifeSystem.stepLife`.
   - Jede Unterart löst bis zu einem neuen Planeten **genau einmal** eine Meldung aus. Das gilt auch, wenn sie ausstirbt und wiederkommt, und auch nach dem Laden.
-- **Unterarten sind spielmechanisch kosmetisch:** Alle 8 Unterarten einer Gruppe teilen deren Spielwerte. Die Infobox zeigt deshalb nur Gruppenwerte, die Regel, nach der Unterarten entstehen, und die tatsächlichen Umstände der Entdeckung: Datum, Lebensraum, Temperatur des Feldes, Sauerstoff, Feld.
+- **Unterarten teilen Gruppenwerte:** Die acht Unterarten einer Gruppe teilen Lebensraum- und Wachstumswerte; nur Cyanobakterien tragen zusätzlich zur Sauerstoffproduktion bei. Die Infobox zeigt deshalb nur Gruppenwerte, die Regel, nach der Unterarten entstehen, und die tatsächlichen Umstände der Entdeckung: Datum, Lebensraum, Temperatur des Feldes, Sauerstoff, Feld.
 - **Aussterben einer Unterart:** Nach **20 Ticks** ohne Population wird sie still als ausgestorben markiert, ohne Meldung.
   - Der Wert ist gemessen: In einer Partie bis zur Gegenwart verschwinden Unterarten etwa 20-mal zeitweise, die Hälfte davon für höchstens 15 Ticks, die längste Lücke dauerte 286 Ticks.
   - Kommt sie wieder, gilt sie still als „wieder aufgetaucht“.
@@ -23,6 +25,7 @@ Stand: 14. 10. 2026. Ab hier entdeckt der Spieler die 136 Unterarten der 17 Tier
   - Unentdeckte Arten erscheinen als Silhouette mit einem vagen Hinweis.
   - Im Spiel geht jede Unterart aus der vorigen hervor. Die Reihenfolge folgt dem ersten Auftreten auf der Erde; dort ist sie keine direkte Ahnenreihe.
   - Taucht eine Unterart auf, deren Vorstufe nie beobachtet wurde, wird die Vorstufe mit eingetragen und als „nicht direkt beobachtet“ gekennzeichnet. Das kommt nur nach einer stillen Übernahme vor.
+- **Evolutionsbaum:** Bei allen Tier- und Einzellergruppen bleiben Bild, Name und erstes Auftreten einer Unterart bis zur Entdeckung verborgen; der Platz zeigt „?“ und „Unentdeckt“. Entdeckte Unterarten bleiben auch nach dem Aussterben aufgedeckt.
 
 ## Speicherstand
 

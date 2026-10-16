@@ -20,6 +20,8 @@ namespace SE {
     readonly y: number;
     /** Extra class on the window root (e.g. 'win-tree'). */
     readonly cls?: string;
+    /** A fixed side panel or mobile sheet, without free dragging. */
+    readonly docked?: boolean;
     /** Called whenever the window is shown. */
     readonly onShow?: () => void;
   }
@@ -131,7 +133,7 @@ namespace SE {
 
       handle.addEventListener('pointerdown', (e) => {
         if ((e.target as HTMLElement).closest('button')) return;
-        if (e.button !== 0 || this.manager?.narrow) return;
+        if (e.button !== 0 || this.manager?.narrow || this.opts.docked) return;
         dragging = true;
         handle.setPointerCapture(e.pointerId);
         startX = e.clientX;

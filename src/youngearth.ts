@@ -10,7 +10,7 @@
 
 namespace SE {
   /** Sea share of the young Earth: emerged land was scarce before the continents grew. */
-  export const YOUNG_EARTH_OCEAN = 0.85;
+  const YOUNG_EARTH_OCEAN = 0.85;
 
   /** A finer first octave than a random planet's: many small landmasses instead of a few large ones. */
   const YOUNG_OCTAVES: readonly { cx: number; cy: number; amp: number }[] = [

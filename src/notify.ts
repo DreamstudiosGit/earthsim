@@ -59,7 +59,8 @@ namespace SE {
 
     /* ------------------------------------------------------- messages -- */
 
-    message(text: string, kind: 'info' | 'warn' | 'ok' = 'info'): void {
+    /** `action` adds one button to the line, e.g. "Zum Ereignis springen". */
+    message(text: string, kind: 'info' | 'warn' | 'ok' = 'info', action?: { label: string; run: () => void }): void {
       // One line at a time: a new message replaces the old one rather than
       // stacking, so rapid feedback (a drag across costly tiles) stays calm.
       if (!this.messageEl) {
@@ -74,6 +75,9 @@ namespace SE {
         img(kind === 'warn' ? uiIcon('warning') : kind === 'ok' ? uiIcon('check') : uiIcon('info'), 'ico toast-msg-icon'),
         make('span', 'toast-msg-text', text),
       );
+      if (action) {
+        el.appendChild(button({ label: action.label, icon: uiIcon('target'), cls: 'btn btn-small', onClick: () => { action.run(); this.dropMessage(); } }));
+      }
       el.classList.remove('leaving');
       window.clearTimeout(this.messageTimer);
       this.messageTimer = window.setTimeout(() => this.dropMessage(), MESSAGE_MS);

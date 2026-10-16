@@ -90,6 +90,7 @@
 .title-lead { font-size: 16px; line-height: 1.55; color: var(--ink-2); max-width: 430px; }
 .title-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
 .title-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.title-row .btn[hidden] { display: none; }
 .title-start { min-height: 50px; font-size: 16px; border-radius: var(--radius-m); }
 
 .title-continue {

@@ -8,8 +8,16 @@
  * ========================================================================== */
 
 namespace SE {
-  /** Sea depth (m) at the shelf break COAST_DEPTH: shelf and upper slope read as coast. */
-  const SHELF_DEPTH = 1000;
+  /**
+   * Sea depth (m) at COAST_DEPTH, the edge of the sunlit sea that marine algae
+   * need. Far below the true shelf break (~200 m), measured with the greedy
+   * probe over two seeds: at 1000 m only 14 % of the sea is coast (a random
+   * planet has 48 %), oxygen rises half as fast and the tree stalls at 24 of
+   * 31 steps; at 2500 m it stalls too. At 3500 m 41 % is coast — the
+   * continental margins and the shallower mid-ocean ridges — and all 31 steps
+   * arrive on a random planet's timeline.
+   */
+  const SHELF_DEPTH = 3500;
   /** Sea depth (m) at elevation -1. */
   const ABYSS_DEPTH = 6000;
   /**

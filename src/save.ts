@@ -15,7 +15,8 @@
  * migrated, never discarded: see `migrateV4`, which also explains every
  * reinterpretation it makes. Versions 4 and 5 then pass through `migrateV5`
  * (eight sub-species instead of three, the sea's own oxygen and iron), and
- * every version before 7 through `migrateV6` (landscapes and soil).
+ * every version before 7 through `migrateV6` (landscapes and soil), and every
+ * version before 8 through `migrateV7` (the mountain type of the crust).
  * ========================================================================== */
 
 namespace SE {
@@ -24,7 +25,7 @@ namespace SE {
   /** A file that is damaged or fails validation. */
   export class SaveCorrupt extends Error {}
 
-  export const SAVE_FORMAT = 7;
+  export const SAVE_FORMAT = 8;
   /** Where every earlier version wrote its single save. Read, never deleted. */
   export const LEGACY_SAVE_KEY = 'simearth2.save.v2';
   export const SLOT_COUNT = 3;
@@ -178,7 +179,7 @@ namespace SE {
   }
 
   export class SaveSystem {
-    /** The planet as a plain format-7 document. */
+    /** The planet as a plain document in the current format. */
     static serialize(ctx: SaveContext): Record<string, unknown> {
       const w = ctx.world;
 
@@ -238,6 +239,7 @@ namespace SE {
           landscapeNext: bytesToB64(w.landscapeNext),
           landscapeHold: bytesToB64(w.landscapeHold),
           soil: bytesToB64(w.soil),
+          upliftKind: bytesToB64(w.upliftKind),
         },
         life: {
           ids,
@@ -258,6 +260,8 @@ namespace SE {
         params,
         history: ctx.history ? ctx.history.toJSON() : null,
         fauna: ctx.fauna ? ctx.fauna.toJSON() : undefined,
+        civ: civToJSON(w),
+        coal: coalToJSON(w),
       };
     }
 
@@ -325,7 +329,7 @@ namespace SE {
       life: LifeSystem, flora: FloraSystem,
     ): { notes: string[] } {
       const version = raw.version;
-      if (version !== SAVE_FORMAT && version !== 6 && version !== 5 && version !== 4) {
+      if (version !== SAVE_FORMAT && version !== 7 && version !== 6 && version !== 5 && version !== 4) {
         throw new SaveIncompatible(version === 2 || version === 3
           ? 'Der Spielstand stammt von der alten 128 × 64-Karte und kann nicht übernommen werden.'
           : 'Unbekanntes Spielstandformat.');
@@ -349,7 +353,8 @@ namespace SE {
       RiverSystem.rebuild(stage);
       if (version === 4) SaveSystem.migrateV4(stage, stageParams, life, flora, raw, notes);
       const redate = version === 4 || version === 5 ? SaveSystem.migrateV5(stage) : null;
-      if (version !== SAVE_FORMAT) SaveSystem.migrateV6(stage);
+      if ((version as number) < 7) SaveSystem.migrateV6(stage);
+      if ((version as number) < 8) SaveSystem.migrateV7(stage);
 
       // --- commit ---
       ctx.world.copyFrom(stage);
@@ -362,6 +367,10 @@ namespace SE {
         if (raw.history) ctx.history.fromJSON(raw.history);
         if (redate) ctx.history.years.forEach((y, k) => { ctx.history!.years[k] = redate(y); });
       }
+      // Coal is an optional field too: without a sound one it is estimated
+      // (coalsave.ts). Before the landscapes are derived, which ask whether
+      // the clubmosses still count as woody.
+      restoreCoal(ctx.world, raw.coal);
       RiverSystem.rebuild(ctx.world);
       BiomeSystem.step(ctx.world, false);
       ctx.world.refreshDerived();
@@ -374,6 +383,13 @@ namespace SE {
           ctx.fauna.reset();
           ctx.fauna.adoptLiving(ctx.world);
         }
+      }
+      // City and people names are optional as well: without them, or with a
+      // damaged field, the records are derived from the grid at the next sync.
+      try {
+        restoreCiv(ctx.world, ctx.params, raw.civ);
+      } catch {
+        ctx.world.civ.clear();
       }
       return { notes };
     }
@@ -446,6 +462,11 @@ namespace SE {
         w.landscapeNext.set(next);
         w.landscapeHold.set(rawU8(f.landscapeHold, n));
         w.soil.set(rawU8(f.soil, n));
+      }
+      if ((raw.version as number) >= 8) {
+        const kind = rawU8(f.upliftKind, n);
+        for (let i = 0; i < n; i++) if (kind[i] >= UPLIFT_KIND_COUNT) throw new SaveCorrupt('Gebirgstyp ungültig');
+        w.upliftKind.set(kind);
       }
 
       // --- life ---
@@ -695,6 +716,9 @@ namespace SE {
       // Founders are placed by habitat, so the landscapes must exist first.
       SaveSystem.migrateV6(w);
       BiomeSystem.step(w, false);
+      const sea = seaFromAir(w.o2);
+      w.oceanIron = sea.iron;
+      w.oceanO2 = sea.oxygen;
       life.prepare(w, params, true);
       const evoSys = new EvolutionSystem(life, flora);
       // In tree order, ancestors first: a founder needs its parent alive
@@ -783,6 +807,17 @@ namespace SE {
         const cap = (f & VASCULAR_FLORA_MASK) ? 1 : (f & crust) ? SOIL_CRUST_MAX : 0;
         w.soil[i] = Math.round(clamp(w.vegetation[i] * SOIL_ROOT_FACTOR, 0, cap) * 255);
       }
+    }
+
+    /* ------------------------------------------------------- version 7 -- */
+
+    /**
+     * Give a planet from before format 8 the mountain type of its belts, and
+     * the regolith its age has weathered out of bare rock (rock rule).
+     */
+    private static migrateV7(w: WorldState): void {
+      classifyBelts(w);
+      seedRegolith(w);
     }
   }
 }

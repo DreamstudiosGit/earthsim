@@ -169,16 +169,55 @@ namespace SE {
   export const COLD_TEMP = 4;
   export const COOL_TEMP = 14;
   /**
-   * Where warm becomes tropical (rainforest). Lower than Whittaker's ~20 °C
-   * on purpose, so the wet equatorial lowland always qualifies once the
-   * broadleaf trees are there: its smoothed temperature has a median of
-   * 23-25 °C but a 5th percentile of only 16.6 °C (seeds 12345/777, 21 Ma),
-   * because the 7×7 mean takes in the ~1 km high land around it.
+   * Where warm becomes tropical (rainforest), read off the smoothed
+   * sea-level temperature (docs/hoehe-spec.md E5). The equatorial land lies
+   * well above it (±10°: 10th percentile 26 °C, seed 777 at 21 Ma),
+   * highland included; at 20 °C half of the 15-30° band (median 20.6 °C)
+   * turned to rainforest.
    */
-  export const TROPICAL_TEMP = 16;
+  export const TROPICAL_TEMP = 24;
   export const MOISTURE_BOUNDS: readonly number[] = [0.16, 0.24, 0.30, 0.38, 0.50];
-  /** Above this elevation no trees grow: alpine tundra, lichen or rock. */
+  /**
+   * Fixed tree line of the old rule, kept for the legacy SVG renderer and the
+   * city sites. The landscapes use the altitude belts below.
+   */
   export const TREE_LINE = 0.5;
+  /**
+   * Altitude belts (docs/hoehe-spec.md §3.6): land at or above this elevation
+   * is mountain, where the tile's own temperature decides tree line, rock belt
+   * and snow line. The game knows annual means only, so the thresholds are
+   * set by where the lines lie (tools/relief-probe.js), not by growing-season
+   * temperatures: tree line on the line about 2 km high at 40-50° and 3 km
+   * and more in the tropics (spec: 1.7-2.4 / 3.0-4.0 km). From 0 °C it lay
+   * 0.4-0.6 km too low. A whole tile is under snow all year only where it is
+   * far colder: from -6 to -12 °C summit snow covered 3-18 % of the land and
+   * cooled the colder planets through its albedo into ice ages (seed 2718 on
+   * the higher relief: 51 % ice, 8.6 °C; at -15 °C: 3 % snow, 15 °C). Alpine
+   * meadow and rock belt are about 0.9 km each.
+   */
+  export const ALPINE_MIN_ELEVATION = 0.2;
+  export const TREELINE_TEMP = -3;
+  export const ROCKBELT_TEMP = -9;
+  export const SNOW_TEMP = -15;
+  /** Degrees colder the snow line needs in dry air (moisture class dry): it lies higher there. */
+  export const SNOW_DRY_SHIFT = 2;
+  /*
+   * Rain shadow (docs/hoehe-spec.md §3.5): air that has crossed a crest
+   * sinks, warms and dries. The crest's elevation (LEE_MIN_CREST: none,
+   * LEE_FULL_CREST: full) falls by LEE_DECAY per tile behind it; a tile
+   * LEE_FULL_DROP or more below it gets that share of LEE_DRYING (below 1) less rain;
+   * the air carries its vapour on (ClimateSystem.updateMoisture). Measured
+   * on seed 777 at 21 Ma: 0.3 puts the lee a moisture class drier behind 53 %
+   * of the crests over 2 km (67 % where the windward side is not arid
+   * already), 0.6 only 55 %, but greens less land.
+   */
+  export const LEE_MIN_CREST = 0.25;
+  export const LEE_FULL_CREST = 0.5;
+  export const LEE_FULL_DROP = 0.05;
+  export const LEE_DECAY = 0.06;
+  export const LEE_DRYING = 0.3;
+  /** Ticks between two recomputations of the rain shadow: the relief moves far slower. */
+  export const LEE_REFRESH_TICKS = 8;
   /** Standing water on flat ground: wetland (substrate Moor). */
   export const WETLAND_MOISTURE = 0.70;
   export const WETLAND_MAX_ELEVATION = 0.14;
@@ -211,8 +250,31 @@ namespace SE {
   export const SOIL_EROSION_RATE = 0.01;
   /** Erosion multiplier per unit of elevation difference to the steepest neighbour. */
   export const SOIL_SLOPE_FACTOR = 10;
-  /** Soil an ice sheet scrapes off per tick. */
+  /** Soil an ice sheet scrapes off per tick down to the till (SOIL_REGOLITH), or grinds bare rock to till. */
   export const SOIL_ICE_SCOUR = 0.05;
+  /**
+   * Regolith: what weathering makes of bare rock without plants, just above
+   * SOIL_EARTH so weathered land counts as Rohboden. Slopes and ice never
+   * strip it; only lava and impacts bare the rock again (hoehe-spec §3.7).
+   */
+  export const SOIL_REGOLITH = 0.4;
+  /** Regolith weathered per tick at SOIL_WEATHER_REF_TEMP and SOIL_WEATHER_REF_MOIST. */
+  export const SOIL_WEATHER_RATE = 0.012;
+  /** Weathering scales linearly with temperature from this (frost shattering still works below it)... */
+  export const SOIL_WEATHER_COLD = -10;
+  /** ...reaching the full rate here; and linearly with moisture up to the reference. */
+  export const SOIL_WEATHER_REF_TEMP = 15;
+  export const SOIL_WEATHER_REF_MOIST = 0.3;
+  /** Bounds of each factor: cold or dry rock still weathers, warm and wet rock no faster than this. */
+  export const SOIL_WEATHER_MIN = 0.5;
+  export const SOIL_WEATHER_MAX = 1.5;
+  /**
+   * The evolution step from which bare rock weathers to regolith. Before the
+   * first land plants the young Earth stays Fels: on the real Earth soils
+   * only formed once plants had reached the land, and on the map an early
+   * brown Rohboden read as plant cover that was not there.
+   */
+  export const REGOLITH_AFTER_STEP = 'landPlants';
   /**
    * Years soil processes need to run their per-tick rates in full. Shorter
    * ticks (Civilization, Technology) scale the rates down, so soil forms
@@ -480,7 +542,7 @@ namespace SE {
     readonly color: Rgb;
     /** Survivable temperature window, degrees Celsius. */
     readonly temp: readonly [number, number];
-    /** Minimum atmospheric oxygen, percent; full capacity three points above. */
+    /** Oxygen floor in air-percent equivalents; aquatic breathers use dissolved O2. */
     readonly o2Min: number;
     /** How many tiles of open water this class can be carried across. */
     readonly raft: number;
@@ -652,6 +714,7 @@ namespace SE {
    * in src/species/; the simulation only counts the stage index.
    */
   export const SUBSPECIES_PER_CLASS = 8;
+  export const CYANOBACTERIA_STAGE = 4;
 
   /** Largest share of a class that may stand at or above each stage. */
   export const STAGE_MAX_SHARE: readonly number[] = [1.0, 0.8, 0.62, 0.48, 0.36, 0.27, 0.2, 0.14];
@@ -694,6 +757,223 @@ namespace SE {
 
   /** Energy demand per city at each tech level. */
   export const TECH_ENERGY: readonly number[] = [0, 0.1, 0.2, 0.4, 1.0, 1.6, 2.2, 3.0];
+
+  /* -------------------------------------------------- civilization tuning -- */
+  // Cities, settlers, tribes, epidemics, conflicts: docs/zivilisation-spec.md.
+
+  /** Fewest tiles between two cities, and between a city and a settlers' goal. */
+  export const CITY_MIN_DIST = 7;
+  /** Radius in tiles of the surroundings that feed a city. */
+  export const CITY_UMLAND = 3;
+  /** cityPop from which a city counts as a town, and as a metropolis. */
+  export const CITY_TOWN_POP = 0.35;
+  export const CITY_METRO_POP = 0.7;
+  /** A city stands for its surroundings: weight of its people in energy use and breath. */
+  export const CITY_WEIGHT = 3;
+  /** Settler groups under way at once: on the planet, and per tribe. */
+  export const SETTLERS_MAX = 5;
+  export const SETTLERS_PER_TRIBE = 2;
+  /**
+   * Ticks between two departures from one city, per tech level. From the
+   * industrial age on cities grow in size rather than send settlers.
+   */
+  export const SETTLER_COOLDOWN: readonly number[] = [40, 40, 40, 40, 500, 600, 700, 800];
+  /** People a settler group takes along, and a new city starts with. */
+  export const SETTLER_POP = 0.1;
+  /** Water tiles in a row that count as open sea. */
+  export const OPEN_SEA = 1000;
+  /** Path length in tiles a settler group may travel, per tech level. */
+  export const SETTLER_RANGE: readonly number[] = [0, 12, 16, 20, 30, 40, 40, 40];
+  /** Water tiles in a row it may cross, per tech level; rivers are land. */
+  export const SETTLER_WATER: readonly number[] = [0, 2, 3, 6, OPEN_SEA, OPEN_SEA, OPEN_SEA, OPEN_SEA];
+  /** At most this many tribes, one colour each. */
+  export const TRIBE_MAX = 8;
+  /** A new city this far from its tribe's capital, or across water, starts a tribe of its own. */
+  export const TRIBE_SPLIT_DIST = 15;
+  /** The distance rule founds a people only below this many; the last colours are for crossings and splits. */
+  export const TRIBE_FAR_MAX = 6;
+  /** Share of the planet's land tiles that city tiles may hold; beyond it settlers stay home. */
+  export const CITY_LAND_CAP = 0.006;
+  /** Cities of two tribes this close are neighbours: for conflicts and contagion. */
+  export const CIV_NEIGHBOUR_DIST = 14;
+  /**
+   * Conflicts: ticks between two on the planet, and of peace between the same
+   * two tribes. The spec asks for a pause of at least 40; at 40 a full planet
+   * from the Industrial age on had up to 13 wars in 1000 ticks, at 120 it has
+   * at most 4–7 (2500 ticks after sentience; seeds 12345, 2024, 12345 today).
+   */
+  export const CONFLICT_GAP = 120;
+  export const CONFLICT_PEACE = 200;
+  /** Ticks both tribes of a conflict (or an atomic strike) rest against everyone, so none fights its neighbours in turn. */
+  export const CONFLICT_TRIBE_REST = 150;
+  /** Conflicts rest this many ticks after a load. */
+  export const CONFLICT_LOAD_CALM = 100;
+  /** A city is scarce for a conflict after this many scarcity ticks; its neighbour is full above this share of capacity. */
+  export const CONFLICT_SCARCITY = 30;
+  export const CONFLICT_FULL = 0.85;
+  /** Chance per tick that one pair able to fight goes to war, times the aggression factor (about 1 at the default budget). */
+  export const CONFLICT_CHANCE = 0.025;
+  /** Fewest and most ticks a conflict lasts. */
+  export const CONFLICT_TICKS: readonly [number, number] = [6, 12];
+  /** A city's strength is its population × (1 + this × its tech level). */
+  export const CONFLICT_TECH_EDGE = 0.25;
+  /** Share of its people the loser loses, and the winner. */
+  export const CONFLICT_LOSS = 0.3;
+  export const CONFLICT_WIN_LOSS = 0.1;
+  /**
+   * The loser's city is taken at this strength ratio or with fewer people left
+   * than CONFLICT_TAKE_POP; destroyed below CONFLICT_RUIN_POP. The spec's 2.5
+   * was meant for one city against another; with every city at the front
+   * counted, fronts mostly stand at 1–2, and 2.5 left 17 of 18 wars without
+   * any change (seeds 12345 and 2024).
+   */
+  export const CONFLICT_TAKE_RATIO = 1.5;
+  export const CONFLICT_TAKE_POP = 0.12;
+  export const CONFLICT_RUIN_POP = 0.05;
+  /** Atomic war: fewest cities at the Atomic level or higher, in two tribes or more, and the chance per tick and unit of aggression. */
+  export const ATOMIC_WAR_CITIES = 4;
+  export const ATOMIC_WAR_CHANCE = 0.00035;
+
+  /** Food a landscape yields, 0..1, by `Landscape`; 0 on ground no city may stand on. */
+  export const CITY_FERTILITY: readonly number[] = [
+    0, 0, 0, 0, 0,           // ice, snow, rock, barren, desert
+    0.15, 0.2, 0.25, 0.6,    // lichen, moss, tundra, fernland
+    0.85, 1.0, 0.85, 0.3,    // steppe, meadow, savanna, semidesert
+    0.7, 0.9, 0.5, 0.55,     // shrubland, forest, taiga, rainforest
+    0.5, 0.45,               // marsh, swamp forest
+    0.1, 0.4,                // alpine meadow, cloud forest
+  ];
+  /** Share of its food land yields on raw soil, and the soil maturity (0..1) from which it yields in full. */
+  export const CITY_SOIL_MIN = 0.4;
+  export const CITY_SOIL_FULL = 0.7;
+  /** Temperature in °C at which land yields most, and the distance from it at which it yields nothing. */
+  export const CITY_TEMP_BEST = 16;
+  export const CITY_TEMP_SPAN = 34;
+  /** Food factor of a tile with a river. */
+  export const CITY_RIVER_YIELD = 1.5;
+  /** Stone-age capacity a site needs for the first city of a newly sentient species. */
+  export const SENTIENCE_SITE_CAPACITY = 0.3;
+  /** Food of a water tile in the surroundings (fishing), per tech level. */
+  export const CITY_FISHING: readonly number[] = [0.15, 0.15, 0.15, 0.3, 0.35, 0.4, 0.4, 0.4];
+  /** Share of the surroundings' food a city can use (farming, irrigation, industry), per tech level. */
+  export const CITY_TECH_YIELD: readonly number[] = [0, 0.75, 0.85, 1.0, 1.2, 1.3, 1.4, 1.5];
+  /** Ticks between two capacity updates; plate drift updates at once. */
+  export const CITY_CAPACITY_EVERY = 10;
+  /** Logistic growth rate of a city per tick, per tech level. */
+  export const CITY_GROWTH: readonly number[] = [0, 0.012, 0.013, 0.014, 0.02, 0.02, 0.02, 0.02];
+  /** Below this population a city is abandoned. */
+  export const CITY_ABANDON_POP = 0.03;
+  /** Site score: river on the tile, river beside it, coast, weight of the surroundings' food, slope. */
+  export const SITE_RIVER = 0.6;
+  export const SITE_RIVER_NEAR = 0.3;
+  export const SITE_COAST = 0.3;
+  export const SITE_FOOD = 0.35;
+  export const SITE_SLOPE = 3;
+  /** A settlers' site is chosen by its score minus this per tile of path. */
+  export const SETTLER_PATH_COST = 0.02;
+  /** Settlers only go where the score reaches this: a river, a coast or very fertile land. */
+  export const SITE_MIN_SCORE = 0.18;
+  /** Settlers leave a city at this share of its capacity, and with at least this population. */
+  export const SETTLER_DEPART_SHARE = 0.9;
+  export const SETTLER_DEPART_POP = 0.25;
+  /** Radius in which settlers whose site was taken look for another. */
+  export const SETTLER_DODGE = 2;
+  /** Ticks before a city that found no site for settlers looks again. */
+  export const SETTLER_RETRY = 120;
+  /**
+   * Chance per tick that the planet invents the next tech level, per current
+   * level: shared among the peoples by population, each rolling in its leading
+   * city. It is full once the planet has TECH_CIVILIZATION cities for the
+   * level and falls with the square of the share below, so each age lasts
+   * until the civilization has grown into it.
+   */
+  export const TECH_ADVANCE: readonly number[] = [0, 0.01, 0.006, 0.004, 0.003, 0.003, 0.003, 0];
+  export const TECH_CIVILIZATION: readonly number[] = [0, 4, 8, 14, 20, 20, 20, 20];
+  /** Fewest cities on the planet before anyone invents the next level, per current level: bronze takes a few villages. */
+  export const TECH_CITIES_MIN: readonly number[] = [0, 3, 1, 1, 1, 1, 1, 1];
+  /** Share of its own cities a people's best tech level must have reached before it invents the next. */
+  export const TECH_SPREAD_SHARE = 0.5;
+  /**
+   * An isolated people (no site for its settlers, all on one landmass within
+   * this many steps over land) invents at the full rate, for this many ticks
+   * after its last failed search for a site.
+   */
+  export const TECH_ISOLATION_REACH = 40;
+  export const TECH_ISOLATION_HOLD = 240;
+  /** Fewest people a city needs to invent. */
+  export const TECH_ADVANCE_MIN_POP = 0.2;
+  /**
+   * Fewest ticks between two new top levels on the planet. Waiting times are
+   * exponential, so without it about 5 % of games skipped an age in under 15 ticks.
+   */
+  export const TECH_MIN_AGE = 100;
+  /** Chance per tick that a city behind its tribe's best tech level catches up one level. */
+  export const TECH_EXCHANGE = 0.02;
+  /** Chance per tick that a city learns the next level from a city of another people within CIV_NEIGHBOUR_DIST. */
+  export const TECH_TRADE = 0.005;
+  /** Rare split: least age of the city, least distance to the capital, chance per people and check, ticks between checks. */
+  export const TRIBE_SPLIT_AGE = 300;
+  export const TRIBE_SPLIT_MIN_DIST = 8;
+  export const TRIBE_SPLIT_CHANCE = 0.01;
+  export const TRIBE_SPLIT_EVERY = 10;
+  /** Hunger: share of the population over capacity lost per tick. */
+  export const HUNGER_RATE = 0.1;
+  /** Epidemic chance per tick of a scarce city at full capacity, and the scarcity ticks that double it. */
+  export const EPIDEMIC_RISK = 0.002;
+  export const EPIDEMIC_SCARCITY = 60;
+  /** Highest factor scarcity raises the risk by. */
+  export const EPIDEMIC_SCARCITY_MAX = 4;
+  /** An outbreak: share lost at once, share lost per tick after, and for how many ticks. */
+  export const EPIDEMIC_HIT = 0.25;
+  export const EPIDEMIC_DECAY = 0.03;
+  export const EPIDEMIC_TICKS = 5;
+  /** Chance per tick of an outbreak to jump to one of the cities within CIV_NEIGHBOUR_DIST. */
+  export const EPIDEMIC_SPREAD = 0.06;
+  /** Share of the epidemic risk a city keeps by tech level: hygiene, then modern medicine (times the slider's cut). */
+  export const EPIDEMIC_TECH: readonly number[] = [0, 1, 1, 1, 0.3, 0.15, 0.1, 0.06];
+  /** Ticks a city stays immune after an outbreak. */
+  export const EPIDEMIC_IMMUNITY = 150;
+  /** From the Industrial age medicine cuts the risk by this share at slider 0, and at slider 1. */
+  export const EPIDEMIC_MEDICINE: readonly [number, number] = [0.3, 0.8];
+  /** Ticks the plague marker shows on a city. */
+  export const EPIDEMIC_MARK_TTL = 12;
+  /** Ticks between two messages of the same kind. */
+  export const CIV_NEWS_GAP = 30;
+
+  /* ------------------------------------------- giant clubmosses and coal -- */
+  // src/lycopsids.ts and src/coal.ts.
+
+  /** Random tiles per tick that clubmoss spores reach anywhere on the planet while the giants live. */
+  export const CLUBMOSS_SPORE_SAMPLES = 40;
+  /** Chance a spore takes root on a tile that suits clubmosses at least CLUBMOSS_SPORE_SUIT. */
+  export const CLUBMOSS_SPORE_CHANCE = 0.3;
+  export const CLUBMOSS_SPORE_SUIT = 0.3;
+  /** Suitability clubmosses keep on a tile where conifers or broadleaf trees grow: dry land, and their wet niche. */
+  export const CLUBMOSS_OUTCOMPETED = 0.02;
+  export const CLUBMOSS_NICHE = 0.5;
+  /** Below this many tiles the last clubmosses hold out on river banks among their rivals too. */
+  export const CLUBMOSS_REFUGE_TILES = 60;
+  /** Share of the land conifers and broadleaf trees must lead together before the giant clubmosses are gone. */
+  export const LYCOPSID_END_FOREST_SHARE = 0.1;
+  /** Stature of the small, herbaceous clubmosses that remain. */
+  export const CLUBMOSS_HERB_STATURE = 0.2;
+
+  /** Peat per swamp-forest tile at full cover and year, in Gt; a marsh lays down COAL_MARSH of that. */
+  export const COAL_RATE = 2.6e-7;
+  export const COAL_MARSH = 0.5;
+  /** A swamp without giant clubmosses lays down this share (lignite rather than hard coal). */
+  export const COAL_LATER = 0.1;
+  /** Cover below which a swamp lays down no peat. */
+  export const COAL_MIN_COVER = 0.2;
+  /** Years in which half the buried peat has turned into usable coal. */
+  export const COAL_HALF_LIFE = 5e6;
+  /** Share of a city's fossil energy that is coal, per tech level (oil and gas take over after industrialisation). */
+  export const COAL_SHARE: readonly number[] = [0, 0, 0, 0, 0.9, 0.4, 0.4, 0.4];
+  /** Coal in Gt one unit of fossil energy demand burns per year. */
+  export const COAL_PER_DEMAND_YEAR = 0.6;
+  /** Reserve built per year with giant clubmoss swamps, and after them: estimates for saves without a coal field. */
+  export const COAL_EST_LYCOPSID_YEAR = 6e-5;
+  export const COAL_EST_LATER_YEAR = 3.5e-5;
 
   /* ----------------------------------------------------------- time scale -- */
 
@@ -750,6 +1030,257 @@ namespace SE {
 
   /** Every disaster costs the same 50 Ω in the original. */
   export const EVENT_COST = 50;
+
+  /* -------------------------------------------- hazards (docs/ereignisse-spec.md) -- */
+
+  /** What a hazard is doing on a tile right now; drawn by the effect layer. */
+  export enum HazardTile {
+    None = 0,
+    Burning = 1,
+    Lava = 2,
+    Flood = 3,
+    Wet = 4,
+    Rubble = 5,
+  }
+
+  /** Aftermath a hazard leaves on a land tile (spec §4); healed through succession. */
+  export enum ScarKind {
+    None = 0,
+    Basalt = 1,
+    Vent = 2,
+    Burnt = 3,
+    Scorched = 4,
+    Crater = 5,
+    Mud = 6,
+    Windthrow = 7,
+    FissureH = 8,
+    FissureV = 9,
+    FissureD1 = 10,
+    FissureD2 = 11,
+    Scree = 12,
+    Ruins = 13,
+    Ash = 14,
+    Fallout = 15,
+  }
+  export const SCAR_NAMES: readonly string[] = [
+    '', 'Frische Lava (Basalt)', 'Vulkanschlot', 'Verbrannte Erde', 'Versengter Boden', 'Einschlagkrater',
+    'Schlamm', 'Windwurf', 'Erdriss', 'Erdriss', 'Erdriss', 'Erdriss', 'Schutt', 'Ruinen', 'Asche', 'Fallout',
+  ];
+  /**
+   * Ticks a scar holds its ground before succession may start (K3): short for
+   * burns and mud, long for lava, craters and fallout. Ticks, not years, so a
+   * scar stays visible in every time scale. 255 never ends (a volcano's vent).
+   */
+  export const SCAR_MIN_TICKS: readonly number[] = [0, 60, 255, 12, 12, 80, 10, 12, 30, 30, 30, 30, 20, 30, 80, 150];
+
+  /** Most hazards running at once; a natural one beyond that is dropped. */
+  export const HAZARD_MAX_ACTIVE = 8;
+  /** Real-time omen per EventKind (ms), played before the hazard starts. */
+  export const HAZARD_OMEN_MS: readonly number[] = [800, 800, 1000, 1000, 600, 800, 600, 0];
+  /** Real-time main animation per EventKind (ms), played as the hazard starts. */
+  export const HAZARD_MAIN_MS: readonly number[] = [3000, 2000, 2500, 3000, 3500, 2000, 2500, 0];
+
+  /** A volcano lifts its vent and the ring around it (≈ 900 m and 270 m). */
+  export const VOLCANO_VENT_LIFT = 0.2;
+  export const VOLCANO_RING_LIFT = 0.06;
+  /** A cone raised in deep ocean stays this far below the surface: no island (K5). */
+  export const VOLCANO_DEEP_CAP = -0.02;
+  /** Lava tiles per eruption: VOLCANO_LAVA_MIN plus a hashed share of VOLCANO_LAVA_SPAN. */
+  export const VOLCANO_LAVA_MIN = 6;
+  export const VOLCANO_LAVA_SPAN = 6;
+  /** Furthest a flow runs from its vent, in tiles (Chebyshev). */
+  export const VOLCANO_LAVA_REACH = 6;
+  /** A neighbour this close in height to the lowest one splits the flow. */
+  export const VOLCANO_BRANCH_DROP = 0.01;
+  /** Chance that a flow with two such neighbours splits. */
+  export const VOLCANO_BRANCH_CHANCE = 0.5;
+  /** Lava stands this thick: it runs over bumps and out of hollows lower than that. */
+  export const VOLCANO_LAVA_THICK = 0.03;
+  /** Ticks per cooling stage: glowing, dark red, crust; then basalt. */
+  export const LAVA_STAGE_TICKS: readonly number[] = [3, 3, 4];
+  /** Water at least this shallow turns to land under lava, at most LAVA_LAND_MAX tiles per eruption (K5). */
+  export const LAVA_LAND_DEPTH = -0.05;
+  export const LAVA_LAND_MAX = 2;
+  /** Height above the sea of the new land lava builds. */
+  export const LAVA_LAND_HEIGHT = 0.005;
+  /** Ticks an underwater eruption steams before it is over. */
+  export const VOLCANO_STEAM_TICKS = 6;
+  /** Ash fall: cities this close to the vent lose this share of their people. */
+  export const VOLCANO_ASH_RADIUS = 2;
+  export const VOLCANO_ASH_LOSS = 0.15;
+  /** Global atmosphere per eruption, unchanged from the old brush (K6). */
+  export const VOLCANO_CO2 = 25;
+  export const VOLCANO_DUST = 0.05;
+
+  /* Chain reactions (hazardchain.ts). */
+  /** Lava or a meteor's blast sets plants on fire with at least this cover, drier than this moisture (spec §3.9). */
+  export const CHAIN_FIRE_COVER = 0.35;
+  export const CHAIN_FIRE_MOISTURE = 0.4;
+  /** A quake at sea raises a tidal wave of this strength per magnitude (M 2: half a full wave, M 3: three quarters). */
+  export const CHAIN_QUAKE_WAVE = 0.25;
+
+  /* Wildfire (hazardfire.ts). */
+  /** Ignition chance per burning neighbour and tick at full fuel, dryness and wind; diagonals × FIRE_DIAGONAL. */
+  export const FIRE_SPREAD = 0.55;
+  export const FIRE_DIAGONAL = 0.7;
+  /** Fuel per unit of plant cover without woody plants (grass, ferns, moss burn lighter). */
+  export const FIRE_HERB_FUEL = 0.6;
+  /** Spread factor with the wind, across it and against it. */
+  export const FIRE_DOWNWIND = 1.8;
+  export const FIRE_CROSSWIND = 1;
+  export const FIRE_UPWIND = 0.3;
+  /** Dryness = clamp(FIRE_DRY_BASE − FIRE_DRY_MOIST · moisture, 0, 1), × FIRE_HOT_DRY above FIRE_HOT_C, × FIRE_COLD_DRY below 0 °C. */
+  export const FIRE_DRY_BASE = 1.2;
+  export const FIRE_DRY_MOIST = 1.4;
+  export const FIRE_HOT_C = 25;
+  export const FIRE_HOT_DRY = 1.2;
+  export const FIRE_COLD_DRY = 0.5;
+  /** A tile burns this many ticks, more with more fuel. */
+  export const FIRE_BURN_MIN = 2;
+  export const FIRE_BURN_MAX = 4;
+  /** Caps per fire: tiles from the origin (Chebyshev), tiles burnt, ticks. */
+  export const FIRE_REACH = 10;
+  export const FIRE_MAX_TILES = 90;
+  export const FIRE_MAX_TICKS = 40;
+  /** A burnt-out tile keeps this share of its plant cover; life on it loses FIRE_LIFE_LOSS. */
+  export const FIRE_KEEP = 0.2;
+  export const FIRE_LIFE_LOSS = 0.7;
+  /** A city the fire reaches loses this share of its people (once per fire). */
+  export const FIRE_CITY_LOSS = 0.2;
+  /** CO₂ (ppm) per unit of burnt plant cover; dust per burnt tile, at most FIRE_DUST_MAX per fire. */
+  export const FIRE_CO2 = 0.8;
+  export const FIRE_DUST_TILE = 0.0003;
+  export const FIRE_DUST_MAX = 0.02;
+
+  /* Meteor and atomic strike (hazardimpact.ts). */
+  /** A blast ring is the rounded distance, wobbled by up to ± half this per tile, so scars come out round and ragged. */
+  export const IMPACT_RING_WOBBLE = 0.7;
+  /** A meteor sinks its tile into a crater (≈ 270 m), whose floor stays this far above the sea. */
+  export const METEOR_CRATER_DEPTH = 0.06;
+  export const METEOR_CRATER_FLOOR = 0.005;
+  /** Ring 1 is scorched: plant cover kept, life lost. */
+  export const METEOR_RING1_KEEP = 0.2;
+  export const METEOR_RING1_KILL = 0.8;
+  /** Ring 2 is scorched on this hashed share of its tiles, more lightly. */
+  export const METEOR_RING2_SHARE = 0.5;
+  export const METEOR_RING2_KEEP = 0.5;
+  export const METEOR_RING2_KILL = 0.4;
+  /** Cities in ring 2 lose this share; nearer ones are destroyed. */
+  export const METEOR_RING2_CITY_LOSS = 0.5;
+  /** Sea life within ring 1 of an impact at sea. */
+  export const METEOR_SEA_KILL = 0.6;
+  /** Global atmosphere per impact, unchanged from the old brush (K6). */
+  export const METEOR_DUST = 0.18;
+  export const METEOR_CO2 = 40;
+  /** Atomic strike, ring 2: life lost, plant cover kept, ticks its fuel burns (it does not spread). */
+  export const ATOMIC_RING2_KILL = 0.6;
+  export const ATOMIC_RING2_KEEP = 0.2;
+  export const ATOMIC_FIRE_TICKS = 2;
+  /** Most of the four ring-1 corners that turn to ash; the others fall to ring 2, so ground zero reads round. */
+  export const ATOMIC_ASH_CORNERS = 2;
+  /** Fallout zone: this ring plus a plume this many tiles downwind. */
+  export const ATOMIC_FALLOUT_RADIUS = 3;
+  export const ATOMIC_PLUME = 3;
+  /** Life in the fallout zone loses this much per tick for ATOMIC_FALLOUT_TICKS. */
+  export const ATOMIC_FALLOUT_KILL = 0.02;
+  export const ATOMIC_FALLOUT_TICKS = 20;
+  export const ATOMIC_DUST = 0.15;
+
+  /* Tidal wave and hurricane (hazardwater.ts). */
+  /** Ticks a tidal wave takes to cross a tile of deep sea (below COAST_DEPTH), shelf and shallows (above WAVE_SHALLOW). */
+  export const WAVE_TICKS_DEEP = 0.33;
+  export const WAVE_TICKS_SHELF = 0.5;
+  export const WAVE_TICKS_SHALLOW = 1;
+  export const WAVE_SHALLOW = -0.05;
+  /** Longest path over the water, in tiles; the wave keeps WAVE_DECAY of its energy per tile. */
+  export const WAVE_PATH_MAX = 32;
+  export const WAVE_DECAY = 0.93;
+  /** Wave height at the coast at full energy (≈ 400 m game height, approved). */
+  export const WAVE_HEIGHT = 0.09;
+  /** Height a wave or surge loses per land step, and the most land steps it runs. */
+  export const FLOOD_RUNUP_LOSS = 0.012;
+  export const FLOOD_RUNUP_STEPS = 6;
+  /** Ticks the water stands once it stops climbing; then it recedes, inland first. */
+  export const FLOOD_HOLD_TICKS = 2;
+  /** Water this deep does the full damage; shallower water from FLOOD_LIFE_SHALLOW and FLOOD_CITY_LOSS up. */
+  export const FLOOD_DEPTH_FULL = 0.04;
+  export const FLOOD_LIFE_LOSS = 0.8;
+  export const FLOOD_LIFE_SHALLOW = 0.4;
+  export const FLOOD_CITY_LOSS = 0.6;
+  /** Plant cover a flood leaves, and the moisture it brings. */
+  export const FLOOD_VEGETATION_KEEP = 0.4;
+  export const FLOOD_MOISTURE = 0.5;
+  /** Hurricane strength from the sea surface (°C): at least WARM 3, at least MILD 2, cooler or over land 1. */
+  export const HURRICANE_WARM_SEA = 26;
+  export const HURRICANE_MILD_SEA = 20;
+  export const HURRICANE_MAX = 4;
+  /** Strength per tick: gained over warm sea, lost over cooler sea and over land. */
+  export const HURRICANE_GAIN = 0.25;
+  export const HURRICANE_SEA_LOSS = 0.3;
+  export const HURRICANE_LAND_LOSS = 0.8;
+  /** Ticks a storm moves at most. */
+  export const HURRICANE_TRACK_MAX = 24;
+  /** Below this latitude it moves west with the trade winds, beyond it recurves east. */
+  export const HURRICANE_RECURVE_LAT = 30;
+  /** Poleward drift in tiles per tick, with a hashed jitter of ± half HURRICANE_DRIFT_JITTER. */
+  export const HURRICANE_DRIFT = 0.3;
+  export const HURRICANE_DRIFT_JITTER = 0.2;
+  /** Per tick in the eye and ring 1: moisture, life and city loss per strength; ring 2 gets HURRICANE_OUTER_MOISTURE. */
+  export const HURRICANE_MOISTURE = 0.3;
+  export const HURRICANE_OUTER_MOISTURE = 0.15;
+  export const HURRICANE_LIFE_LOSS = 0.08;
+  export const HURRICANE_CITY_LOSS = 0.04;
+  /** Forests fall from this strength on and keep this share of their cover. */
+  export const HURRICANE_WINDTHROW_MIN = 2;
+  export const HURRICANE_WINDTHROW_KEEP = 0.7;
+  /** Wet ground lasts HURRICANE_WET_TICKS plus a hashed 0..HURRICANE_WET_SPAN ticks. */
+  export const HURRICANE_WET_TICKS = 6;
+  export const HURRICANE_WET_SPAN = 4;
+  /** Landfall from this strength on pushes a storm surge of HURRICANE_SURGE × strength up the coast. */
+  export const HURRICANE_SURGE_MIN = 3;
+  export const HURRICANE_SURGE = 0.02;
+  /** Landfall from this strength on sets down 1 tornado, or 2 with TORNADO_SECOND_CHANCE, on land within TORNADO_SPAWN_RING of the eye. */
+  export const TORNADO_MIN_STRENGTH = 3;
+  export const TORNADO_SECOND_CHANCE = 0.5;
+  export const TORNADO_SPAWN_RING = 2;
+  /** Tiles a tornado runs inland, one a tick, hashed between these. */
+  export const TORNADO_RUN_MIN = 2;
+  export const TORNADO_RUN_MAX = 4;
+  /** On every tile it crosses: windthrow from this landscape level on, keeping this plant cover; life and city losses. */
+  export const TORNADO_WINDTHROW_LEVEL = 3;
+  export const TORNADO_VEGETATION_KEEP = 0.5;
+  export const TORNADO_LIFE_LOSS = 0.3;
+  export const TORNADO_CITY_LOSS = 0.2;
+
+  /* Earthquake (hazardquake.ts). */
+  /** Magnitude within QUAKE_PLATE_ROWS rows of a plate boundary, and elsewhere; the fissure is 2·M + 1 tiles long. */
+  export const QUAKE_PLATE_ROWS = 6;
+  export const QUAKE_MAG_PLATE = 3;
+  export const QUAKE_MAG_INLAND = 2;
+  /** Furthest any change reaches from the epicentre (Chebyshev): slides from radius 3 onto a neighbour. */
+  export const QUAKE_REACH = 4;
+  /** An uplift gradient at least this steep near the epicentre marks a mountain belt the fissure follows. */
+  export const QUAKE_BELT_GRADIENT = 0.02;
+  /** One side of the fissure rises QUAKE_OFFSET_PER_M · M, over QUAKE_OFFSET_DEPTH tile rows. */
+  export const QUAKE_OFFSET_PER_M = 0.01;
+  export const QUAKE_OFFSET_DEPTH = 2;
+  /** Cities lose this share up to QUAKE_CITY_NEAR tiles away, and QUAKE_CITY_FAR_LOSS up to QUAKE_CITY_FAR. */
+  export const QUAKE_CITY_NEAR = 1;
+  export const QUAKE_CITY_NEAR_LOSS = 0.4;
+  export const QUAKE_CITY_FAR = 3;
+  export const QUAKE_CITY_FAR_LOSS = 0.15;
+  /** Ticks a damaged city lies in rubble: QUAKE_RUBBLE_MIN plus a hashed 0..QUAKE_RUBBLE_SPAN. */
+  export const QUAKE_RUBBLE_MIN = 8;
+  export const QUAKE_RUBBLE_SPAN = 4;
+  /** Slopes within QUAKE_SLIDE_RADIUS dropping more than QUAKE_SLIDE_DROP (≈ p85) to a neighbour may slide. */
+  export const QUAKE_SLIDE_RADIUS = 3;
+  export const QUAKE_SLIDE_DROP = 0.12;
+  /** Chance a steep tile slides at the strongest magnitude; scaled by M / QUAKE_MAG_PLATE. */
+  export const QUAKE_SLIDE_CHANCE = 0.5;
+  /** Height a slide moves from its tile onto its lowest neighbour. */
+  export const QUAKE_SLIDE_AMOUNT = 0.02;
+  /** Landslides come down over this many ticks after the shock. */
+  export const QUAKE_SLIDE_TICKS = 3;
 
   /* ---------------------------------------------------------------- tools -- */
 

@@ -89,6 +89,30 @@ test('markers stand only where their class lives, one tile apart at least', () =
   }
 });
 
+test('markers keep a tile away from cities, and leave when a city is founded beside them', () => {
+  const { s, herds, rand } = planet();
+  const w = s.world;
+  assert.ok(herds.markers.length > 0, 'the test planet has creatures');
+  const m = herds.markers.find((k) => !w.isWater(k.tile)) ?? herds.markers[0];
+  const x = m.tile % SE.GRID_W;
+  const y = Math.floor(m.tile / SE.GRID_W);
+  const beside = SE.idx(SE.wrapX(x + 1), y);
+  const before = { tech: w.tech[beside], pop: w.cityPop[beside] };
+  w.tech[beside] = SE.Tech.Stone;
+  w.cityPop[beside] = 0.3;
+  w.refreshDerived();
+  try {
+    herds.update(w, 1e9, rand);
+    assert.ok(!herds.markers.includes(m), 'the marker beside the new city is gone');
+    for (const k of herds.markers) assert.ok(!SE.nearCity(w, k.tile), 'no marker on or next to a city');
+  } finally {
+    w.tech[beside] = before.tech;
+    w.cityPop[beside] = before.pop;
+    w.refreshDerived();
+    herds.update(w, 2e9, rand);
+  }
+});
+
 test('markers wander one tile at a time over their own class’s tiles and face where they go', () => {
   const { s, herds, advance } = planet();
   const w = s.world;

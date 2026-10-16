@@ -7,7 +7,35 @@ Eine Natur- und Evolutions-Sandbox im Browser, als moderner Nachfolger von *SimE
 - **Spielen:** `index.html` im Browser öffnen. Es braucht keinen Server und keine Installation. Läuft am Desktop und auf dem Handy, mit Maus oder Touch.
 - **Entwickeln:** `npm run build` baut `simulation.js`, `npm test` führt alle Tests aus. Die Regeln für Mitarbeit stehen in [AGENTS.md](AGENTS.md).
 
-## Neu in Version 0.7.0
+## Neu in Version 0.8.0
+
+### Erde als Startplanet
+- Neben dem Zufallsplaneten gibt es die **Erde** in zwei Epochen: **Junge Erde** (Hadaikum) und **Heute** mit den echten Kontinenten.
+- Das Leben beginnt in jeder Epoche von vorn, bei „Heute“ also auf den heutigen Kontinenten.
+
+### Zivilisation
+- Städte sind einzelne Orte statt eines Stadtteppichs. **Siedler** ziehen sichtbar über die Karte und gründen neue Städte an Flüssen und Küsten.
+- Jede Stadt gehört zu einem **Volk** mit Farbe und Namen. Hunger, **Seuchen** und seltene **Kriege** entstehen aus Knappheit.
+- Die Stadtgrafik ist Pixel-Art und wechselt mit dem Zeitalter.
+
+### Naturkatastrophen
+- Wirbelsturm, Flutwelle, Meteorit, Vulkanausbruch, Atomschlag, Flächenbrand, Erdbeben und Seuche werden über das Werkzeug „Ereignis auslösen“ auf ein Feld gesetzt.
+- Jede Katastrophe breitet sich aus, hinterlässt Narben und kann Folgen auslösen, etwa eine Flutwelle nach einem Meteoriten im Meer.
+- Animierte Pixel-Effekte auf der Karte.
+
+### Gebirge, Höhe und Wasser
+- Deutliche Gebirgszüge mit Höhenstufen: Wald, alpine Matte, Schutt und Schnee. Dazu kommen Regenschatten, Vulkankegel und Inselbögen.
+- Nackten Fels gibt es nur noch im Hochgebirge, auf junger Erde und auf frischem Vulkangestein.
+- Brandung an den Küsten, Gischt an Klippen und sichtbare Strömung in Flüssen.
+
+### Kohle und Riesenbärlappe
+- Ein weltweiter **Kohlevorrat** entsteht aus Torf in Sumpfwäldern. Zivilisationen bauen ihn ab dem Industriezeitalter ab.
+- Die Schuppenbäume verschwinden, sobald Nadel- und Laubbäume genug Land prägen.
+
+### Klimakarten
+- Lufttemperatur, Meerestemperatur und die Überlagerung „Wärme“ nutzen eine neue Farbskala: blau unter 12 °C, bernstein bis rot darüber, mit gleichmäßig abgestufter Helligkeit. Tropen, Subtropen, gemäßigte Breiten und Polargebiete sind jetzt klar zu unterscheiden.
+
+## Version 0.7.0
 
 ### Arten-Lexikon
 - Alle 136 Unterarten der 17 Tiergruppen lassen sich einzeln entdecken, von den Urzellen bis zu den Bisons.
@@ -54,6 +82,11 @@ Eine Natur- und Evolutions-Sandbox im Browser, als moderner Nachfolger von *SimE
 
 - Arten-Lexikon: [docs/oekosystem-2026-10/lexikon.md](docs/oekosystem-2026-10/lexikon.md)
 - Pixel-Landschaft: [docs/biomes-spec.md](docs/biomes-spec.md), [docs/landschaft-2026-10/](docs/landschaft-2026-10/)
+- Epochen: [docs/epochen-2026-10/bericht.md](docs/epochen-2026-10/bericht.md)
+- Zivilisation: [docs/zivilisation-spec.md](docs/zivilisation-spec.md), [docs/zivilisation-2026-10/](docs/zivilisation-2026-10/)
+- Naturkatastrophen: [docs/ereignisse-spec.md](docs/ereignisse-spec.md), [docs/ereignisse-2026-10/](docs/ereignisse-2026-10/)
+- Höhe und Gebirge: [docs/hoehe-spec.md](docs/hoehe-spec.md), [docs/hoehe-2026-10/review.md](docs/hoehe-2026-10/review.md)
+- Kohle und Riesenbärlappe: [docs/kohle-2026-10/bericht.md](docs/kohle-2026-10/bericht.md)
 - Grafik und Evolutionsfilme: [docs/grafik-2026-10/bericht.md](docs/grafik-2026-10/bericht.md)
 - Evolutionsbaum und Quellen: [docs/ueberarbeitung-2026-10/](docs/ueberarbeitung-2026-10/)
 - Liste aller ausgelieferten Versionen: [docs/done.md](docs/done.md)

@@ -1,6 +1,6 @@
 # Spezifikation: Höhe, Gebirge und Fels-Regel
 
-Stand: 14. 10. 2026 · **Entwurf, wartet auf Freigabe** (offene Entscheidungen in Abschnitt 6).
+Stand: 14. 10. 2026 · **freigegeben** mit den Beschlüssen in Abschnitt 6. Wo ein Abschnitt davon abweicht, gilt Abschnitt 6.
 
 Ziel: Gebirge sind auf der Karte deutlich zu sehen und haben Höhenstufen. Nackter Fels gibt es nur noch dort, wo
 er hingehört. Höhe wirkt auf Klima und Vegetation. Das bestehende Biom-System (`docs/biomes-spec.md`) wird
@@ -135,7 +135,7 @@ export interface UpliftSource {
   /** Schreibt Hebung pro Kachel für diesen Tick; `timeF` = Zeitfaktor aus 3.4. */
   apply(world: WorldState, timeF: number): void;
 }
-/** Der einzige Schreibweg für Hebung: begrenzt, setzt terrainDirty, Lava → frisches Vulkangestein. */
+/** Der einzige Schreibweg für Hebung und Absenkung: begrenzt, setzt terrainDirty, merkt sich beim Heben den Gebirgstyp. */
 export function raiseCrust(world: WorldState, i: number, amount: number, kind: UpliftKind): void;
 ```
 
@@ -184,13 +184,19 @@ Das Grundrelief außerhalb der Gürtel bleibt, es sei denn, Entscheidung **E1** 
 
 - **Temperatur:** Der Höhengradient bleibt bei 6,5 °C/km.
   - Neu: Die 7 × 7-Glättung der Sukzession mittelt die **auf Meereshöhe zurückgerechnete** Temperatur
-    (`T + 6,5 · h`). Danach zieht sie für jede Kachel ihren eigenen Höhenanteil wieder ab.
+    (`T + 6,5 · h`). Danach zieht sie den Höhenanteil wieder ab, gemessen an der mittleren Landhöhe der 3 × 3
+    Nachbarschaft. So sind die Höhenstufen auch auf schmalen Ketten mindestens etwa 2 Kacheln breit.
   - Klimazonen bleiben dadurch großflächig, Höhenstufen folgen den Höhenlinien.
 - **Regenschatten:** Neu ist eine Lee-Trocknung.
   - Luft, die einen Kamm überquert hat, verliert einen Anteil ihrer Feuchte, abhängig von der Kammhöhe.
   - Der Anteil klingt nach einigen Kacheln ab.
   - Der Steigungsregen auf der Luvseite bleibt.
   - Ziel: Lee ist in mindestens 70 % der Kämme über 2 km eine Feuchteklasse trockener (heute 43–62 %).
+  - **Umsetzung:** Die Trocknung wirkt örtlich auf den Regen: Faktor 1 − 0,3 · Schatten. Sie entzieht der Luft
+    nichts, sonst summiert sie sich von Kachel zu Kachel und trocknet ganze Kontinente aus.
+    - Erreicht werden 60–68 %.
+    - Grenze: Etwa 30 % der Kämme liegen in Wüsten oder polarer Luft, wo schon die Luvseite die trockenste
+      Klasse hat. Bei Kämmen mit nicht-trockener Luvseite sind es 83 %.
 - **Albedo:** Gipfelschnee reflektiert wie Eis. Dafür zählt die Landschaft „Gipfelschnee“ als Lebensraum Arktis
   statt Fels. Es bleibt bei 11 Lebensräumen, die Tier-Tabellen ändern sich nicht.
 
@@ -199,23 +205,34 @@ Das Grundrelief außerhalb der Gürtel bleibt, es sei denn, Entscheidung **E1** 
 Es gilt nur für Gebirgskacheln (Höhe ≥ 0,9 km). Maßgeblich ist die höhenbereinigte Temperatur `T_h` der Kachel aus 3.5.
 Alle Schwellen haben ein Schmitt-Band wie die übrigen Zonen.
 
-| Stufe | Bedingung (Startwert, wird geeicht) | Landschaft | Zielhöhe 45° / Äquator |
+Die Schwellen sind mit `tools/relief-probe.js` geeicht. Die Spieltemperatur ist ein Jahresmittel und liegt
+an der Baumgrenze unter den Werten aus der Recherche.
+
+| Stufe | Bedingung (geeicht) | Landschaft | Zielhöhe 45° / Äquator |
 |---|---|---|---|
 | montan, subalpin | unter der Baumgrenze | bestehende Leiter (Kälteklasse → Nadelwald) | — |
-| Baumgrenze | `T_h` < 0 °C | — | ~2 km / ~3,5–4 km |
-| alpin | 0 bis −3 °C | **alpine Matte** (E2) | +0–0,5 km über der Baumgrenze |
-| subnival | −3 bis −6 °C | Fels, Geröll | bis ~3 km / ~4,5 km |
-| nival | < −6 °C | Gipfelschnee | ab ~3 km / ~4,5–5 km |
+| Baumgrenze | `T_h` < −3 °C | — | ~2 km / ~3,5–4 km |
+| alpin | −3 bis −9 °C | **alpine Matte** (E2), ohne Gräser/Blütenpflanzen Tundra → Moos → Flechten | über der Baumgrenze |
+| subnival | −9 bis −15 °C | Fels; als Boden zeichnet der Renderer Schutt | bis ~3 km |
+| nival | < −15 °C | Gipfelschnee (Lebensraum Arktis) | ab ~3 km |
+
+Erreicht (Seeds 777 / 2718 / 4242): Baumgrenze bei 40–50° 1,7–2,35 km (10. Perzentil); Gipfelschnee heute
+1,2 / 3,1 / 3,8 % des Landes. Eine Schneegrenze bei −12 °C ließ Seed 2718 auf dem höheren Relief vereisen
+(8,6 °C, 51 % Eis), deshalb −15 °C.
 
 - **Tropen (E5):**
   - Ob eine Kachel tropisch ist, entscheidet ihre Temperatur auf Meereshöhe (`T + 6,5 · h`), nicht ihre
-    eigene Höhe. Feuchtes Hochland am Äquator wird so **Bergregenwald** (Landschaft Regenwald), und zwar bis
-    zur Baumgrenze.
+    eigene Höhe. Feuchtes Hochland am Äquator wird so **Bergregenwald**, und zwar bis zur Baumgrenze.
+    - Die Schwelle `TROPICAL_TEMP` liegt jetzt bei 24 °C auf Meereshöhe. Vorher waren es 16 °C auf der echten
+      Temperatur; bei 20 °C wurde die Hälfte des Bands 15–30° Regenwald.
+    - Erreicht: Regenwald + Bergregenwald in ±10° Breite heute 46,7 / 22,6 / 41,2 %. Seed 2718 liegt darunter:
+      Das Band ist dort zu 99,8 % tropisch, aber Laubbäume wachsen nur auf 22 % davon (Evolutionsverlauf).
   - Das behebt den Hauptmangel des Landschafts-Reviews: Bei Seed 777 gibt es 20 Mio. J. vor heute in ±10° Breite
     keinen Regenwald, weil das Äquatorland 1–3 km hoch liegt und nur 7–12 °C hat.
   - Außerhalb der Tropen bestimmt weiter die echte Temperatur die Klasse (Laubwald → Nadelwald am Hang).
 - In sehr trockener Luft (Feuchteklasse „trocken“) liegt die Schneegrenze um 2 °C tiefer, also höher im Gelände.
-- Eis-Landschaft bleibt für Eisschilde im Flachland (Frostklasse unter 0,9 km).
+- Eis-Landschaft bleibt, wo schon das Klima auf Meereshöhe gefroren ist (Eisschild). Ein Berg, der nur durch seine
+  Höhe gefriert, trägt Gipfelschnee.
 - `TREE_LINE` und `SNOW_LINE` bleiben nur für den alten SVG-Pfad bestehen, bis er entfernt ist.
 - Die Höhengrenzen der Pflanzengruppen (`maxElevation`) bleiben unverändert. Sie begrenzen die tropische
   Baumgrenze auf etwa 3 km. Das ist bekannt und gewollt.
@@ -226,16 +243,38 @@ Nackter Fels (Landschaft Fels) nur noch:
 
 1. **Junge Erde:** Boden hat sich noch nicht gebildet.
 2. **Hochgebirge:** subnivale Stufe (3.6). Darüber liegt Gipfelschnee.
-3. **Frisches Vulkangestein:** nach einem Ausbruch, an Hotspots und Vulkanen, Substrat `Lava` mit eigener Textur.
-   Einschlagkrater zählen ebenso (E4).
+3. **Frisches Vulkangestein:** Dazu zählen
+   - die Narben Basalt, Schlot und Krater der Ereignis-Aufgabe (E4),
+   - neues Land, das ein Hotspot oder Inselbogen gebaut hat.
+
+   Es verwittert nicht, solange die Narbe liegt. Frische Vulkaninseln zeichnet der Renderer als Basalt.
 
 Überall sonst bildet sich Boden:
 
 - **Verwitterung** baut Rohboden auch ohne Pflanzen auf. Warm und feucht geht es schneller, kalt und trocken langsamer.
   - Ziel: Das Flachland ist nach 0,5–1 Mrd. Jahren (Archaikum) überwiegend Rohboden bzw. Wüste/Sand.
-- **Hangabtrag** kann Boden nur bis auf Rohboden abtragen, nicht mehr bis auf Fels. Eis und Lava setzen ihn auf 0.
+- **Verwitterungsboden (Regolith, 0,4):** Hangabtrag kann Boden nur bis auf diesen Rohboden abtragen, nicht mehr
+  bis auf Fels.
+- **Eis** schürft bis auf Grundmoräne (ebenfalls 0,4), nicht bis auf 0. Sonst bliebe nach jedem Eisrückzug ein
+  Ring aus nacktem Fels.
+- **Nur Lava und Einschläge** legen den Fels wieder frei.
+- **Beginn der Verwitterung (Korrektur nach dem Spieltest, 15. 10.):** Verwitterung zu Regolith setzt erst ein,
+  wenn die ersten Landpflanzen entwickelt sind (`REGOLITH_AFTER_STEP`), und nur auf Kacheln, die Pflanzen erreicht
+  haben (auf der Kachel oder bei mindestens 3 der 8 Nachbarn). Davor und daneben bleibt Fels Fels; der braune
+  Rohboden breitet sich mit den Pflanzen aus, nicht vor ihnen.
+  Vorher wurde das Land schon kurz nach dem Start braun, als ob Pflanzen wüchsen.
+  - Auf Fels, Rohboden und Wüste zeigt die Karte die ersten Pflanzen als kleine Polster, bis sie eine eigene
+    Landschaft gebildet haben.
+  - Prüfung: `tools/green-probe.js`.
+- **Warmstart:** Land, das nach den ersten Landpflanzen neu entsteht, hat sofort Regolith. Ausnahme
+  sind frische Vulkaninseln. Alte Spielstände bekommen ihn beim Laden (`migrateV7`).
+- **Erreicht:** Fels außerhalb der drei Fälle liegt ab Tick ~150 bei 0,0 % des Landes. Vorher waren es heute
+  1,1–1,2 % und vor 435 Mio. J. 53–62 %; das gilt auch für Seed 12345 ohne Pflanzen. Junge Erde: 100 % Fels, Eis
+  und Schnee.
 - **Danach** läuft die bestehende Sukzession: Rohboden → Pionierflur → … wie gehabt.
   Trockenes Tiefland wird Sand oder Wüste wie heute.
+- **Sand** gibt es nur noch, wo es trocken, tief und nicht kalt ist (Temperaturklasse kühl oder wärmer).
+  Polare Wüsten sind Kies. Damit ist der Mangel „Sand neben Eis“ aus dem Landschafts-Review behoben.
 
 ### 3.8 Darstellung
 
@@ -245,19 +284,22 @@ Alles läuft im bestehenden Pixel-Renderer und Generator: dieselbe Palette, Lich
   - Die Verstärkung wächst mit der Höhe; im Flachland bleibt sie unverändert.
   - In Gebirgen bis ±3 Rampenstufen.
   - Grate werden über ein feines Rauschen in der Kachel betont, damit Gebirge zerklüftet wirken und nicht wie weiche Hügel.
-- **Gebirgs-Sprites** (neue Familie `tools/terrain/mountain.js`), Draufsicht 3/4:
-
-  | Sprite | Größe | Varianten |
-  |---|---|---|
-  | Felsgipfel | 16×12, 20×16, 24×20 | je 2 Formen, mit und ohne Schneekappe |
-  | Vulkankegel | 20×16 | ruhend und frisch (dunkler Basalt) |
-  | bewaldeter Vorberg | 16×12 | — |
-
-  - Überhang höchstens 8 px nach oben und 4 px seitlich; das Chunk-Pad wird entsprechend vergrößert.
-  - Die Sprites werden zeilenweise mit den Bäumen sortiert und werfen kleine Schlagschatten.
-  - Dichte abhängig von Höhe und Relief der Kachel; am Gürtelrand dünnen sie aus, Platzierung über Hash wie bei den Bäumen.
-  - **Schneekappe**, wenn die Gipfelhöhe (Kachelmittel plus Relief der Kachel) über der Schneegrenze liegt.
-    So tragen hohe Kämme Schnee, auch wenn das Kachelmittel darunter liegt.
+- **Gebirgszüge wie Flüsse** (Beschluss 6, Nachtrag): Die Kämme werden als durchgehende, geglättete Linien
+  aus dem Höhenfeld gebaut, so wie die Flüsse (`landrivers.ts`), und in 3/4-Draufsicht gerastert.
+  Einzelne Gipfel-Bilder pro Kachel gibt es nicht.
+  - **Kamm:** Er ist um seine Höhe nach oben versetzt. Sättel und Gipfel entstehen entlang der Linie.
+  - **Licht:** Die Flanken sind von oben links beleuchtet.
+  - **Kammbereich:** Am Kamm liegt ein Felsband. Schnee liegt auf Kammabschnitten über der Schneegrenze.
+  - **Der Berg ist Boden:** Seine Hänge zeigen die Landschaft ihrer Höhenstufe (Wald, alpine Matte, Schutt,
+    Schnee). Bäume stehen als normale Objekte auf den Flanken, so wachsen die Pflanzen natürlich am Berg.
+  - **Durchgehend:** Lange Gebirgszüge laufen ohne Bruch über Kachel- und Chunkgrenzen und über die Datumsgrenze.
+  - **Vulkane:** Einzelne Vulkane bleiben Kegel-Sprites, ruhend oder frisch (dunkler Basalt). Sie stehen auf
+    vulkanischen Gebirgstypen.
+    - Auf Schlot-Kacheln der Ereignisse steht kein zweiter Kegel; dort zeichnet die Effektebene den Schlot.
+  - **Maßstab:** 10 px je km Relief über dem Kachelmittel, höchstens 28 px Hub.
+    Die Kammsuche läuft auf Hochland, also Höhe ≥ 0,2 mit Hebungsgürtel oder Höhe ≥ 0,42.
+  - **Verdeckung:** Ein Tiefenpuffer pro Pixel sorgt dafür, dass Objekte hinter einem näheren Hang verdeckt sind.
+    Bäume enden an der Baumgrenze des Kamms, übrige Pflanzen an der Felsgrenze.
 - **Neue Bodentexturen:**
   - alpine Matte
   - Basalt (frisches Vulkangestein)
@@ -290,7 +332,7 @@ Dazu kommen Zeitraffer-Screenshots bei 4,0 Mrd., 2,5 Mrd., 1 Mrd., 500 Mio., 250
 
 | Kriterium | Messung | Ziel |
 |---|---|---|
-| Gebirge nach der Generierung erkennbar | Tick 0: Gürtel ≥ 15 Kacheln lang; Screenshot bei Zoom 16 | ≥ 3 Gürtel je Welt, mit Schatten und Gipfeln sichtbar |
+| Gebirge nach der Generierung erkennbar | Tick 0: Kammlinien; Screenshot bei Zoom 16 | ≥ 3 Gebirgszüge je Welt mit ≥ 25 Kacheln Kammlänge, als durchgehende Kämme sichtbar |
 | Fels nur in den drei Fällen | Fels unterhalb der subnivalen Stufe, ohne Lava der letzten 50 Ticks, ab 1 Mrd. J. | ≤ 0,5 % des Landes, auch bei Seed 12345 |
 | Junge Erde ist Fels | Tick 1 | ≥ 90 % des Landes Fels oder Eis |
 | Baumgrenze | Median der untersten alpinen Kachel | 45°: 1,7–2,4 km · 0–15°: 3,0–4,0 km |
@@ -327,30 +369,58 @@ Neue Tests decken ab:
 
 ---
 
-## 6. Entscheidungen (zur Freigabe)
+## 6. Beschlüsse (Freigabe 14. 10. 2026)
 
-- **E1, Höhenverteilung:**
-  - (a) **Empfohlen:** Das Grundrelief bleibt. Nur die Gebirgsgürtel werden schärfer, höher und nach Typ angelegt.
-    Geringes Risiko für die geeichten Klimazonen.
-  - (b) Erdähnliche Verteilung: rund 70 % des Festlands unter 1 km, Gebirge stechen stärker heraus.
-    Dafür müssen die Klimaschwellen nachgeeicht werden, unter anderem `TROPICAL_TEMP`, das wegen des 1 km hohen
-    Tieflands auf 16 °C gesenkt wurde. Das gefährdet die heute guten Vegetationsgrenzen.
-- **E2, alpine Matte:**
-  - **Empfohlen:** eine eigene neue Landschaft. Sie wird angehängt, eigene Textur, Lebensraum Tundra.
-  - Alternative: die Tundra-Landschaft wiederverwenden (weniger Arbeit, optisch nicht von Polartundra zu unterscheiden).
-- **E3, Erosion:**
-  - **Empfohlen:** Gürtel ohne Hebung werden im Zeitraffer sichtbar niedriger (3.4). In menschlichen Zeitskalen
-    steht das Relief still.
-  - Alternative: Raten wie heute (das Relief ändert sich im Spiel kaum).
-- **E4, Einschlagkrater:**
-  - **Empfohlen:** Sie zählen wie frisches Vulkangestein (Schmelzgestein) und wachsen danach zu.
-- **E5, Äquator-Regenwald auf Hochland:**
-  - **Empfohlen:** Die Einstufung „tropisch“ folgt der Temperatur auf Meereshöhe (3.6). Feuchtes Hochland in
-    den Tropen wird Bergregenwald.
-  - Erst damit gilt der Beschluss „Äquator immer Regenwald“ aus der Landschafts-Freigabe auch auf hoch liegenden
-    Kontinenten.
-- **Hinweis zu den Plattengrenzen:** Das heutige Modell liefert keine Grenztypen (1.2, Punkt 1). Gebirgstypen
-  legt die Generierung an. Die spätere Tektonik dockt an `UpliftSource` an.
+- **E1a:**
+  - Das Grundrelief bleibt.
+  - Die Gebirgsgürtel werden schärfer, höher und nach Typ angelegt.
+  - Die erdähnliche Höhenverteilung (Variante b) kommt später im Tektonik-Schritt, zusammen mit der
+    Neuabstimmung der Klimaschwellen. Jetzt nicht.
+- **E2:** Eigene neue Landschaft **„Alpine Matte“**.
+  - wird an die Landschaftsliste angehängt
+  - eigene Textur
+  - Lebensraum Tundra
+- **E3:**
+  - Gürtel ohne Hebung werden im Zeitraffer sichtbar niedriger (3.4).
+  - In menschlichen Zeitskalen steht das Relief still.
+- **E4:** Einschlagkrater zählen wie frisches Vulkangestein und wachsen danach zu.
+- **Darstellung (Nachtrag 14. 10.):**
+  - Gebirgszüge werden wie Flüsse als durchgehende Linien in 3/4-Draufsicht gezeichnet, nicht als einzelne Gipfel.
+  - So entstehen lange Gebirgszüge, und die Pflanzen wachsen natürlich am Berg (3.8).
+- **Abnahme-Entscheidungen (15. 10.):**
+  - **Leistung:** Das erste Zeichnen von Kartenausschnitten mit Gebirgszügen ist 10–45 % langsamer
+    (unmittelbar nach dem Leeren des Zwischenspeichers bis 80 %).
+    - Bildanzahl beim Scrollen und Neuzeichnen bleiben gleich.
+    - Die Simulation ist schneller: Geologie etwas, Gelände-Aufbereitung um die Hälfte.
+    - Die Mehrkosten werden **hingenommen**, damit das Aussehen bleibt.
+  - **Übergänge:** Die neuen Höhenstufen erhöhen die Grenzkanten zwischen Landschaften um 1,4–2,6 Punkte.
+    - Lebensraum-Zonen sind gleich gut oder besser, es gibt weniger Einzelkacheln und keine unnatürlichen Nachbarn.
+    - **Akzeptiert.**
+- **E5:** Die Einstufung „tropisch“ folgt der Temperatur auf Meereshöhe. Feuchtes Hochland in den Tropen wird
+  **Bergregenwald**.
+  - Für Tiere zählt er als Lebensraum **Regenwald**; es gibt kein neues Balancing.
+  - Optisch ist er eine **Variante der Regenwald-Grafik**: etwas dunkler und moosiger, kein komplett neues
+    Biom-Set. Technisch ist er eine angehängte Landschaft mit eigenem Bodenmaterial. Sie nutzt die Bäume des Regenwalds.
+- **Plattengrenzen:**
+  - Das heutige Modell liefert keine Grenztypen (1.2, Punkt 1).
+  - Gebirgstypen legt die Generierung an.
+  - Die spätere Tektonik dockt an `UpliftSource` an.
+
+### 6.1 Abstimmung mit parallelen Aufgaben (Stand bei Freigabe)
+
+- **Epochen** (`epochs.ts`, `youngearth.ts`, `earthtoday.ts`):
+  - Die Planeten werden je nach gewählter Epoche erzeugt. Die Epochen-Auswahl bleibt unverändert.
+  - Nach dem Formen setzt ein Aufruf `classifyBelts(world)` aus `tectonics.ts` den Gebirgstyp. Die Inselbögen
+    der jungen Erde werden dabei Typ Inselbogen.
+- **Ereignisse** (`docs/ereignisse-spec.md`):
+  - Ausbrüche mit Lavastrom, Schlot und Kraternarben gehören den Ereignissen.
+  - Die Höhe liefert `raiseCrust` (auch mit negativem Betrag), die Materialien Basalt und Schutt sowie den
+    Gebirgstyp.
+  - Die Fels-Regel zählt die Narben Basalt, Schlot und Krater als frisches Gestein (3.7, Fall 3).
+  - `EventSystem` in `geo.ts` fasst die Höhe nicht an.
+- **Zivilisation:** Sie ändert das Speicherformat nicht. Städte meiden Fels und Hochgebirge; dafür gibt es keine
+  neue Schnittstelle.
+- **Speicherformat:** Die Höhe nimmt Format 8 (`upliftKind`). Merged die Ereignis-Aufgabe zuerst, wird es 9.
 
 ---
 

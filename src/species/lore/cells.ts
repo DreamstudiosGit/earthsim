@@ -31,7 +31,7 @@ namespace SE {
     {
       name: 'Cyanobakterien',
       about: 'Cyanobakterien, früher Blaualgen genannt, gewinnen ihre Energie aus Sonnenlicht und spalten dabei Wasser; als Abfall entsteht Sauerstoff. Viele bilden lange Fäden aus Zellen, in denen bei manchen Arten einzelne Spezialzellen Stickstoff aus der Luft binden. Sie leben bis heute fast überall, in Meeren und Seen ebenso wie in Wüstenkrusten.',
-      evolution: 'Erste Spuren von freiem Sauerstoff, rund 2,7 Milliarden Jahre alt, werden ihrer Photosynthese zugeschrieben; später reicherte er sich dauerhaft in Meer und Luft an und ermöglichte eine schützende Ozonschicht. Alle Chloroplasten von Algen und Pflanzen gehen auf ein Cyanobakterium zurück, das einst von einer Zelle mit Kern aufgenommen wurde.',
+      evolution: 'Ihre Photosynthese schuf schon vor der dauerhaften Sauerstoffanreicherung der Luft vor rund 2,4 Milliarden Jahren örtlich sauerstoffhaltige Gewässer; ihr genaues Entstehungsdatum ist umstritten. Alle Chloroplasten von Algen und Pflanzen gehen auf ein Cyanobakterium zurück, das einst von einer Zelle mit Kern aufgenommen wurde.',
       hint: 'färbt Wasser blaugrün und lässt Bläschen aufsteigen',
     },
     {

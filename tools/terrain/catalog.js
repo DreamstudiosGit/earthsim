@@ -8,7 +8,7 @@
  * docs/landschaft-2026-10/stil.md).
  *
  * Families (one recipe file each under tools/terrain/):
- *   cold · temperate · warm · wet
+ *   cold · temperate · warm · wet · mountain (docs/hoehe-spec.md)
  * ========================================================================== */
 'use strict';
 
@@ -21,6 +21,8 @@
  */
 const MATERIALS = [
   { id: 'rock', name: 'Fels', family: 'cold', size: 64, densities: 1 },
+  { id: 'basalt', name: 'Basalt', family: 'mountain', size: 64, densities: 1 },
+  { id: 'scree', name: 'Schutt', family: 'mountain', size: 64, densities: 1 },
   { id: 'stony_desert', name: 'Felswüste', family: 'warm', size: 64, densities: 1 },
   { id: 'sand', name: 'Sand', family: 'warm', size: 128, densities: 1 },
   { id: 'barren', name: 'Rohboden', family: 'temperate', size: 64, densities: 1 },
@@ -34,12 +36,14 @@ const MATERIALS = [
   { id: 'steppe', name: 'Steppe', family: 'temperate', size: 128, densities: 3 },
   { id: 'savanna', name: 'Savanne', family: 'warm', size: 128, densities: 3 },
   { id: 'meadow', name: 'Wiese', family: 'temperate', size: 64, densities: 3 },
+  { id: 'alpine_meadow', name: 'Alpine Matte', family: 'mountain', size: 64, densities: 3 },
   { id: 'marsh', name: 'Sumpf', family: 'wet', size: 64, densities: 3 },
   { id: 'shrub', name: 'Gebüsch', family: 'temperate', size: 64, densities: 3 },
   { id: 'swamp_forest', name: 'Sumpfwaldboden', family: 'wet', size: 64, densities: 2 },
   { id: 'taiga', name: 'Nadelwaldboden', family: 'cold', size: 64, densities: 2 },
   { id: 'forest', name: 'Waldboden', family: 'temperate', size: 64, densities: 2 },
   { id: 'rainforest', name: 'Regenwaldboden', family: 'warm', size: 64, densities: 2 },
+  { id: 'rainforest_montane', name: 'Bergregenwaldboden', family: 'mountain', size: 64, densities: 2 },
   { id: 'sea_ice', name: 'Meereis', family: 'cold', size: 64, densities: 1 },
   { id: 'ice', name: 'Eis', family: 'cold', size: 128, densities: 1 },
   { id: 'snow', name: 'Gipfelschnee', family: 'cold', size: 64, densities: 1 },
@@ -66,9 +70,11 @@ const OVERLAYS = [
 const LANDSCAPES = [
   { id: 'ice', name: 'Eis', materials: m('ice'), abiotic: 0.04 },
   { id: 'snow', name: 'Gipfelschnee', materials: m('snow'), abiotic: 0.06 },
-  { id: 'rock', name: 'Fels', materials: m('rock', { sand: 'sand', mire: 'mud' }), abiotic: 0.25 },
-  { id: 'barren', name: 'Rohboden', materials: m('barren', { rock: 'rock', sand: 'sand', mire: 'mud' }), abiotic: 0.05 },
-  { id: 'desert', name: 'Wüste', materials: m('stony_desert', { sand: 'sand', mire: 'mud' }), abiotic: 0.06 },
+  // Bare ground still shows the first plants that settle on it, as small
+  // cushions, until they have built a landscape of their own.
+  { id: 'rock', name: 'Fels', materials: m('rock', { sand: 'sand', mire: 'mud' }), abiotic: 0.25, objects: { low: [0.6] } },
+  { id: 'barren', name: 'Rohboden', materials: m('barren', { rock: 'rock', sand: 'sand', mire: 'mud' }), abiotic: 0.05, objects: { low: [0.6] } },
+  { id: 'desert', name: 'Wüste', materials: m('stony_desert', { sand: 'sand', mire: 'mud' }), abiotic: 0.06, objects: { low: [0.6] } },
   {
     id: 'lichen', name: 'Flechten & Moos auf Fels', materials: m('lichen_rock'), abiotic: 0.12,
     objects: { low: [0.1, 0.2, 0.35] },
@@ -125,6 +131,14 @@ const LANDSCAPES = [
     id: 'swampforest', name: 'Sumpfwald', materials: m('swamp_forest'),
     objects: { tree: [1.2, 2.2], low: [0.6, 0.4] },
   },
+  {
+    id: 'alpine', name: 'Alpine Matte', materials: m('alpine_meadow', { rock: 'lichen_rock', mire: 'marsh' }), abiotic: 0.1,
+    objects: { bush: [0.02, 0.04, 0.06], low: [0.3, 0.5, 0.7] },
+  },
+  {
+    id: 'cloudforest', name: 'Bergregenwald', materials: m('rainforest_montane'),
+    objects: { tree: [1.8, 3.0], low: [0.3, 0.2] },
+  },
 ];
 
 /** The same material on every substrate, with exceptions. */
@@ -175,13 +189,22 @@ const OBJECTS = [
   { id: 'boulder', name: 'Felsbrocken', group: null, kind: 'rock', family: 'cold', variants: 3 },
   { id: 'scree', name: 'Geröll', group: null, kind: 'rock', family: 'cold', variants: 2 },
   { id: 'ice_block', name: 'Eisbrocken', group: null, kind: 'rock', family: 'cold', variants: 2 },
+  // Volcanic cones (docs/hoehe-spec.md §3.8), placed on volcanic belts, not by
+  // plant group: 0 dormant and green, 1 fresh (dark basalt), 2 dormant and
+  // bare (no plants around), 3 dormant under snow. Mountain ranges are no
+  // objects: the renderer lifts the ground along their crests (landridges.ts).
+  { id: 'volcano', name: 'Vulkankegel', group: null, kind: 'mountain', family: 'mountain', variants: 4 },
 ];
 
 /** Tree size steps (bounding box) and forms per size. */
 const TREE_SIZES = { s: [10, 13], m: [13, 17], l: [16, 20] };
 const TREE_FORMS = 2;
 /** Largest box per kind, [w, h]. */
-const KIND_BOX = { tree: [16, 20], bush: [16, 16], low: [16, 16], water: [16, 16], rock: [16, 16] };
+const KIND_BOX = { tree: [16, 20], bush: [16, 16], low: [16, 16], water: [16, 16], rock: [16, 16], mountain: [20, 16] };
+/** Largest box of each mountain variant, [w, h]; a cone may reach 8 px into the tile above. */
+const MOUNTAIN_SIZES = {
+  volcano: [[20, 16], [20, 16], [20, 16], [20, 16]],
+};
 
 /**
  * Which object a plant group shows where. A slot of one kind goes to one of
@@ -202,7 +225,7 @@ const GROUPS = {
   ferns: {
     name: 'Farne & Schachtelhalme',
     objects: [
-      { id: 'tree_fern', where: ['rainforest', 'forest', 'swampforest', 'fernland'] },
+      { id: 'tree_fern', where: ['rainforest', 'cloudforest', 'forest', 'swampforest', 'fernland'] },
       { id: 'horsetail', where: ['marsh', 'swampforest', 'fernland'] },
       { id: 'fern_frond', where: '*' },
     ],
@@ -222,7 +245,7 @@ const GROUPS = {
     name: 'Nadelbäume',
     objects: [
       { id: 'swamp_cypress', where: ['marsh', 'swampforest'] },
-      { id: 'juniper', where: ['tundra', 'shrubland', 'semidesert', 'steppe', 'lichen'] },
+      { id: 'juniper', where: ['tundra', 'alpine', 'shrubland', 'semidesert', 'steppe', 'lichen'] },
       // No spruce in the tropics or the desert, whatever else grows there.
       { id: 'spruce', where: ['taiga', 'forest', 'shrubland', 'meadow', 'steppe', 'fernland', 'moss', 'tundra', 'rock', 'barren'] },
     ],
@@ -233,7 +256,7 @@ const GROUPS = {
     objects: [
       { id: 'cactus', where: ['semidesert', 'desert'] },
       { id: 'succulent', where: ['semidesert', 'desert'] },
-      { id: 'dwarf_shrub', where: ['tundra', 'lichen', 'moss'] },
+      { id: 'dwarf_shrub', where: ['tundra', 'alpine', 'lichen', 'moss'] },
       { id: 'flower_bush', where: ['shrubland', 'forest', 'meadow'] },
       { id: 'flowers', where: '*' },
     ],
@@ -242,7 +265,7 @@ const GROUPS = {
   broadleaf: {
     name: 'Laubbäume',
     objects: [
-      { id: 'jungle_giant', where: ['rainforest'] },
+      { id: 'jungle_giant', where: ['rainforest', 'cloudforest'] },
       { id: 'acacia', where: ['savanna', 'semidesert'] },
       { id: 'thorn_bush', where: ['semidesert', 'steppe', 'savanna'] },
       { id: 'shrub', where: ['shrubland', 'meadow', 'forest'] },
@@ -264,17 +287,17 @@ const GROUPS = {
 
 /** Rocks and ice blocks: where they lie. */
 const ABIOTIC = [
-  { id: 'boulder', where: ['rock', 'lichen', 'tundra', 'semidesert', 'desert', 'steppe', 'barren'] },
-  { id: 'scree', where: ['rock', 'snow'] },
+  { id: 'boulder', where: ['rock', 'lichen', 'tundra', 'alpine', 'semidesert', 'desert', 'steppe', 'barren'] },
+  { id: 'scree', where: ['rock', 'snow', 'alpine'] },
   { id: 'ice_block', where: ['ice'] },
 ];
 
 /** Edge masks: 16 marching-squares cases (corner bits TL=1 TR=2 BL=4 BR=8) × variants. */
 const MASKS = { cases: 16, variants: 3 };
 
-const FAMILIES = ['cold', 'temperate', 'warm', 'wet'];
+const FAMILIES = ['cold', 'temperate', 'warm', 'wet', 'mountain'];
 
 module.exports = {
-  MATERIALS, OVERLAYS, LANDSCAPES, OBJECTS, TREE_SIZES, TREE_FORMS, KIND_BOX,
+  MATERIALS, OVERLAYS, LANDSCAPES, OBJECTS, TREE_SIZES, TREE_FORMS, KIND_BOX, MOUNTAIN_SIZES,
   GROUPS, ABIOTIC, MASKS, FAMILIES,
 };

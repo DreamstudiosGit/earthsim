@@ -1,10 +1,13 @@
 /* =============================================================================
  * SimEarth 2.0 — civilization
  * -----------------------------------------------------------------------------
- * Any of the sentience-capable classes can wake up, so a planet may just as
- * easily end up run by intelligent dinosaurs, molluscs or carniferns as by
- * mammals. Cities burn energy drawn from the four sources on the Civilization
- * Model Control Panel, and a fossil-heavy mix warms the planet that hosts it.
+ * Any of the land classes able to think can wake up, so a planet may just as
+ * easily end up run by intelligent dinosaurs, insects or birds as by mammals.
+ * This is the tick of the civilization: cities (cities.ts), peoples
+ * (tribes.ts), settlers (migration.ts), hunger and epidemics (epidemic.ts),
+ * conflicts and atomic war (conflict.ts).
+ * Cities burn energy drawn from the four sources on the Civilization Model
+ * Control Panel, and a fossil-heavy mix warms the planet that hosts it.
  * ========================================================================== */
 
 namespace SE {
@@ -26,6 +29,8 @@ namespace SE {
      * holds more than a few percent of the whole planet.
      */
     private static readonly SENTIENCE_COVERAGE = 0.02;
+    /** Random numbers the old city sampling drew per tick (5 % of the tiles); see `step`. */
+    private static readonly LEGACY_DRAWS = Math.floor(TILE_COUNT * 0.05);
 
     /** Set when a civilization advances or is founded, for the message bar. */
     lastNotice = '';
@@ -34,14 +39,47 @@ namespace SE {
     /** Tech level reached when `lastKind` is 'tech'. */
     lastTech = Tech.None;
 
+    /** One tick. Further news for the player is in `world.civ.news` afterwards. */
     step(world: WorldState, params: ModelParams, atmo: AtmosphereSystem): void {
       this.lastNotice = '';
       this.lastKind = '';
+      const civ = world.civ;
+      civ.news.length = 0;
+      if (!civ.synced) deriveCities(world, params);
+      const asleep = world.sentientClass === Life.None;
       this.emergeSentience(world, params);
-      this.growCities(world, params);
-      this.advanceTech(world, params);
+      // The per-tile city sampling this file had before the 2026-10 rework drew
+      // these numbers every tick, cities or not. Drawing them until a mind wakes
+      // keeps every planet's history before civilization exactly as it was, so
+      // seeds tuned and tested elsewhere still mean the same planet.
+      if (asleep) for (let n = 0; n < CivSystem.LEGACY_DRAWS; n++) world.rng.next();
+      const drifted = reconcileCities(world, params);
+      if (civ.cities.length === 0 && civ.settlers.length === 0) return;
+
+      if (!drifted && world.ticks % CITY_CAPACITY_EVERY === 0) refreshCapacities(world, params);
+      growCities(world, params);
+      this.announceTech(world, advanceCityTech(world, params));
+      updateTribes(world);
+      splitTribes(world);
+      moveSettlers(world, params, drifted);
+      sendSettlers(world);
+      spreadEpidemics(world, params);
+      stepConflicts(world, params);
       this.consumeEnergy(world, params, atmo);
+      mineCoal(world, coalDemand(world, params));
       this.warfare(world, params);
+    }
+
+    /**
+     * Bring the records in line with the grid outside the tick: derive them
+     * after a load (spec §2.11), adopt or drop cities after an edit. News is
+     * in `world.civ.news` afterwards.
+     */
+    sync(world: WorldState, params: ModelParams): void {
+      world.civ.news.length = 0;
+      if (!world.civ.synced) deriveCities(world, params);
+      else reconcileCities(world, params);
+      updateTribes(world);
     }
 
     /* --------------------------------------------------------- sentience -- */
@@ -60,18 +98,7 @@ namespace SE {
       const chance = 0.0009 * mul(params.bio.evolutionRate);
       if (!world.rng.chance(chance)) return;
 
-      // Candidates: sentience-capable classes with enough of the planet.
-      let best: Life = Life.None;
-      let bestBiomass = 0;
-      for (let c = 1; c < LIFE_COUNT; c++) {
-        const cls = c as Life;
-        if (!LIFE[cls].sentient) continue;
-        if (world.coverage(cls) < CivSystem.SENTIENCE_COVERAGE) continue;
-        if (world.lifeBiomass[cls] > bestBiomass) {
-          bestBiomass = world.lifeBiomass[cls];
-          best = cls;
-        }
-      }
+      const best = CivSystem.sentienceCandidate(world);
       if (best === Life.None) return;
 
       const buildSite = this.bestCitySite(world, params, best);
@@ -85,138 +112,50 @@ namespace SE {
     }
 
     /**
-     * The most habitable spot this species could settle. Sea dwellers build on
-     * the shore, land dwellers settle where they stand.
-     *
-     * Picking merely the *nearest* land instead put whale cities on polar ice
-     * with a site quality of 0.004, and the first settlement died on the tick
-     * it was founded — every time the sentient species happened to be marine.
+     * The land class able to think that holds the most of the planet, or
+     * Life.None. Sea classes build no civilization (spec §2.12).
      */
-    private bestCitySite(
-      world: WorldState, params: ModelParams, species: Life,
-    ): number {
-      let best = -1;
-      let bestScore = 0.25; // below this a settlement cannot feed itself
+    static sentienceCandidate(world: WorldState): Life {
+      let best: Life = Life.None;
+      let bestBiomass = 0;
+      for (let c = 1; c < LIFE_COUNT; c++) {
+        const cls = c as Life;
+        if (!LIFE[cls].sentient || !isLandLife(cls)) continue;
+        if (world.coverage(cls) < CivSystem.SENTIENCE_COVERAGE) continue;
+        if (world.lifeBiomass[cls] > bestBiomass) {
+          bestBiomass = world.lifeBiomass[cls];
+          best = cls;
+        }
+      }
+      return best;
+    }
 
+    /** The best site where the species leads its tiles and a first city could feed itself. */
+    private bestCitySite(world: WorldState, params: ModelParams, species: Life): number {
+      let best = -1;
+      let bestScore = -Infinity;
       for (let i = 0; i < TILE_COUNT; i++) {
         // It has to be the tile's leading species, not merely present on it.
         if (world.dominantLife[i] !== species) continue;
         if (world.density(i, species) < CivSystem.SENTIENCE_DENSITY) continue;
-
-        if (!world.isWater(i)) {
-          const q = this.siteQuality(world, i, params);
-          if (q > bestScore) { bestScore = q; best = i; }
-          continue;
-        }
-
-        const x = i % GRID_W;
-        const y = Math.floor(i / GRID_W);
-        for (let dy = -2; dy <= 2; dy++) {
-          const ny = y + dy;
-          if (ny < 0 || ny >= GRID_H) continue;
-          for (let dx = -2; dx <= 2; dx++) {
-            const j = idx(wrapX(x + dx), ny);
-            if (world.isWater(j)) continue;
-            const q = this.siteQuality(world, j, params);
-            if (q > bestScore) { bestScore = q; best = j; }
-          }
-        }
+        if (!cityGroundFits(world, i, species)) continue;
+        if (cityCapacity(world, i, Tech.Stone, params) < SENTIENCE_SITE_CAPACITY) continue;
+        const score = citySiteScore(world, i);
+        if (score > bestScore) { bestScore = score; best = i; }
       }
       return best;
     }
 
     /* ------------------------------------------------------------ cities -- */
 
-    /** How well a tile can feed a city. */
-    private siteQuality(world: WorldState, i: number, params: ModelParams): number {
-      if (world.isWater(i)) return 0;
-      const b = world.biome[i];
-      // Farmland beats jungle; ice and bare rock support almost nobody.
-      const base =
-        b === Biome.Grass ? 1.0 :
-        b === Biome.Forest ? 0.85 :
-        b === Biome.Swamp ? 0.6 :
-        b === Biome.Jungle ? 0.6 :
-        b === Biome.Boreal ? 0.55 :
-        b === Biome.Desert ? 0.2 :
-        b === Biome.Rock ? 0.15 : 0.05;
-
-      const temp = world.temperature[i];
-      const climate = clamp(1 - Math.abs(temp - 16) / 34, 0, 1);
-      const farming = 0.5 + mul(params.civAlloc.agriculture) * 0.5;
-      return base * climate * clamp(farming, 0, 1.5);
-    }
-
-    private growCities(world: WorldState, params: ModelParams): void {
-      const health = 0.6 + mul(params.civAlloc.medicine) * 0.4;
-      const rng = world.rng;
-
-      for (let i = 0; i < TILE_COUNT; i++) {
-        if (world.tech[i] === Tech.None) continue;
-
-        const capacity = this.siteQuality(world, i, params) * clamp(health, 0, 1.6);
-        const pop = world.cityPop[i];
-
-        if (capacity > 0.05) {
-          // Culture makes a city a place people stay: Art/Media nudges growth.
-          const culture = 0.9 + 0.1 * mul(params.civAlloc.artMedia);
-          world.cityPop[i] = Math.min(1, pop + pop * 0.05 * culture * (1 - pop / capacity));
-        } else {
-          world.cityPop[i] = pop - pop * 0.05;
-        }
-
-        if (world.cityPop[i] < 0.03) {
-          world.cityPop[i] = 0;
-          world.tech[i] = Tech.None;
-        }
-      }
-
-      // Settlers push outward from crowded cities.
-      const attempts = Math.floor(TILE_COUNT * 0.05);
-      for (let n = 0; n < attempts; n++) {
-        const i = rng.int(TILE_COUNT);
-        if (world.tech[i] === Tech.None || world.cityPop[i] < 0.55) continue;
-
-        const x = i % GRID_W;
-        const y = Math.floor(i / GRID_W);
-        const dir = rng.int(4);
-        const j = idx(
-          dir === 0 ? wrapX(x - 1) : dir === 1 ? wrapX(x + 1) : x,
-          dir === 2 ? clampY(y - 1) : dir === 3 ? clampY(y + 1) : y,
-        );
-        if (j === i || world.tech[j] !== Tech.None) continue;
-        if (this.siteQuality(world, j, params) < 0.15) continue;
-
-        world.tech[j] = world.tech[i];
-        world.cityPop[j] = 0.08;
-      }
-    }
-
-    /** Science pushes settlements up the seven technology levels. */
-    private advanceTech(world: WorldState, params: ModelParams): void {
-      const rate = 0.0009 * mul(params.civAlloc.science);
-      const rng = world.rng;
-      let advancedTo = Tech.None;
-
-      for (let i = 0; i < TILE_COUNT; i++) {
-        const t = world.tech[i];
-        if (t === Tech.None || t >= Tech.Nanotech) continue;
-        if (world.cityPop[i] < 0.5) continue;
-        if (!rng.chance(rate * world.cityPop[i])) continue;
-
-        world.tech[i] = t + 1;
-        if (t + 1 > advancedTo) advancedTo = t + 1;
-      }
-
-      // Only announce a level the planet has never reached before.
-      if (advancedTo !== Tech.None && world.techCounts[advancedTo] === 0) {
-        this.lastNotice = `Die Zivilisation erreicht das ${TECH_NAMES[advancedTo]}.`;
-        if (advancedTo === Tech.Bronze || advancedTo === Tech.Iron || advancedTo === Tech.Stone) {
-          this.lastNotice = `Die Zivilisation erreicht die ${TECH_NAMES[advancedTo]}.`;
-        }
-        this.lastKind = 'tech';
-        this.lastTech = advancedTo;
-      }
+    /** Only announce a level the planet has never reached before. */
+    private announceTech(world: WorldState, reached: Tech): void {
+      if (reached === Tech.None || world.techCounts[reached] !== 0) return;
+      this.lastNotice = reached === Tech.Bronze || reached === Tech.Iron || reached === Tech.Stone
+        ? `Die Zivilisation erreicht die ${TECH_NAMES[reached]}.`
+        : `Die Zivilisation erreicht das ${TECH_NAMES[reached]}.`;
+      this.lastKind = 'tech';
+      this.lastTech = reached;
     }
 
     /**
@@ -226,11 +165,17 @@ namespace SE {
     private consumeEnergy(
       world: WorldState, params: ModelParams, atmo: AtmosphereSystem,
     ): void {
+      // A city stands for the farms and villages of its surroundings, so its
+      // people count CITY_WEIGHT times in energy use and breath.
       let total = 0;
-      for (let i = 0; i < TILE_COUNT; i++) {
-        const t = world.tech[i];
-        if (t !== Tech.None) total += TECH_ENERGY[t] * world.cityPop[i];
+      let people = 0;
+      for (const c of world.civ.cities) {
+        const pop = world.cityPop[c.tile];
+        total += TECH_ENERGY[world.tech[c.tile]] * pop;
+        people += pop;
       }
+      total *= CITY_WEIGHT;
+      people *= CITY_WEIGHT;
       if (total <= 0) return;
 
       // The atmosphere belongs to the planet, not to the grid. A civilization
@@ -257,13 +202,13 @@ namespace SE {
       atmo.o2Delta -= CHEM_RATE * demand * mix.fossilFuel * 0.000015;
 
       // Every city also breathes.
-      atmo.co2Delta += CHEM_RATE * (world.totalCityPop / TILE_COUNT) * 0.4;
+      atmo.co2Delta += CHEM_RATE * (people / TILE_COUNT) * 0.4;
     }
 
     /** At or below this aggression a civilization never starts a nuclear war. */
     static readonly PEACEFUL = 0.2;
 
-    /** How warlike the energy budget makes a civilization; see warfare(). */
+    /** How warlike the energy budget makes a civilization; see conflict.ts. */
     static aggression(params: ModelParams): number {
       return mul(params.civAlloc.military) -
         mul(params.civAlloc.philosophy) * 0.6 - mul(params.civAlloc.artMedia) * 0.2;
@@ -271,29 +216,15 @@ namespace SE {
 
     /**
      * A heavily militarised, poorly philosophised civilization eventually uses
-     * the bomb on itself. This is the original's nuclear-winter failure mode.
+     * the bomb on a rival people. This is the original's nuclear-winter
+     * failure mode.
      */
     private warfare(world: WorldState, params: ModelParams): void {
-      let atomicCities = 0;
-      for (let t = Tech.Atomic; t <= Tech.Nanotech; t++) atomicCities += world.techCounts[t];
-      // Enough of the planet to hold rival powers — a share, not a headcount,
-      // or a finer grid reaches the threshold at a quarter of the settlement.
-      if (atomicCities < scaledCount(4)) return;
-
-      const aggression = CivSystem.aggression(params);
-      if (aggression <= CivSystem.PEACEFUL) return;
-
-      const chance = 0.00035 * aggression;
-      if (!world.rng.chance(chance)) return;
-
-      for (let tries = 0; tries < 200; tries++) {
-        const i = world.rng.int(TILE_COUNT);
-        if (world.tech[i] < Tech.Atomic) continue;
-        this.lastNotice = 'Warnung: Atomschlag! Ein Krieg zerstört Städte und Leben.';
-        this.lastKind = 'war';
-        SE.civEventSink?.(EventKind.AtomicBomb, i % GRID_W, Math.floor(i / GRID_W));
-        return;
-      }
+      const strike = atomicWar(world, params);
+      if (!strike) return;
+      this.lastNotice = `Warnung: Atomschlag auf ${strike.target.name}! Ein Krieg zwischen den ${strike.by.name} ` +
+        `und den ${strike.on.name} zerstört Städte und Leben.`;
+      this.lastKind = 'war';
     }
   }
 

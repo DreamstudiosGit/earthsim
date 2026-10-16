@@ -1,7 +1,7 @@
 /* =============================================================================
  * SimEarth 2.0 — pixel sprites
  * -----------------------------------------------------------------------------
- * Grounds, rivers, cities and events are 8x8 character grids drawn straight
+ * Grounds, rivers and events are 8x8 character grids drawn straight
  * in the source and blown up 2x at render time. No external art, and the
  * chunky result is what makes the Edit window read as SimEarth rather than as
  * a modern data map. The letters started as the EGA set; the colours behind
@@ -10,7 +10,7 @@
  * artdraw.ts) drawn on top.
  *
  * A tile is drawn in layers: the biome's ground, then a river, then the flora
- * overlay, then the animal, then cities and events. Land grounds are opaque;
+ * overlay, then the animal, then events (cities: citylayer.ts). Land grounds are opaque;
  * the two sea grounds are ripples over the depth colour (see terrainart.ts);
  * every layer above them is mostly transparent and has to read on any ground.
  *
@@ -314,91 +314,6 @@ namespace SE {
     '........',
     '...j....',
     '........',
-  ];
-
-  /* --------------------------------------------------------------- cities -- */
-  /* Indexed by Tech (0 unused).                                              */
-
-  export const CITY_SPRITES: readonly SpriteRows[] = [
-    // None
-    ['........', '........', '........', '........', '........', '........', '........', '........'],
-    // Stone Age — huts
-    [
-      '........',
-      '........',
-      '...n....',
-      '..nnn...',
-      '.nnnnn..',
-      '.n.n.n..',
-      '........',
-      '........',
-    ],
-    // Bronze Age — walled village
-    [
-      '........',
-      '..n.n.n.',
-      '..nnnnn.',
-      '.nnnnnn.',
-      '.n.nn.n.',
-      '.nnnnnn.',
-      '........',
-      '........',
-    ],
-    // Iron Age — stone town
-    [
-      '........',
-      '..w.w.w.',
-      '..wwwww.',
-      '.wwwwww.',
-      '.w.ww.w.',
-      '.wwwwww.',
-      '........',
-      '........',
-    ],
-    // Industrial Age — factory and smokestack
-    [
-      '..d.....',
-      '..d.....',
-      '..d.ww..',
-      '.wwwwww.',
-      '.wwwwww.',
-      '.w.ww.w.',
-      '.wwwwww.',
-      '........',
-    ],
-    // Atomic Age — reactor
-    [
-      '..y.....',
-      '.wwww...',
-      '.w..w.w.',
-      '.wwww.w.',
-      '.w.wwww.',
-      '.wwwwww.',
-      '.w.ww.w.',
-      '.wwwwww.',
-    ],
-    // Information Age — towers
-    [
-      '.w....w.',
-      '.w.ww.w.',
-      '.w.ww.w.',
-      '.wwwwww.',
-      '.w.ww.w.',
-      '.wwwwww.',
-      '.w.ww.w.',
-      '.wwwwww.',
-    ],
-    // Nanotech Age — luminous arcology
-    [
-      '.C....C.',
-      '.C.CC.C.',
-      '.CCCCCC.',
-      '.C.CC.C.',
-      '.CCCCCC.',
-      '.C.CC.C.',
-      '.CCCCCC.',
-      '.CCCCCC.',
-    ],
   ];
 
   /* --------------------------------------------------------------- events -- */

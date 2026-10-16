@@ -94,30 +94,78 @@ namespace SE {
   export const DRIFT_SPEED_BASE = 1 / 450;
   /** Number of independent horizontal plates. */
   export const PLATE_COUNT = 4;
-  /** Per-tick relaxation of land toward the local mean elevation. */
-  export const EROSION_RATE_BASE = 0.0003;
   /**
-   * Per-tick tectonic uplift along the orogenic belts, as a fraction of
-   * `WorldState.uplift`.
+   * Share of a slope's height difference (above EROSION_SLOPE_MIN) that the
+   * higher tile hands down per tick, on wet ground at EROSION_ALTITUDE_REF.
    *
-   * Without it erosion is the only vertical process, and it runs one way: a
-   * planet planes its ranges down over geological time and the rivers lose
-   * their headwaters with them. Real mountains instead sit where uplift and
-   * erosion cancel, and this is that balance point — measured, because erosion
-   * here is a curvature relaxation and its strength at a crest is not something
-   * you can read off the constant.
-   *
-   * Over 12,000 ticks on a seeded planet, land above the tree line and land
-   * above the snow line:
-   *
-   *   rate     mountain        peak
-   *   0        20.3 -> 19.0%   3.7 -> 2.6%    ranges wearing away
-   *   3e-5     20.3 -> 20.1%   3.7 -> 3.6%    <- balanced
-   *   6e-5     20.3 -> 21.8%   3.7 -> 5.2%
-   *   1e-4     20.3 -> 22.6%   3.7 -> 6.4%
-   *   4e-4     20.3 -> 28.1%   3.7 -> 12.8%   the whole map turning to alps
+   * Set by the fossil belts: a belt without uplift loses half its height over
+   * its surroundings in 1,000-1,500 Phanerozoic ticks (docs/hoehe-spec.md
+   * §3.4). Measured on seeds 777/2718/4242, geology and climate only, plates
+   * held, height of the fossil tiles over the plains: 50/40/47 % left after
+   * 1,500 ticks; a synthetic range of σ = 2 tiles halves after about 1,000
+   * (tests/tectonics.test.js).
    */
-  export const UPLIFT_RATE_BASE = 3e-5;
+  export const EROSION_RATE_BASE = 0.007;
+  /** Slopes up to this (elevation per tile) do not erode: the gentle relief of the lowlands stays. */
+  export const EROSION_SLOPE_MIN = 0.02;
+  /** The same for mountain belts, lower: a fossil belt keeps wearing down to the land around it. */
+  export const EROSION_SLOPE_MIN_BELT = 0.005;
+  /**
+   * Crust without a mountain type, the plains and plateaus between the belts,
+   * erodes at this share of a belt's rate. Bare old surfaces lose 5-12 m per
+   * million years, mountain catchments tens to hundreds (Portenga & Bierman
+   * 2011); and the generated relief keeps its shape (docs/hoehe-spec.md E1a).
+   */
+  export const CRATON_EROSION = 0.05;
+  /** Below this height erosion slows in proportion: the lower the land, the less a river cuts into it. */
+  export const EROSION_ALTITUDE_REF = 0.4;
+  /** Upper bound of that share per pass, so a cliff cannot overshoot its neighbour. */
+  export const EROSION_MAX_SHARE = 0.12;
+  /**
+   * Erosion and uplift run every this many ticks, with that many ticks' worth
+   * of rate: geology plus rivers then cost less per tick than the old
+   * per-tick erosion did.
+   */
+  export const EROSION_INTERVAL = 8;
+  /**
+   * Share of the eroded crust the rivers carry to the sea instead of the
+   * slope below; on a plain at the foot of a range all of it goes
+   * (`Erosion.slopes`). What settles on the plains piles up and buries the
+   * range: with it, active belts rose by 14-16 % over the plains in 12,000
+   * ticks. Rivers drop nothing on the plains either: settling 15 % of their
+   * load on the first flat tile raised the plains round the belts as well.
+   */
+  export const EROSION_FLUVIAL_SHARE = 0.95;
+  /** Sediment fills a shelf tile at most up to this, just below sea level, so no land is made. */
+  export const SHELF_FILL_CAP = -0.01;
+  /** Erosion never takes land below this, so coasts do not wash away. */
+  export const EROSION_LAND_FLOOR = 0.002;
+  /**
+   * Per-tick uplift of an active belt tile at `WorldState.uplift` 1. Only a
+   * scale: `balanceUplift` sets each tile's uplift to what erosion takes
+   * from it, and this is chosen so that few tiles need more than 1.
+   */
+  export const UPLIFT_RATE_BASE = 0.0035;
+  /**
+   * Moisture of the ground a new belt's uplift is balanced on. `BeltUplift`
+   * follows the actual rain, so this only scales `uplift` (few tiles
+   * saturate at 1). After 12,000 ticks active belts stand at 104/104/108 %
+   * of their height over the plains (seeds 777/2718/4242, plates held) and
+   * at 100-102 % of their mean height with drift.
+   */
+  export const UPLIFT_BALANCE_MOISTURE = 0.22;
+  /** Per-tick growth of the crust over an active hotspot, short of its cap. */
+  export const HOTSPOT_RATE = 0.004;
+  /** Room below the cap over which the growth tapers off. */
+  export const HOTSPOT_RAMP = 0.15;
+  /** Ticks per activity window of a hotspot, and the share of windows it is active in. */
+  export const HOTSPOT_PULSE_TICKS = 300;
+  export const HOTSPOT_ACTIVE_SHARE = 0.6;
+  /**
+   * Years per tick the vertical rates (uplift, erosion) were calibrated at: a
+   * Phanerozoic tick. Shorter ticks scale them down (`geoTimeFactor`).
+   */
+  export const GEO_REFERENCE_YEARS = 125000;
 
   /* ------------------------------------------------------ grid calibration -- */
 
@@ -176,18 +224,21 @@ namespace SE {
 
   /* ------------------------------------------------ ocean oxygen and iron -- */
   /*
-   * Measured with greedy play (tests/helpers `play`): the iron runs out near
-   * tick 85–90, the air passes 1 % near 115–125, plankton alone holds it near
-   * 3 % until marine algae spread (~450), algae lift it to 9–11 % by 850 and
-   * land plants to 16–19 % by 1600–2100, ~21 % by 3000. OXIDATION was tripled
-   * with these, so the air follows the biosphere in a few hundred ticks
-   * instead of a thousand. The yields are net oxygen, i.e. buried
+   * Sources represent net oxygen, i.e. buried
    * carbon: eukaryotic algae and woody land plants bury far more of what they
    * fix than bacterial plankton, which is what ends the "boring billion".
    */
 
   /** Air percent the sea counts as fully saturated — today's atmosphere. */
   export const O2_PRESENT = 21;
+  /** Gameplay thresholds (% of today's saturation), not a universal origin limit. */
+  export const EUKARYOTE_OCEAN_O2_MIN = 1;
+  export const EUKARYOTE_OCEAN_O2_FOUND = 2;
+  export const EUKARYOTE_OCEAN_O2_FULL = 5;
+  /** Mean cyanobacterial biomass at which marine production saturates. */
+  export const CYANO_PRODUCTIVITY_BIOMASS = 0.003;
+  /** Early microbial diversification precedes oxygen-dependent evolution. */
+  export const MICROBIAL_STAGE_ADVANCE = 0.04;
   /** O2 (air percent) per tick from a sea saturated with plankton. */
   export const PLANKTON_O2_YIELD = 0.029 * CHEM_RATE;
   /** O2 per tick per unit of marine algae cover. */

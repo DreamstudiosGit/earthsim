@@ -15,6 +15,18 @@ namespace SE {
   export class ClimateSystem {
     private readonly tempScratch = new Float32Array(TILE_COUNT);
     private readonly moistScratch = new Float32Array(TILE_COUNT);
+    /**
+     * Per tile, refreshed every few ticks as the terrain moves slowly
+     * (`updateRelief`): orographic rain, the share of rain the rain shadow
+     * leaves, and its inverse — the vapour the air carries on out of it.
+     */
+    private readonly orographic = new Float32Array(TILE_COUNT);
+    private readonly leeRain = new Float32Array(TILE_COUNT).fill(1);
+    private readonly leeVapour = new Float32Array(TILE_COUNT).fill(1);
+    private leeWorld: WorldState | null = null;
+    private leeSeed = -1;
+    private leeShifts = -1;
+    private leeBucket = -1;
 
     /**
      * Normalized insolation for a row: 1.0 at the equator falling to a floor at
@@ -112,11 +124,23 @@ namespace SE {
      * poles dries it out. Measured at 21 Ma (seeds 12345/777): land moisture
      * at the equator 0.41-0.45/0.30-0.33 before, 0.48-0.57 after; at 30-40°
      * 0.16-0.23; at 40-60° 0.34-0.48.
+     *
+     * Orographic rain alone left the lee nearly as wet as the windward side
+     * (lee a moisture class drier behind 43-62% of crests over 2 km), since
+     * the wind carries the rain of each slope on to the next tile. Air that
+     * has crossed a crest now sinks and warms in the lee (`updateRelief`):
+     * it rains less there, but carries its vapour on, so the land beyond the
+     * shadow gets rain again. Taking the moisture out of the air instead
+     * compounded tile by tile and dried all land (seed 777: mean 0.31 to
+     * 0.26, forests gone); so did letting the slope rain fall out of the air
+     * (0.22): the interiors live on it.
      */
     private updateMoisture(world: WorldState, params: ModelParams): void {
       const { elevation, temperature, moisture, riparian } = world;
       const scratch = this.moistScratch;
       scratch.set(moisture);
+      this.updateRelief(world);
+      const { orographic, leeRain, leeVapour } = this;
 
       const rainMul = mul(params.atmo.rainfall);
       const zonalMul = mul(params.atmo.zonalRain);
@@ -144,12 +168,12 @@ namespace SE {
             // Open water evaporates until the air above it is saturated.
             target = capacity;
           } else {
-            // Land inherits what the wind brings, minus what it rains out.
-            const carried = scratch[upwind] * transmission;
-            // Air forced up a slope dumps its load on the windward side.
-            const rise = Math.max(0, e - Math.max(0, elevation[upwind]));
-            const orographic = Math.min(0.35, rise * 1.6);
-            target = clamp(Math.min(capacity, carried + orographic + source * capacity), 0, 1);
+            // Land inherits what the wind brings, minus what it rains out;
+            // the air left the shadow of the tile upwind with its vapour.
+            const carried = scratch[upwind] * leeVapour[upwind] * transmission;
+            // Air forced up a slope dumps its load on the windward side;
+            // sinking air behind a crest rains less.
+            target = clamp(Math.min(capacity, carried + orographic[i] + source * capacity) * leeRain[i], 0, 1);
 
             // A river is a moisture source of its own, so its channel and banks
             // stay green even where the wind arrives with nothing left — which
@@ -159,6 +183,47 @@ namespace SE {
           }
 
           moisture[i] = scratch[i] + (target - scratch[i]) * MOISTURE_RATE;
+        }
+      }
+    }
+
+    /**
+     * Orographic rain of every land tile — air forced up a slope dumps its
+     * load on the windward side — and its rain shadow, 0..1
+     * (docs/hoehe-spec.md §3.5): the height of the crest upwind, which falls
+     * by LEE_DECAY per tile behind it and ends at open water, times how far
+     * the tile lies below it; the shadow keeps 1 - LEE_DRYING · shadow of the
+     * rain. Each row is swept along its wind twice round, so a crest across
+     * the date line counts.
+     */
+    private updateRelief(world: WorldState): void {
+      const bucket = Math.floor(world.ticks / LEE_REFRESH_TICKS);
+      if (world === this.leeWorld && world.seed === this.leeSeed && world.driftShifts === this.leeShifts &&
+        bucket === this.leeBucket) return;
+      this.leeWorld = world;
+      this.leeSeed = world.seed;
+      this.leeShifts = world.driftShifts;
+      this.leeBucket = bucket;
+      const { elevation } = world;
+      const { orographic, leeRain, leeVapour } = this;
+      const span = LEE_FULL_CREST - LEE_MIN_CREST;
+      for (let y = 0; y < GRID_H; y++) {
+        const wind = windDirection(y);
+        const row = y * GRID_W;
+        let crest = 0;
+        let upwindE = 0;
+        for (let s = 0; s < 2 * GRID_W; s++) {
+          const x = s % GRID_W;
+          const i = row + (wind > 0 ? x : GRID_W - 1 - x);
+          const e = elevation[i];
+          if (s >= GRID_W) {
+            const lee = e < 0 ? 0 : clamp((crest - LEE_MIN_CREST) / span, 0, 1) * clamp((crest - e) / LEE_FULL_DROP, 0, 1);
+            leeRain[i] = 1 - LEE_DRYING * lee;
+            leeVapour[i] = 1 / leeRain[i];
+            orographic[i] = e < 0 ? 0 : Math.min(0.35, Math.max(0, e - Math.max(0, upwindE)) * 1.6);
+          }
+          upwindE = e;
+          crest = e < 0 ? 0 : Math.max(e, crest - LEE_DECAY);
         }
       }
     }

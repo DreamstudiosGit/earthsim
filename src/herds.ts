@@ -2,8 +2,9 @@
  * SimEarth 2.0 — wandering creatures on the Edit window
  * -----------------------------------------------------------------------------
  * The map's animals as persistent markers, as in the original SimEarth: each
- * stands on a tile its class lives on, now and then steps one tile to a
- * neighbour its class also holds, glides there and faces the way it goes.
+ * stands on a tile its class lives on, a tile away from any city, now and
+ * then steps one tile to a neighbour its class also holds, glides there and
+ * faces the way it goes.
  * Which classes get markers is chosen for variety rather than by raw
  * numbers: rare classes and predators get more than their share of tiles,
  * every class on a few tiles gets some, and microbes only show where no
@@ -61,6 +62,17 @@ namespace SE {
 
   function isMicrobe(c: number): boolean {
     return c === Life.Prokaryote || c === Life.Eukaryote;
+  }
+
+  /** A city on tile `i` or one of its eight neighbours: creature icons keep a tile away, so towns stay readable. */
+  export function nearCity(world: WorldState, i: number): boolean {
+    const x = i % GRID_W;
+    const y = (i / GRID_W) | 0;
+    for (let dy = -1; dy <= 1; dy++) {
+      if (y + dy < 0 || y + dy >= GRID_H) continue;
+      for (let dx = -1; dx <= 1; dx++) if (world.tech[idx(wrapX(x + dx), y + dy)] !== Tech.None) return true;
+    }
+    return false;
   }
 
   function prefersReducedMotion(): boolean {
@@ -190,7 +202,7 @@ namespace SE {
       for (let k = ms.length - 1; k >= 0; k--) {
         const m = ms[k];
         const at = m.tile * LIFE_COUNT + m.c;
-        if (world.lifeDensity[at] < HERD_KEEP_DENSITY || world.tech[m.tile] !== Tech.None ||
+        if (world.lifeDensity[at] < HERD_KEEP_DENSITY || nearCity(world, m.tile) ||
           world.isWater(m.tile) !== (this.sea[m.c] === 1)) {
           this.remove(k);
         } else {
@@ -249,10 +261,10 @@ namespace SE {
       if (pdx !== 0) m.flip = pdx < 0;
     }
 
-    /** Does class `c` live on tile `j`, in its own realm and outside the cities? */
+    /** Does class `c` live on tile `j`, in its own realm and a tile away from the cities? */
     private suits(world: WorldState, c: Life, j: number): boolean {
       return world.lifeDensity[j * LIFE_COUNT + c] >= HERD_MIN_DENSITY &&
-        world.isWater(j) === (this.sea[c] === 1) && world.tech[j] === Tech.None;
+        world.isWater(j) === (this.sea[c] === 1) && !nearCity(world, j);
     }
 
     /** Can class `c` stand on tile `j`? `self` (index + 1) is the marker asking, 0 for a new one. */

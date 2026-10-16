@@ -10,14 +10,27 @@
 namespace SE {
   /* --------------------------------------------------------------- ramps -- */
 
+  /**
+   * Diverging around mild (12 °C): blue arm down to −36 °C, amber-to-red arm
+   * up to 36 °C, each stepping OKLCH lightness evenly so neighbouring climate
+   * zones differ in brightness, not only in hue. The warm arm is the short,
+   * steep one because half a living planet lies above 15 °C; a midpoint at
+   * 0 °C or the old rainbow (green and yellow at equal lightness) turned
+   * everything from the subtropics to the equator into one flat colour.
+   */
+  export const TEMP_MILD = 12;
   export const TEMP_RAMP: readonly (readonly [number, Rgb])[] = [
-    [-60, [18, 20, 78]],
-    [-20, [40, 90, 200]],
-    [0, [60, 180, 220]],
-    [15, [80, 200, 110]],
-    [30, [240, 220, 90]],
-    [45, [235, 130, 50]],
-    [60, [200, 40, 40]],
+    [-60, [38, 36, 94]],
+    [-36, [38, 68, 157]],
+    [-24, [57, 114, 188]],
+    [-12, [96, 159, 210]],
+    [0, [156, 200, 227]],
+    [TEMP_MILD, [237, 235, 226]],
+    [18, [244, 186, 128]],
+    [24, [229, 135, 59]],
+    [30, [202, 83, 22]],
+    [36, [163, 37, 20]],
+    [50, [98, 20, 31]],
   ];
 
   export const ELEV_RAMP: readonly (readonly [number, Rgb])[] = [
@@ -295,7 +308,12 @@ namespace SE {
     private readonly tiles = new TileCache();
     private readonly regions = new BiomeRegions();
     private readonly ambient = new AmbientLayer();
+    private readonly waterMotion = new WaterMotion();
     private readonly herds = new HerdLayer();
+    private readonly cities = new CityLayer();
+    private readonly settlers = new SettlerLayer();
+    /** Disasters: omens, eruptions, lava, smoke (docs/ereignisse-spec.md). */
+    readonly fx = new EffectLayer();
     private readonly canvas: HTMLCanvasElement;
     private readonly ctx: CanvasRenderingContext2D;
     /** The world drawn once; frames only add the cursor on top. */
@@ -331,6 +349,17 @@ namespace SE {
       if (!sctx) throw new Error('SimEarth: offscreen 2D context unavailable');
       this.swapCtx = sctx;
       if (TERRAIN_STYLE === 'pixel') this.land.whenReady(() => this.markDirty());
+      this.cities.whenReady(() => this.markDirty());
+    }
+
+    /** "Effekte reduzieren": disasters without shaking or flashes, and still water. */
+    get reduceEffects(): boolean {
+      return this.waterMotion.still;
+    }
+
+    set reduceEffects(on: boolean) {
+      this.fx.reduce = on;
+      this.waterMotion.still = on;
     }
 
     /** Force a full redraw on the next frame (after a tool changed the world). */
@@ -443,7 +472,8 @@ namespace SE {
       // than redraw every tile for each wheel notch or pinch step; the real
       // redraw follows as soon as the zoom comes to rest.
       const sameButZoom = key.slice(key.indexOf('|')) === this.baseKey.slice(this.baseKey.indexOf('|'));
-      if (!this.dirty && sameButZoom && this.tilePx !== this.baseTilePx && now - this.zoomedAt < ZOOM_SETTLE_MS) {
+      const previewing = !this.dirty && sameButZoom && this.tilePx !== this.baseTilePx && now - this.zoomedAt < ZOOM_SETTLE_MS;
+      if (previewing) {
         this.drawZoomPreview(dpr);
       } else {
         // A full redraw on a huge screen can take tens of milliseconds; the
@@ -463,18 +493,47 @@ namespace SE {
           this.baseTilePx = this.tilePx;
           this.dirty = false;
         }
-        // The terrain ran out of time for composing: finish it next frame.
-        if (this.pixelTerrain && this.land.pending) this.dirty = true;
+        // The terrain or the cities ran out of time for composing: finish next frame.
+        if ((this.pixelTerrain && this.land.pending) || this.cities.pending) this.dirty = true;
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.drawImage(this.base, 0, 0);
       }
 
+      const fx = this.layers.events && this.pixelTerrain && this.land.ready ? this.fx : null;
+      const cam: LandCamera = { scrollX: this.scrollX, scrollY: this.scrollY, tilePx: this.tilePx, dpr };
+      const cities = (x0: number, y0: number, x1: number, y1: number): void => {
+        if (this.layers.cities) this.cities.draw(ctx, cam, world, this.land.field, x0, y0, x1, y1);
+      };
+      if (this.pixelTerrain && !previewing) {
+        this.waterMotion.draw(ctx, cam, this.cols, this.rows, world, this.land, this.layers.oceans, now);
+      }
+      if (!fx) this.fx.show.flush(world);
+      // Only a finished base counts: while the terrain is still composing it shows older ground.
+      if (!this.land.pending) this.fx.baseTick = this.baseTick;
+      if (fx) {
+        fx.update(world, cam, this.cols, this.rows, now);
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        if (!previewing) fx.drawShake(ctx, this.base, cam, now);
+        fx.drawGround(ctx, world, cam, this.land, now, cities);
+      }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (this.layers.life) {
         this.herds.update(world, now);
         this.herds.draw(ctx, this, world, now, this.tiles, this.regions);
       }
+      if (this.layers.cities) this.settlers.draw(ctx, this, world, now, dpr);
+      if (fx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        fx.drawObjects(ctx, world, cam, this.land, cities);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      if (this.layers.cities) drawCityNames(ctx, this, world);
       this.ambient.draw(ctx, this, world, now, this.layers.oceans, this.layers.clouds);
+      if (fx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        fx.drawTop(ctx, cam);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
       this.drawCursor(ctx, this.tilePx);
     }
 
@@ -561,6 +620,7 @@ namespace SE {
           if (this.overlay !== Overlay.None) this.drawOverlayTile(ctx, world, i, wx, wy, px, py, size);
         }
       }
+      this.drawCities(world, c0 * size - ox, r0 * size - oy, (c1 + 1) * size - ox, (r1 + 1) * size - oy);
     }
 
     private drawBase(world: WorldState, dpr: number): void {
@@ -594,6 +654,7 @@ namespace SE {
           this.drawTile(ctx, world, idx(wx, wy), px, py, size);
         }
       }
+      this.drawCities(world, -ox, -oy, cols * size - ox, rows * size - oy);
 
       if (this.overlay !== Overlay.None) this.drawOverlay(ctx, world, size, x0, y0, ox, oy, cols, rows);
     }
@@ -665,15 +726,35 @@ namespace SE {
       this.drawTileTop(ctx, world, i, px, py, size);
     }
 
-    /** What stands on the ground of a tile: its city and its event. */
+    /** What happens on a tile: its event (cities are a layer of their own, see drawCities). */
     private drawTileTop(ctx: CanvasRenderingContext2D, world: WorldState, i: number, px: number, py: number, size: number): void {
-      if (this.layers.cities) {
-        const t = world.tech[i] as Tech;
-        if (t !== Tech.None) ctx.drawImage(this.tiles.city(t), px, py, size * SHADOW_SPAN, size * SHADOW_SPAN);
-      }
       if (this.layers.events && world.eventTtl[i] > 0) {
         ctx.drawImage(this.tiles.event(world.eventKind[i] as EventKind), px, py, size, size);
       }
+    }
+
+    /**
+     * The city layer over every tile overlapping a rectangle of the view (CSS
+     * pixels), scaled like the pixel terrain; it also draws the cities of the
+     * row below, whose tops reach into the rectangle.
+     */
+    private drawCities(world: WorldState, x0: number, y0: number, x1: number, y1: number): void {
+      if (!this.layers.cities) return;
+      const dpr = window.devicePixelRatio || 1;
+      const size = this.tilePx;
+      const T = size * dpr;
+      const txA = Math.floor(this.scrollX + x0 / size);
+      const txB = Math.ceil(this.scrollX + x1 / size);
+      const tyA = Math.max(0, Math.floor(this.scrollY + y0 / size));
+      const tyB = Math.min(GRID_H, Math.ceil(this.scrollY + y1 / size));
+      if (txB <= txA || tyB <= tyA) return;
+      this.land.ensure(world);
+      const ctx = this.baseCtx;
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      this.cities.draw(ctx, { scrollX: this.scrollX, scrollY: this.scrollY, tilePx: size, dpr }, world, this.land.field,
+        (txA - this.scrollX) * T, (tyA - this.scrollY) * T, (txB - this.scrollX) * T, (tyB - this.scrollY) * T);
+      ctx.restore();
     }
 
     /**
@@ -696,6 +777,7 @@ namespace SE {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       if (land.ready) {
         land.draw(ctx, cam, (txA - this.scrollX) * T, (tyA - this.scrollY) * T, (txB - this.scrollX) * T, (tyB - this.scrollY) * T);
+        this.drawCities(world, x0, y0, x1, y1);
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.imageSmoothingEnabled = false;

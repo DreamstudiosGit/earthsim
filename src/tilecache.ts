@@ -3,7 +3,7 @@
  * -----------------------------------------------------------------------------
  * Every tile graphic the map draws, rasterised once and found by number:
  * grounds with their relief already shaded in, sea tiles with their ripple,
- * creatures, trees and cities with their drop shadow. One blit per layer
+ * creatures and trees with their drop shadow. One blit per layer
  * instead of up to three, and no string built per tile — a full redraw of a
  * large screen touches fifteen thousand tiles and more.
  * ========================================================================== */
@@ -16,7 +16,6 @@ namespace SE {
   /** Ground tiles marked with this index are perpetual snow, not a biome. */
   export const SNOW_GROUND = BIOME_COUNT;
 
-  const SHADOW_ALPHA = { city: 0.4 };
   const RIPPLE_ALPHA = { coast: 0.2, ocean: 0.12 };
   const SURF_ALPHA = 0.55;
 
@@ -38,20 +37,9 @@ namespace SE {
     return canvas;
   }
 
-  /** Sprite art over its own silhouette, offset one sprite pixel down-right. */
-  function withShadow(rows: SpriteRows, alpha: number): HTMLCanvasElement {
-    const { canvas, ctx } = blank(9 * SCALE, 9 * SCALE);
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(drawPixelArt(rows.map((r) => r.replace(/[^.]/g, 'k')), SCALE), SCALE, SCALE);
-    ctx.globalAlpha = 1;
-    ctx.drawImage(drawPixelArt(rows, SCALE), 0, 0);
-    return canvas;
-  }
-
   export class TileCache {
     private readonly grounds: HTMLCanvasElement[] = [];
     private readonly seas: HTMLCanvasElement[] = [];
-    private readonly cities: HTMLCanvasElement[] = [];
     /** Vector art rastered per device tile size, keyed by size and picture. */
     private readonly vectors = new Map<string, HTMLCanvasElement>();
     /** Device pixels per tile, and the size before it (kept while zooming back). */
@@ -131,11 +119,6 @@ namespace SE {
       const sp = SPECIES[c];
       const art = specialist >= 0 ? sp?.specialists[specialist]?.art : sp?.stages[stage]?.art;
       return this.vector(`l${c}|${stage}|${specialist}|${+flip}`, art, CREATURE_LOOK, flip);
-    }
-
-    /** A city with its shadow; draw it SHADOW_SPAN times the tile size. */
-    city(t: Tech): HTMLCanvasElement {
-      return this.cities[t] ?? (this.cities[t] = withShadow(CITY_SPRITES[t], SHADOW_ALPHA.city));
     }
 
     /**

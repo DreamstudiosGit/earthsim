@@ -37,6 +37,8 @@ namespace SE {
     readonly canvas: HTMLCanvasElement; readonly ctx: CanvasRenderingContext2D; sig: number;
     /** Below 16 px per tile: the chunk already smoothed down to the device tile size it was last drawn at. */
     small: HTMLCanvasElement | null; smallT: number; smallSig: number;
+    /** What moves on the picture, from the same composition. */
+    motion: LandMotion;
   }
 
   /** Where the map is looking: tiles at the top left, CSS pixels per tile, device pixel ratio. */
@@ -134,7 +136,7 @@ namespace SE {
         canvas.height = side;
         const ctx = canvas.getContext('2d');
         if (!ctx) return null;
-        c = { canvas, ctx, sig: -1, small: null, smallT: 0, smallSig: -1 };
+        c = { canvas, ctx, sig: -1, small: null, smallT: 0, smallSig: -1, motion: NO_LAND_MOTION };
         this.chunks.set(n, c);
       }
       const sig = this.field.signature(cx * LAND_CHUNK, cy * LAND_CHUNK, LAND_CHUNK, LAND_CHUNK, this.seaColor ? 1 : 0);
@@ -147,10 +149,17 @@ namespace SE {
         composer.compose(this.field, cx * LAND_CHUNK, cy * LAND_CHUNK, LAND_CHUNK, LAND_CHUNK, MARGIN,
           new Uint32Array(this.image.data.buffer), this.seaColor);
         c.ctx.putImageData(this.image, 0, 0);
+        c.motion = composer.motion;
         c.sig = sig;
         this.composed++;
       }
       return c;
+    }
+
+    /** Surf and river water of chunk (cx, cy) as it is drawn now; null before it was composed. */
+    motion(cx: number, cy: number): LandMotion | null {
+      const c = this.chunks.get(cy * CHUNKS_X + cx);
+      return c && c.sig !== -1 ? c.motion : null;
     }
 
     /**

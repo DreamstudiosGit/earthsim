@@ -772,35 +772,6 @@ p { margin: 0; }
 .gloss-more:hover { text-decoration: underline; }
 .gloss-more .ico { width: 18px; height: 18px; }
 
-/* ---- examine ---- */
-.examine-body { display: flex; flex-direction: column; gap: 10px; }
-.ex-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.ex-card { border-radius: var(--radius-m); background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line); overflow: hidden; }
-.ex-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
-.ex-card-head h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.7px; color: var(--ink-3); font-weight: 700; }
-.ex-card-head .ico { width: 18px; height: 18px; }
-.ex-card-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
-.ex-hero { display: flex; align-items: center; gap: 10px; }
-.ex-hero-img { width: 48px; height: 48px; border-radius: 10px; flex: 0 0 auto; }
-.ex-portrait { width: 64px; height: 64px; padding: 6px; border-radius: 10px; background: radial-gradient(circle at 50% 38%, #24453c, #0a1412 75%); flex: 0 0 auto; box-shadow: inset 0 0 0 1px var(--line); }
-.ex-portrait svg { display: block; width: 100%; height: 100%; }
-.ex-hero-text { min-width: 0; }
-.ex-title { font-weight: 700; font-size: 15px; line-height: 1.2; }
-.ex-sub { color: var(--ink-3); font-size: 12.5px; }
-.ex-empty { color: var(--ink-3); font-size: 13px; }
-.ex-grid { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; font-size: 13px; }
-.ex-grid dt { color: var(--ink-3); }
-.ex-grid dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-.ex-plant-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
-.ex-plant-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.ex-plant-list li.lead .chip-btn { border-color: rgba(143, 220, 154, 0.55); color: var(--ink); }
-.ex-plant-list .chip-btn img { width: 20px; height: 20px; border-radius: 5px; }
-.ex-lead { font-size: 11.5px; color: var(--accent); font-weight: 650; }
-.ex-species { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.ex-species-label { font-size: 12.5px; color: var(--ink-3); margin-right: 2px; }
-.ex-foot { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-3); padding-top: 4px; border-top: 1px solid var(--line); }
-.ex-event { color: var(--warn); font-weight: 650; }
-
 /* ---- chronicle ---- */
 .chronicle { position: relative; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 /* A timeline spine through the entries' pictures. */
@@ -1406,7 +1377,6 @@ p { margin: 0; }
     border-radius: var(--radius);
   }
   .win-head { cursor: default; }
-  .ex-cols { grid-template-columns: 1fr; }
   .tree-main { flex-direction: column; }
   .tree-detail { width: auto; max-height: 48%; border-left: 0; border-top: 1px solid var(--line); }
   .tree-legend { width: auto; right: 12px; font-size: 12px; }
@@ -1431,12 +1401,6 @@ p { margin: 0; }
 @media (max-width: 760px) {
   .menubar.sheet-open .menu-sheet-close { display: inline-flex; align-self: flex-end; }
 }
-.ex-suit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 5px; }
-.ex-suit-item { display: grid; grid-template-columns: 20px 1fr; grid-template-rows: auto auto; column-gap: 6px; align-items: center; font-size: 12px; color: var(--ink-2); }
-.ex-suit-item img { grid-row: 1 / 3; width: 20px; height: 20px; border-radius: 5px; }
-.ex-suit-bar { height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.1); position: relative; overflow: hidden; }
-.ex-suit-bar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: calc(var(--v) * 100%); background: var(--accent); border-radius: 2px; }
-.ex-suit-none { font-size: 12px; color: var(--ink-3); }
 .cond-new { border-color: rgba(143, 220, 154, 0.5) !important; }
 .detail-chronicle.fresh { animation: fresh-in 600ms var(--ease); border-color: rgba(143, 220, 154, 0.5); }
 @keyframes fresh-in { from { opacity: 0; transform: translateY(-6px); } }

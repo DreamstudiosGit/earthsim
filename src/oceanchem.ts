@@ -73,7 +73,7 @@ namespace SE {
     },
     {
       key: 'oxygen:sea', title: 'Sauerstoff reichert sich im Meer an',
-      text: 'Kein Eisen bindet den Sauerstoff mehr. Zuerst wird das Wasser an der Oberfläche sauerstoffreich.',
+      text: 'Der große Eisenvorrat ist weitgehend gebunden. Nun bleibt mehr Sauerstoff im Wasser gelöst, zuerst an der Oberfläche.',
       change: 'Das Meer gibt jetzt Sauerstoff an die Luft ab.',
       icon: 'assets/resources/oxygen.svg', major: false,
       reached: (w) => w.oceanO2 >= OCEAN_O2_RISEN,
@@ -81,7 +81,7 @@ namespace SE {
     {
       key: 'oxygen:air', title: 'Große Sauerstoffkatastrophe',
       text: 'Sauerstoff reichert sich in der Luft an. Für viele Mikroben, die ohne Sauerstoff leben, ist er giftig – sie weichen in sauerstofffreie Nischen aus. In der Höhe bildet sich eine erste Ozonschicht.',
-      change: 'Freier Sauerstoff in der Luft ebnet den Weg für komplexe Zellen.',
+      change: 'Die Sauerstoffproduktion im Meer verändert jetzt auch die Atmosphäre – lange vor den ersten Landpflanzen.',
       icon: 'assets/resources/oxygen.svg', major: true,
       reached: (w) => w.o2 >= AIR_O2_RISEN,
     },

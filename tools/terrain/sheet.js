@@ -182,7 +182,7 @@ function groundFor(art, ob) {
   const entry = ob.group ? C.GROUPS[ob.group].objects.find((o) => o.id === ob.id) : null;
   let wanted = ['meadow'];
   if (entry && entry.where !== '*') wanted = entry.where.filter((w) => w !== 'sea');
-  if (!ob.group) wanted = C.ABIOTIC.find((a) => a.id === ob.id).where;
+  if (!ob.group) wanted = C.ABIOTIC.find((a) => a.id === ob.id)?.where ?? ['rock'];
   // With --family only that family's grounds exist: take the first one built,
   // else any ground of the object's own family.
   const mats = wanted.map((ls) => C.LANDSCAPES.find((l) => l.id === ls).materials.soil);
@@ -198,19 +198,20 @@ function partObjects(art, bg) {
     const vars = art.objects[ob.id];
     if (!vars) continue;
     const ground = groundFor(art, ob);
-    const boxH = ob.kind === 'tree' ? 20 : 16;
+    const [boxW, boxH] = C.KIND_BOX[ob.kind];
+    const step = boxW * 3 + 8;
     cells.push({
-      w: Math.max(vars.length * 56, 200), h: LABEL + boxH * 3 + 6 + 24,
+      w: Math.max(vars.length * step, 200), h: LABEL + boxH * 3 + 6 + 24,
       draw(s, x, y) {
         s.text(`${ob.id} - ${ob.group || 'abiotic'}`, x, y, DIM);
         vars.forEach((v, n) => {
-          const cx = x + n * 56;
-          const cell = new Tex(16, boxH);
-          if (ground) cell.each((px, py) => ground.get(px, py + 4));
+          const cx = x + n * step;
+          const cell = new Tex(boxW, boxH);
+          if (ground) cell.each((px, py) => ground.get(px % ground.w, (py + 4) % ground.h));
           else cell.fill(P.c('water4'));
-          cell.stamp(v.tex, Math.floor((16 - v.tex.w) / 2), boxH - v.tex.h);
+          cell.stamp(v.tex, Math.floor((boxW - v.tex.w) / 2), boxH - v.tex.h);
           s.blit(cell, cx, y + LABEL, 3);
-          s.blit(cell, cx + 50 - 16, y + LABEL + boxH * 3 + 6, 1);
+          s.blit(cell, cx + step - 6 - boxW, y + LABEL + boxH * 3 + 6, 1);
         });
       },
     });

@@ -52,6 +52,7 @@ namespace SE {
     placeTool(id: string): void;
     world(): WorldState;
     evo(): EvolutionSystem;
+    dex(): FaunaDex;
   }
 
   export class EvolutionTreeView {
@@ -75,6 +76,7 @@ namespace SE {
     private ty = 0;
     private fitted = false;
     private lastRevision = -1;
+    private lastFaunaVersion = -1;
     private detailSig = '';
     private readonly pointers = new Map<number, { x: number; y: number }>();
     private pan: { x: number; y: number; tx: number; ty: number; moved: boolean } | null = null;
@@ -521,8 +523,10 @@ namespace SE {
     /** Refresh states. Cheap when nothing changed. */
     update(force = false): void {
       const evo = this.hooks.evo();
-      if (!force && evo.revision === this.lastRevision) return;
+      const dex = this.hooks.dex();
+      if (!force && evo.revision === this.lastRevision && dex.version === this.lastFaunaVersion) return;
       this.lastRevision = evo.revision;
+      this.lastFaunaVersion = dex.version;
       const world = this.hooks.world();
       let available = 0;
 
@@ -635,7 +639,7 @@ namespace SE {
       const st = evo.statusOf(id);
       const costCond = st.conds.find((c) => c.kind === 'cost');
       const sig = [
-        id, st.state, st.alive, world.evo.chronicle.length, n.life !== undefined ? highestStage(world, n.life) : -1,
+        id, st.state, st.alive, world.evo.chronicle.length, n.life !== undefined ? this.hooks.dex().version : -1,
         st.conds.map((c) => (c.kind === 'cost' ? `${c.met}` : `${c.met}${c.pending}${c.detail}`)).join('|'),
       ].join('#');
       if (sig === this.detailSig) {
@@ -770,7 +774,7 @@ namespace SE {
       // --- sub-species ---
       if (n.life !== undefined) {
         main.appendChild(heading('Unterarten', 'tool-life'));
-        main.appendChild(speciesStrip(n.life, highestStage(world, n.life)));
+        main.appendChild(speciesStrip(n.life, this.hooks.dex()));
       }
 
       // --- ecosystem ---

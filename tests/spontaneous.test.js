@@ -81,7 +81,7 @@ test('steps that are not ready never arise, and readiness lapses when conditions
   const w = s.world;
   w.evo.readySince.set('landPlants', w.ticks - 1e6); // locked: no algae yet
   w.evo.readySince.set('eukaryotes', w.ticks - 5000);
-  w.o2 = 0; // complex cells need oxygen
+  w.oceanO2 = 0; // complex cells need dissolved oxygen
   s.evo.refresh(s.world, s.params, true);
   assert.equal(s.evo.spontaneous(w, s.params, () => 0), null);
   assert.ok(!w.evo.isDeveloped('eukaryotes'));

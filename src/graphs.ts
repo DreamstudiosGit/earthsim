@@ -28,18 +28,23 @@ namespace SE {
   function oxygenNote(o2: number): string {
     let next = Infinity;
     for (let c = 1; c < LIFE_COUNT; c++) {
-      const need = LIFE[c as Life].o2Min;
+      const oxygen = lifeOxygen(c as Life);
+      const need = oxygen.medium === 'air' ? oxygen.establish : 0;
       if (need > o2 && need < next) next = need;
     }
     if (next === Infinity) return 'Genug Sauerstoff für alle Tiergruppen.';
     const who: string[] = [];
-    for (let c = 1; c < LIFE_COUNT; c++) if (LIFE[c as Life].o2Min === next) who.push(LIFE[c as Life].name);
+    for (let c = 1; c < LIFE_COUNT; c++) {
+      const oxygen = lifeOxygen(c as Life);
+      if (oxygen.medium === 'air' && oxygen.establish === next) who.push(LIFE[c as Life].name);
+    }
     return `Ab ${fmt.one(next)} % möglich: ${who.slice(0, 2).join(', ')}${who.length > 2 ? ' …' : ''}`;
   }
 
   /** What the sea does with the oxygen of its producers right now. */
   function seaOxygenNote(w: WorldState): string {
-    if (w.oceanIron >= IRON_DEPLETED) return 'Noch bindet gelöstes Eisen jeden Sauerstoff im Wasser.';
+    if (w.lifeStageCounts[Life.Prokaryote * SUBSPECIES_PER_CLASS + CYANOBACTERIA_STAGE] === 0) return 'Aktuell keine Cyanobakterien: Die übrigen Mikroben setzen keinen Sauerstoff frei.';
+    if (w.oceanIron >= IRON_DEPLETED) return 'Noch bindet gelöstes Eisen einen großen Teil des Sauerstoffs im Wasser.';
     if (w.oceanO2 < OCEAN_O2_RISEN) return 'Das Eisen ist verbraucht – jetzt reichert sich Sauerstoff an.';
     return 'Tauscht Sauerstoff mit der Luft aus, bis beide im Gleichgewicht sind.';
   }
@@ -205,7 +210,9 @@ namespace SE {
         cities += world.techCounts[t];
         if (world.techCounts[t] > 0) top = t as Tech;
       }
-      if (!this.changed(`${Array.from(world.techCounts).join(',')}|${world.sentientClass}`)) return;
+      const coal = `${fmt.int(world.coal)} Gt`;
+      const mined = `${fmt.int(world.coalMined)} Gt`;
+      if (!this.changed(`${Array.from(world.techCounts).join(',')}|${world.sentientClass}|${coal}|${mined}`)) return;
       const road = make('ol', `tech-road${cities === 0 ? ' dormant' : ''}`);
       for (let t = 1; t < TECH_COUNT; t++) {
         const count = world.techCounts[t];
@@ -217,20 +224,22 @@ namespace SE {
         road.appendChild(li);
       }
       this.host.appendChild(road);
-      if (cities === 0) {
-        this.host.appendChild(make('p', 'graph-note', 'Noch gibt es keine Städte. Eine Zivilisation entsteht, wenn eine Tiergruppe Intelligenz entwickelt – oder durch den Monolithen.'));
-        return;
-      }
       const facts = make('div', 'stat-grid');
       const stat = (icon: string, label: string, value: string): void => {
         const s = make('div', 'stat');
         s.append(img(icon, 'ico'), make('span', 'stat-label', label), make('span', 'stat-value', value));
         facts.appendChild(s);
       };
-      stat(uiIcon('city'), 'Städte', fmt.int(cities));
-      stat(eventIcon('civilization'), 'Höchste Stufe', TECH_NAMES[top]);
-      if (world.sentientClass !== Life.None) stat(eventIcon('sentience'), 'Intelligente Art', LIFE[world.sentientClass].name);
-      stat(resIcon('population'), 'Bevölkerungsindex', fmt.one(world.totalCityPop));
+      if (cities === 0) {
+        this.host.appendChild(make('p', 'graph-note', 'Noch gibt es keine Städte. Eine Zivilisation entsteht, wenn eine Tiergruppe Intelligenz entwickelt – oder durch den Monolithen.'));
+      } else {
+        stat(uiIcon('city'), 'Städte', fmt.int(cities));
+        stat(eventIcon('civilization'), 'Höchste Stufe', TECH_NAMES[top]);
+        if (world.sentientClass !== Life.None) stat(eventIcon('sentience'), 'Intelligente Art', LIFE[world.sentientClass].name);
+        stat(resIcon('population'), 'Bevölkerungsindex', fmt.one(world.totalCityPop));
+      }
+      stat(evoIcon('clubmosses'), 'Kohlevorrat', coal);
+      if (world.coalMined > 0) stat(evoIcon('clubmosses'), 'Abgebaute Kohle', mined);
       this.host.appendChild(facts);
     }
 

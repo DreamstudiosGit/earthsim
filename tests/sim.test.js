@@ -134,6 +134,7 @@ test('F04: the placement check uses the room competitors leave', () => {
   const s = makeSim(9);
   const w = s.world;
   w.o2 = 25;
+  w.oceanO2 = 100;
   const L = SE.LIFE_COUNT;
   const i = findTile(w, (j) => w.isWater(j) && w.biome[j] === SE.Biome.Coast && w.temperature[j] > 10 && w.temperature[j] < 25);
   w.refreshDerived();

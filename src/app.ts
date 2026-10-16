@@ -19,6 +19,11 @@ namespace SE {
 
   /** Footprint radius of each disaster, matching EventSystem's brushes. */
   const EVENT_RADIUS: readonly number[] = [8, 8, 6, 4, 6, 6, 6, 8];
+  /** The ping where the camera lands on a disaster, in the disaster tool's colour. */
+  const HAZARD_PING = '#ff7a6b';
+  function prefersReducedMotion(): boolean {
+    return typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
 
   type LifeMode = 'life' | 'city' | 'terraformer';
 
@@ -47,6 +52,8 @@ namespace SE {
     oceanShare: number;
     /** The planet new games start on: random, or the Earth in an epoch. */
     epoch: EpochId;
+    /** "Effekte reduzieren": disasters without shaking or flashes, no surf or river current. */
+    reduceEffects: boolean;
   }
 
   export class App {
@@ -60,6 +67,11 @@ namespace SE {
     readonly evolution = new EvolutionSystem(this.life, this.flora);
     private readonly civ = new CivSystem();
     private readonly events = new EventSystem();
+    private readonly hazards = new HazardSystem();
+    /** Hazards that started without the player since the last report (nature, chains). */
+    private readonly hazardNews: Hazard[] = [];
+    /** The latest disaster and the planet it belongs to, for "Zum letzten Ereignis springen". */
+    private lastHazard: { h: Hazard; generation: number } | null = null;
     private readonly atmo = new AtmosphereSystem();
     private readonly history = new HistoryRecorder();
 
@@ -105,7 +117,7 @@ namespace SE {
     /* ---- state ---- */
     private speed = 3;
     private lastRunningSpeed = 3;
-    private settings: Settings = { relativeDate: true, pauseOnMilestone: false, pauseOnDiscovery: false, dockCollapsed: false, lastSlot: 1, sound: true, oceanShare: OCEAN_FRACTION, epoch: 'random' };
+    private settings: Settings = { relativeDate: true, pauseOnMilestone: false, pauseOnDiscovery: false, dockCollapsed: false, lastSlot: 1, sound: true, oceanShare: OCEAN_FRACTION, epoch: 'random', reduceEffects: prefersReducedMotion() };
     private mapShowsInfo = false;
     private selection: ToolSelection = {
       tool: Tool.Examine, altitudeRaise: true, flora: Flora.LandPlants, clearing: false,
@@ -178,7 +190,10 @@ namespace SE {
       this.buildHud();
       this.buildMenus();
       this.wireKeyboard();
-      this.windows.onChange = () => this.syncWindowButtons();
+      this.windows.onChange = () => {
+        this.syncWindowButtons();
+        this.stage.classList.toggle('examining', this.windows.isVisible('examine'));
+      };
 
       driftProbe = (y) => this.geo.plateVelocity(y);
       civEventSink = (kind, x, y) => this.events.trigger(this.world, kind, x, y);
@@ -199,6 +214,8 @@ namespace SE {
       this.canvas = canvas;
       this.stage.appendChild(canvas);
       this.editView = new EditView(canvas);
+      this.editView.reduceEffects = this.settings.reduceEffects;
+      this.hazards.onStart = (h) => this.hazardNews.push(h);
       this.wireCanvas(canvas);
 
       /* ---- tool dock ---- */
@@ -436,6 +453,8 @@ namespace SE {
       const w = this.world;
       const cost = this.toolCost();
       const parts = [`${BIOME_NAMES[w.biome[i]]} · ${fmt.int(w.temperature[i])} °C`];
+      const city = cityLabel(w, i);
+      if (city) parts.unshift(city);
       if (cost > 0) parts.push(`${TOOL_NAMES[this.selection.tool]} · ${cost} Ω`);
       const text = parts.join('  ·  ');
       if (this.hoverTip.textContent !== text) this.hoverTip.textContent = text;
@@ -538,11 +557,13 @@ namespace SE {
       buildGlossary(glossBody);
 
       // Examine
-      const exam = this.windows.create({ id: 'examine', title: 'Untersuchen', icon: uiIcon('examine'), x: 0.26, y: 0.1, width: 760, height: 540 });
+      const exam = this.windows.create({ id: 'examine', title: 'Untersuchen', icon: uiIcon('examine'), x: 100, y: 12, width: 398, height: 540, cls: 'win-examine', docked: true, onShow: () => revealExaminedTile() });
+      const revealExaminedTile = installExamineDock(exam, this.editView, this.canvas, () => this.examineTile);
       const examBody = make('div', 'examine-body');
       exam.body.appendChild(examBody);
       this.examinePanel = new ExaminePanel(examBody);
       this.examinePanel.onShowInTree = (id) => this.openTree(id);
+      this.examinePanel.onShowSpecies = (c, stage) => { this.speciesInfo.show(c, stage); this.windows.show('species'); };
 
       // Chronicle
       const chron = this.windows.create({ id: 'chronicle', title: 'Chronik', icon: uiIcon('chronicle'), x: 0.34, y: 0.08, width: 460, height: 560 });
@@ -609,6 +630,7 @@ namespace SE {
         placeTool: (id) => this.armToolFor(id),
         world: () => this.world,
         evo: () => this.evolution,
+        dex: () => this.fauna,
       });
       win.body.appendChild(this.tree.root);
     }
@@ -820,6 +842,11 @@ namespace SE {
             },
             { separator: true, label: '' },
             {
+              label: 'Effekte reduzieren (kein Wackeln, keine Blitze)', icon: uiIcon('layer-events'),
+              action: () => { this.settings.reduceEffects = !this.settings.reduceEffects; this.editView.reduceEffects = this.settings.reduceEffects; this.saveSettings(); },
+              checked: () => this.settings.reduceEffects,
+            },
+            {
               label: 'Klang bei neuen Entwicklungen', icon: uiIcon('menu-sound'),
               action: () => { this.settings.sound = !this.settings.sound; this.saveSettings(); },
               checked: () => this.settings.sound,
@@ -895,6 +922,7 @@ namespace SE {
     /* ========================================================== tools === */
 
     private selectTool(tool: Tool): void {
+      if (tool !== Tool.Examine) this.windows.hide('examine');
       this.selection.tool = tool;
       for (const [t, b] of this.toolButtons) setPressed(b, t === tool);
       this.canvas.dataset.tool = String(tool);
@@ -921,7 +949,7 @@ namespace SE {
       switch (s.tool) {
         case Tool.SetAltitude:
         case Tool.PlantBiome: return 2;
-        case Tool.TriggerEvent: return EVENT_RADIUS[s.event];
+        case Tool.TriggerEvent: return HAZARD_RULES[s.event] ? 0 : EVENT_RADIUS[s.event]; // one tile for disasters with a rule (docs/ereignisse-spec.md)
         case Tool.PlaceLife: return s.lifeMode === 'terraformer' && s.terraformer === Terraformer.VaporGenerator ? 2 : 0;
         default: return 0;
       }
@@ -1128,7 +1156,9 @@ namespace SE {
           for (const [j, v] of changes) w.elevation[j] = v;
           RiverSystem.rebuild(w);
           BiomeSystem.step(w, false);
+          this.civ.sync(w, this.params);
           this.afterEdit();
+          this.civNews();
           break;
         }
 
@@ -1141,11 +1171,17 @@ namespace SE {
           break;
 
         case Tool.TriggerEvent:
+          if (HAZARD_RULES[s.event]) {
+            this.raiseHazard(s.event, x, y);
+            break;
+          }
           if (!this.spend(EVENT_COST)) return;
           this.events.trigger(w, s.event, x, y);
           if (w.terrainDirty) RiverSystem.rebuild(w);
+          this.civ.sync(w, this.params);
           this.afterEdit();
           this.notifier.message(`${EVENT_NAMES[s.event]} ausgelöst.`);
+          this.civNews();
           break;
 
         case Tool.Move:
@@ -1155,6 +1191,33 @@ namespace SE {
       if (this.examineTile && this.examineTile.x === x && this.examineTile.y === y) {
         this.examinePanel.update(w, x, y);
       }
+    }
+
+    /**
+     * A disaster on exactly one tile (docs/ereignisse-spec.md §2.1): checked
+     * and paid for now, started in the simulation once its omen has played.
+     */
+    raiseHazard(kind: EventKind, x: number, y: number): void {
+      const w = this.world;
+      const why = this.hazards.refusal(w, kind, x, y);
+      if (why) { this.notifier.message(why, 'warn'); return; }
+      if (!this.spend(EVENT_COST)) return;
+      this.editView.fx.show.stage(w, kind, x, y, () => {
+        const h = this.hazards.start(w, kind, x, y, 'player');
+        if (!h) {
+          // The tile changed during the omen (another hazard took it): the energy comes back.
+          w.omega += EVENT_COST;
+          this.notifier.message(this.hazards.refusal(w, kind, x, y) || `${EVENT_NAMES[kind]} ist hier nicht mehr möglich.`, 'warn');
+          return null;
+        }
+        if (w.terrainDirty) RiverSystem.rebuild(w);
+        this.civ.sync(w, this.params);
+        this.afterEdit();
+        this.lastHazard = { h, generation: w.hazards.generation };
+        this.reportHazards(`${EVENT_NAMES[kind]}!`);
+        this.civNews();
+        return h;
+      });
     }
 
     /** Plant a developed group (or clear) over a 5x5 brush. */
@@ -1241,12 +1304,18 @@ namespace SE {
           return;
         }
         if (w.tech[i] >= s.tech && w.cityPop[i] >= 0.3) { this.notifier.message('Hier steht bereits eine solche Stadt.', 'warn'); return; }
+        const upgrade = w.tech[i] !== Tech.None;
+        const problem = upgrade ? '' : citySiteProblem(w, i, founder);
+        if (problem) { this.notifier.message(problem, 'warn'); return; }
         if (!this.spend(TECH_COST[s.tech])) return;
         w.tech[i] = s.tech;
         w.cityPop[i] = Math.max(w.cityPop[i], 0.3);
         w.sentientClass = founder;
+        this.civ.sync(w, this.params);
         this.afterEdit();
-        this.notifier.message(`Stadt der ${TECH_NAMES[s.tech]} gegründet.`, 'ok');
+        this.civNews();
+        const name = w.civ.cityAt(i)?.name ?? 'Stadt';
+        this.notifier.message(upgrade ? `${name}: ${TECH_NAMES[s.tech]}.` : `${name} gegründet (${TECH_NAMES[s.tech]}).`, 'ok');
         return;
       }
 
@@ -1260,6 +1329,8 @@ namespace SE {
         this.notifier.message('Der Monolith braucht eine heimische Tiergruppe, die Intelligenz entwickeln kann – etwa Säugetiere, Reptilien, Insekten oder Vögel.', 'warn');
         return;
       }
+      const siteProblem = tf === Terraformer.Monolith ? citySiteProblem(w, i, this.sentientResident(i)) : '';
+      if (siteProblem) { this.notifier.message(siteProblem, 'warn'); return; }
       if (!this.spend(TERRAFORMER_COST[tf])) return;
       switch (tf) {
         case Terraformer.OxygenGenerator:
@@ -1287,6 +1358,8 @@ namespace SE {
           w.sentientClass = species;
           w.tech[i] = Tech.Stone;
           w.cityPop[i] = 0.3;
+          this.civ.sync(w, this.params);
+          this.civNews();
           this.notifier.message(`Monolith: ${LIFE[species].name} erlangen Intelligenz.`, 'ok');
           break;
         }
@@ -1308,9 +1381,36 @@ namespace SE {
       return best;
     }
 
-    /** Scroll the map to the most recent disaster. */
+    /**
+     * One line for the disasters that just started: the player's own (`first`)
+     * and those nature or a chain set off, with a button that flies there.
+     */
+    private reportHazards(first = ''): void {
+      const news = this.hazardNews.splice(0);
+      if (news.length === 0) {
+        if (first) this.notifier.message(first);
+        return;
+      }
+      const parts = first ? [first] : [];
+      for (const h of news) parts.push(h.cause === 'chain' ? `Folge: ${EVENT_NAMES[h.kind]}.` : `${EVENT_NAMES[h.kind]}!`);
+      const target = news[news.length - 1];
+      this.lastHazard = { h: target, generation: this.world.hazards.generation };
+      this.notifier.message(parts.join(' '), 'info', { label: 'Zum Ereignis springen', run: () => this.flyToHazard(target) });
+    }
+
+    /** Fly to a disaster; a hurricane is found where its eye is now. */
+    private flyToHazard(h: Hazard): void {
+      const eye = h.storm?.path[h.storm.path.length - 1];
+      const x = eye === undefined ? h.x : eye % GRID_W;
+      const y = eye === undefined ? h.y : Math.floor(eye / GRID_W);
+      flyTo(this.editView, x, y, () => this.editView.ping(x, y, HAZARD_PING));
+    }
+
     private gotoEvent(): void {
       const w = this.world;
+      const last = this.lastHazard && this.lastHazard.generation === w.hazards.generation ? this.lastHazard.h : null;
+      const running = w.hazards.list[w.hazards.list.length - 1] ?? last;
+      if (running) { this.flyToHazard(running); return; }
       let best = -1;
       let bestTtl = 0;
       for (let i = 0; i < TILE_COUNT; i++) {
@@ -1502,9 +1602,11 @@ namespace SE {
       const body = make('div', 'new-planet-body');
       body.appendChild(make('p', undefined, risky
         ? 'Der aktuelle Planet hat ungespeicherte Fortschritte. Sie gehen verloren, wenn du jetzt einen neuen Planeten erschaffst.'
-        : 'Ein neuer Planet ersetzt den jetzigen. Wie viel seiner Oberfläche soll Meer sein?'));
+        : 'Ein neuer Planet ersetzt den jetzigen. Welcher soll es sein?'));
       const sea = buildOceanSlider(this.settings.oceanShare);
-      body.appendChild(sea.el);
+      const picker = buildPlanetPicker(this.settings.epoch, (id) => { sea.el.hidden = !epochOf(id).playerSea; });
+      sea.el.hidden = !epochOf(picker.value).playerSea;
+      body.append(picker.el, sea.el);
       const choice = await Modal.show({
         title: 'Neuen Planeten erschaffen?', icon: uiIcon('new-planet'), body,
         actions: risky
@@ -1524,12 +1626,19 @@ namespace SE {
         if (!ok) return;
       }
       this.setOceanShare(sea.value);
+      this.setEpoch(picker.value);
       this.newPlanet();
     }
 
     private setOceanShare(share: number): void {
       if (!Number.isFinite(share)) return;
       this.settings.oceanShare = clamp(share, OCEAN_SHARE_MIN, OCEAN_SHARE_MAX);
+      this.saveSettings();
+    }
+
+    private setEpoch(id: EpochId): void {
+      if (!isEpochId(id)) return;
+      this.settings.epoch = id;
       this.saveSettings();
     }
 
@@ -1576,11 +1685,14 @@ namespace SE {
       const p = this.params;
       this.geo.step(w, p);
       this.events.step(w, p);
+      this.hazards.step(w);
+      this.reportHazards();
       // Rivers before the climate: their corridors are an input to it.
       RiverSystem.maybeRebuild(w);
       this.climate.step(w, p);
       this.flora.step(w, p);
       BiomeSystem.step(w);
+      CoalSystem.step(w);
       this.life.stepLife(w, p, this.atmo); // also refreshes derived aggregates
       this.fauna.step(w);
       this.evolution.step(w, p);
@@ -1598,7 +1710,21 @@ namespace SE {
       this.recordCiv();
     }
 
+    /** Hand the civilization's news to the chronicle, or else to the message bar. */
+    private civNews(): void {
+      const w = this.world;
+      for (const n of w.civ.news) {
+        if (!n.chronicle) { this.notifier.message(n.text, n.tone); continue; }
+        this.evolution.record(w, {
+          key: n.chronicle.key, kind: 'civ', title: n.chronicle.title, text: n.text, change: n.chronicle.change,
+          icon: eventIcon('civilization'), tick: w.ticks, years: w.absoluteYears, major: false, at: n.at,
+        });
+      }
+      w.civ.news.length = 0;
+    }
+
     private recordCiv(): void {
+      this.civNews();
       const civ = this.civ;
       if (!civ.lastKind) return;
       const w = this.world;
@@ -1768,6 +1894,7 @@ namespace SE {
         if (typeof s.lastSlot === 'number' && s.lastSlot >= 1 && s.lastSlot <= SLOT_COUNT) this.settings.lastSlot = s.lastSlot;
         if (typeof s.oceanShare === 'number' && Number.isFinite(s.oceanShare)) this.settings.oceanShare = clamp(s.oceanShare, OCEAN_SHARE_MIN, OCEAN_SHARE_MAX);
         if (isEpochId(s.epoch)) this.settings.epoch = s.epoch;
+        if (typeof s.reduceEffects === 'boolean') this.settings.reduceEffects = s.reduceEffects;
       } catch {
         // Settings are a convenience; defaults are fine.
       }
@@ -1838,8 +1965,13 @@ namespace SE {
       try {
         const doc = await SaveSystem.decode(raw);
         const { notes } = SaveSystem.load(doc, { world: this.world, params: this.params, geo: this.geo, history: this.history, fauna: this.fauna }, this.life, this.flora);
+        // Cities, peoples and names are derived from the grid; a city carpet thins out here.
+        this.civ.sync(this.world, this.params);
+        this.world.refreshDerived();
+        const civNote = this.world.civ.news.length > 0 ? this.world.civ.news[0].text : '';
+        this.world.civ.news.length = 0;
         this.afterLoad();
-        this.notifier.message(notes.length > 0 ? notes[0] : 'Planet geladen.', 'ok');
+        this.notifier.message(notes.length > 0 ? notes[0] : civNote || 'Planet geladen.', 'ok');
         return true;
       } catch (err) {
         const reason = err instanceof SaveIncompatible || err instanceof SaveCorrupt ? err.message : 'Der Spielstand ist unlesbar.';
@@ -1959,6 +2091,11 @@ namespace SE {
         oceanShare: this.settings.oceanShare,
         reshape: (share) => {
           this.setOceanShare(share);
+          this.newPlanet({ quiet: true, keepSeed: true });
+        },
+        epoch: this.settings.epoch,
+        chooseEpoch: (id) => {
+          this.setEpoch(id);
           this.newPlanet({ quiet: true, keepSeed: true });
         },
         openSaves: () => this.openSaves(),

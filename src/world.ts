@@ -25,26 +25,10 @@ namespace SE {
       { cx: 128, cy: 64, amp: 0.065 },
     ];
 
-    /**
-     * Octaves of the ridge field. Coarser than the terrain octaves on purpose:
-     * a mountain range is one long structure, so the lowest octave has to span
-     * a good fraction of a continent or the crests break into hills.
-     */
-    private static readonly RIDGE_OCTAVES: readonly { cx: number; cy: number; amp: number }[] = [
-      { cx: 10, cy: 5, amp: 1.0 },
-      { cx: 20, cy: 10, amp: 0.5 },
-      { cx: 40, cy: 20, amp: 0.25 },
-      { cx: 80, cy: 40, amp: 0.125 },
-    ];
-
-    /**
-     * Only the top of the ridge field becomes mountain. Everything below this
-     * is discarded, and what remains is squared — see `orogeny` for why that
-     * matters so much.
-     */
-    private static readonly CREST = 0.55;
-    /** Elevation added at a full-strength crest, in the -1..1 elevation space. */
-    private static readonly OROGENY_AMP = 0.75;
+    /** Crest height of the highest belt, in the -1..1 elevation space: about 4.2 km. */
+    private static readonly OROGENY_AMP = 0.94;
+    /** Mountain type per tile from the last `orogeny`, until `takeBeltKinds` collects it. */
+    private static beltKinds: Uint8Array | null = null;
 
     /** Fill `out` with elevations in [-1, 1], sea level at 0, `oceanShare` of it below. */
     static generate(
@@ -72,84 +56,34 @@ namespace SE {
      * Raise mountain ranges out of the continents, and record the belts in
      * `uplift` so the geosphere can keep pushing them up against erosion.
      *
-     * Plain fBm gives rounded blobs, never ranges: a real orogen is a long
-     * narrow crest, which is what ridge noise (`1 - |2v - 1|`, folded so the
-     * lattice midpoints become sharp lines) produces. The fold is applied per
-     * octave and each octave is weighted by the previous one's crest value, so
-     * detail only accumulates *along* a ridge instead of scattering hills over
-     * the lowlands.
-     *
-     * Two shaping steps decide whether this reads as mountains or as a
-     * continent-wide plateau:
-     *
-     *   crest cut  everything below CREST is thrown away, so only the top of
-     *              the field builds anything at all;
-     *   squaring   what survives is squared, which pulls the flanks down and
-     *              leaves the summit, turning a broad swell into a narrow spine.
-     *
-     * Skipping either one lifts the whole landmass — measured 37% of land above
-     * the Rock line, a grey plateau rather than a range.
+     * Plain fBm gives rounded blobs, never ranges, and thresholded ridge noise
+     * breaks into scattered hills: a real orogen is a long range with one
+     * crest, so `raiseBelts` lays the ranges down as lines (orogeny.ts).
      *
      * Placement follows distance from the sea rather than the plate boundaries.
      * `GeoSystem.drift` rolls whole rows independently, so a ridge pinned to a
      * plate edge would slide across the continent sitting on it; distance to
      * water travels *with* the crust and puts cordilleras where they belong,
      * a little back from the coast.
+     *
+     * `amp` is the crest height of the highest belt. The mountain type of each
+     * belt tile waits in `takeBeltKinds` for the world to collect it.
      */
     static orogeny(seed: number, elevation: Float32Array, uplift: Float32Array, amp = TerrainGenerator.OROGENY_AMP): void {
-      const ridge = TerrainGenerator.ridgeField(seed ^ 0x5bf03635);
-      const shore = TerrainGenerator.distanceToWater(elevation);
-      const crest = TerrainGenerator.CREST;
+      TerrainGenerator.beltKinds = raiseBelts(seed, elevation, uplift, amp);
+    }
 
-      uplift.fill(0);
-      for (let i = 0; i < TILE_COUNT; i++) {
-        if (elevation[i] < 0) continue;
-
-        const sharp = Math.max(0, (ridge[i] - crest) / (1 - crest));
-        // The coast itself stays low — beaches, not cliffs — then the belt
-        // rises to a peak a few tiles inland and tails off into the interior.
-        const d = shore[i];
-        const band = d <= 1 ? 0.2 : clamp(1 - Math.abs(d - 7) / 18, 0.3, 1);
-
-        const u = sharp * sharp * band;
-        uplift[i] = u;
-        elevation[i] = Math.min(1, elevation[i] + u * amp);
-      }
+    /** The mountain types the last `orogeny` laid down, once; null if none is waiting. */
+    static takeBeltKinds(): Uint8Array | null {
+      const kinds = TerrainGenerator.beltKinds;
+      TerrainGenerator.beltKinds = null;
+      return kinds;
     }
 
     /** Mantle upwelling: a smooth field so volcanism clusters into belts instead of speckling the planet at random. */
     static mantle(seed: number, magma: Float32Array): void {
       TerrainGenerator.generate(seed ^ 0x9e3779b9, magma, OCEAN_FRACTION);
       for (let i = 0; i < TILE_COUNT; i++) magma[i] = clamp(magma[i] * 0.5 + 0.5, 0, 1);
-    }
-
-    /** Ridged multifractal in 0..1, wrapped across the cylinder join. */
-    private static ridgeField(seed: number): Float32Array {
-      const rng = new Rng(seed);
-      const out = new Float32Array(TILE_COUNT);
-      // Each octave is scaled by how close the previous one was to its crest,
-      // which is what keeps the fine detail on the ridgelines.
-      const carry = new Float32Array(TILE_COUNT).fill(1);
-      let total = 0;
-
-      for (const o of TerrainGenerator.RIDGE_OCTAVES) {
-        const lattice = new Float32Array(o.cx * o.cy);
-        for (let i = 0; i < lattice.length; i++) lattice[i] = rng.next();
-        total += o.amp;
-
-        for (let y = 0; y < GRID_H; y++) {
-          for (let x = 0; x < GRID_W; x++) {
-            const i = idx(x, y);
-            const v = TerrainGenerator.sample(lattice, o.cx, o.cy, x, y);
-            const r = 1 - Math.abs(2 * v - 1);
-            out[i] += o.amp * r * r * carry[i];
-            carry[i] = clamp(r * 1.6, 0, 1);
-          }
-        }
-      }
-
-      for (let i = 0; i < TILE_COUNT; i++) out[i] /= total;
-      return out;
     }
 
     /**
@@ -309,12 +243,18 @@ namespace SE {
     readonly cityPop = new Float32Array(TILE_COUNT);       // 0 .. 1
     readonly magma = new Float32Array(TILE_COUNT);         // mantle upwelling
     /**
-     * Strength of the orogenic belt under each tile, 0..1. Laid down once by
-     * `TerrainGenerator.orogeny` and thereafter the rate at which `GeoSystem`
+     * Strength of the orogenic belt under each tile, 0..1. Laid down once with
+     * the crust (`shapeCrust`) and thereafter the rate at which `GeoSystem`
      * keeps pushing the crust up, so ranges stand against erosion instead of
      * being ground flat over a long game. Rides the plates like the crust does.
      */
     readonly uplift = new Float32Array(TILE_COUNT);
+    /**
+     * Mountain type of the crust (`UpliftKind`): fold belt, coastal range,
+     * island arc or hotspot track. Set where the crust is raised, rides the
+     * plates like `uplift`.
+     */
+    readonly upliftKind = new Uint8Array(TILE_COUNT);
     readonly eventKind = new Uint8Array(TILE_COUNT);       // EventKind
     readonly eventTtl = new Uint8Array(TILE_COUNT);        // ticks remaining
 
@@ -351,6 +291,16 @@ namespace SE {
     /** Dissolved oxygen in percent of today's saturation (can pass 100). */
     oceanO2 = 0;
 
+    /* ---- coal and the giant clubmosses (see CoalSystem, lycopsids.ts) ---- */
+    /** Usable coal in the crust of the whole planet, Gt. */
+    coal = 0;
+    /** Buried swamp peat still maturing into coal, Gt. */
+    coalPeat = 0;
+    /** Coal civilizations have mined so far, Gt. */
+    coalMined = 0;
+    /** Set for good once conifer and broadleaf forests have displaced the giant clubmosses. */
+    lycopsidsGone = false;
+
     /* ---- evolution ---- */
     /** The tree: developed steps, evolution points, chronicle. */
     readonly evo = new EvolutionState();
@@ -367,6 +317,10 @@ namespace SE {
     scaleYears = 0;
     /** Set once a sentient species founds its first city. */
     sentientClass: Life = Life.None;
+    /** Cities, tribes and settlers beside the grid; never saved, derived from `tech`/`cityPop` after a load. */
+    readonly civ = new CivState();
+    /** Running disasters and the scars they leave (docs/ereignisse-spec.md). */
+    readonly hazards = new HazardState();
     name = 'Erde';
 
     /* ---- derived, refreshed every tick ---- */
@@ -419,6 +373,7 @@ namespace SE {
       this.rng = new Rng(this.seed);
 
       shapeCrust(this, epoch, clamp(oceanShare, OCEAN_SHARE_MIN, OCEAN_SHARE_MAX));
+      shapeBelts(this, epoch);
 
       this.co2 = 400;
       this.o2 = 0;
@@ -427,12 +382,18 @@ namespace SE {
       this.dust = 0.02;
       this.oceanIron = 1;
       this.oceanO2 = 0;
+      this.coal = 0;
+      this.coalPeat = 0;
+      this.coalMined = 0;
+      this.lycopsidsGone = false;
       this.ticks = 0;
       this.omega = OMEGA_START;
       this.timeScale = TimeScale.Geologic;
       this.absoluteYears = 0;
       this.scaleYears = 0;
       this.sentientClass = Life.None;
+      this.civ.clear();
+      this.hazards.clear();
 
       this.vegetation.fill(0);
       this.flora.fill(0);
@@ -516,6 +477,7 @@ namespace SE {
       this.cityPop.set(o.cityPop);
       this.magma.set(o.magma);
       this.uplift.set(o.uplift);
+      this.upliftKind.set(o.upliftKind);
       this.eventKind.set(o.eventKind);
       this.eventTtl.set(o.eventTtl);
       this.lifeFirstSeen.set(o.lifeFirstSeen);
@@ -528,6 +490,10 @@ namespace SE {
       this.dust = o.dust;
       this.oceanIron = o.oceanIron;
       this.oceanO2 = o.oceanO2;
+      this.coal = o.coal;
+      this.coalPeat = o.coalPeat;
+      this.coalMined = o.coalMined;
+      this.lycopsidsGone = o.lycopsidsGone;
       this.ticks = o.ticks;
       this.omega = o.omega;
       this.seed = o.seed;
@@ -537,6 +503,8 @@ namespace SE {
       this.absoluteYears = o.absoluteYears;
       this.scaleYears = o.scaleYears;
       this.sentientClass = o.sentientClass;
+      this.civ.clear();
+      this.hazards.copyFrom(o.hazards);
       this.name = o.name;
 
       const evo = this.evo;

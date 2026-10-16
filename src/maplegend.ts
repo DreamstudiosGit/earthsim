@@ -67,7 +67,10 @@ namespace SE {
         break;
       case MapMode.AirTemp:
       case MapMode.OceanTemp:
-        strip(host, -40, 50, (v) => sampleRamp(TEMP_RAMP, v), ['−40 °C', '5 °C', '50 °C']);
+        // Each arm of the diverging ramp gets half the strip, so the middle
+        // label sits on the neutral midpoint.
+        strip(host, 0, 1, (v) => sampleRamp(TEMP_RAMP, v < 0.5 ? lerp(-36, TEMP_MILD, v * 2) : lerp(TEMP_MILD, 36, v * 2 - 1)),
+          ['−36 °C', `${TEMP_MILD} °C`, '36 °C']);
         break;
       case MapMode.Rainfall:
         strip(host, 0, 1, (v) => sampleRamp(RAIN_RAMP, v), ['trocken', 'mittel', 'sehr nass']);

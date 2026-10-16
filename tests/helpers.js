@@ -21,8 +21,8 @@ function loadSE() {
   return SE;
 }
 
-/** A complete simulation without any UI, ticking exactly like App.tick. */
-function makeSim(seed = 12345) {
+/** A complete simulation without any UI, ticking exactly like App.tick, on an epoch's planet (src/epochs.ts). */
+function makeSim(seed = 12345, epoch = 'random') {
   const SE = loadSE();
   const s = {
     SE,
@@ -39,7 +39,8 @@ function makeSim(seed = 12345) {
   };
   s.evo = new SE.EvolutionSystem(s.life, s.flora);
   SE.civEventSink = (k, x, y) => s.events.trigger(s.world, k, x, y);
-  s.world.reset(seed);
+  s.world.reset(seed, SE.OCEAN_FRACTION, epoch);
+  SE.applyEpochParams(s.params, epoch);
   s.evo.refresh(s.world, s.params, true);
 
   s.tick = () => {
@@ -50,6 +51,7 @@ function makeSim(seed = 12345) {
     s.climate.step(w, p);
     s.flora.step(w, p);
     SE.BiomeSystem.step(w);
+    SE.CoalSystem.step(w);
     s.life.stepLife(w, p, s.atmo);
     s.evo.step(w, p);
     s.civ.step(w, p, s.atmo);

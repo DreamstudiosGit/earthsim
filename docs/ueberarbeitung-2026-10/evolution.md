@@ -45,12 +45,16 @@ mit „Leben ansiedeln“ bzw. „Pflanzen“ wieder ansiedelt; abhängige Schri
 „… sind ausgestorben – neu ansiedeln“. Drei vollständige Testdurchläufe mit verschiedenen Strategien
 (günstigste zuerst, Tiere zuerst, Pflanzen zuerst und teuerste zuerst) erreichen alle 31 Schritte.
 
+## Sauerstoff seit 16. 10. 2026
+
+Erste Mikroben erzeugen noch keinen Sauerstoff. Cyanobakterien bleiben die fünfte Unterart der „Ersten Zellen“. Sobald sie auftreten und entdeckt werden, produziert ihre lebende Biomasse Sauerstoff, der zunächst ins Meer und über den Gasaustausch später auch in die Luft gelangt. Komplexe Zellen und wasseratmende Meerestiere brauchen gelösten Sauerstoff; Wale bleiben Luftatmer. Die Mindestwerte sind Spielbalance. Die Entstehung von Eukaryoten besitzt keine gesicherte universelle Sauerstoffschwelle. Die Einheiten und Vereinfachungen stehen im [Ökosystem-Bericht](../oekosystem-2026-10/bericht.md).
+
 ## Vom Wasser zur lebendigen Landschaft
 
 Die Reihenfolge, in der der Planet grün wird, ergibt sich aus den Lebensraumansprüchen der
 Pflanzengruppen, nicht aus Skripten:
 
-1. **Meer:** Erste Zellen und Komplexe Zellen bilden das Plankton; Meeresalgen bilden Wiesen im
+1. **Meer:** Erste Zellen (einschließlich Cyanobakterien) und Komplexe Zellen bilden das Plankton; Meeresalgen bilden Wiesen im
    lichtdurchfluteten Küstenmeer.
 2. **Süßwasser:** Eine Grünalgen-Linie besiedelt Flussmündungen, Flüsse und Feuchtgebiete.
 3. **Uferzonen:** Erste Landpflanzen brauchen offenes Wasser direkt nebenan (Küste, Flussufer,
@@ -109,7 +113,7 @@ Besondere Wechselwirkungen mit echter Spielwirkung:
 | Schritt | Reich | Abstammung | Lebensraum | Ökologische Voraussetzung | EP |
 |---|---|---|---|---|---|
 | Erste Zellen | Ursprung | – | Lichtdurchflutetes Küstenmeer | – | 0 |
-| Komplexe Zellen | Ursprung | Erste Zellen (Endosymbiose) | Küstenmeer mit etwas Sauerstoff; O₂ ≥ 1,5 % | – | 10 |
+| Komplexe Zellen | Ursprung | Erste Zellen (Endosymbiose) | Küstenmeer; gelöster O₂ ≥ 2 % der heutigen Sättigung | – | 10 |
 | Meeresalgen | Pflanze | Komplexe Zellen (Chloroplasten) | Lichtdurchflutetes, nicht vereistes Küstenmeer | – | 15 |
 | Süßwasser-Grünalgen | Pflanze | Meeresalgen (Grünalgen-Linie) | Flüsse, Flussmündungen und Feuchtgebiete | – | 25 |
 | Erste Landpflanzen | Pflanze | Süßwasser-Grünalgen (Landgang) | Feuchte Uferzonen an Küsten und Flüssen; O₂ ≥ 2 % | – | 35 |
@@ -124,11 +128,11 @@ Besondere Wechselwirkungen mit echter Spielwirkung:
 | Laubbäume | Pflanze | Blütenpflanzen | Gemäßigte und tropische feuchte Regionen | – | 120 |
 | Gräser | Pflanze | Blütenpflanzen | Offene, eher trockene Ebenen | – | 110 |
 | Fleischfressende Pflanzen | Pflanze | Blütenpflanzen | Nährstoffarme Moore und Sümpfe | Nahrung: Insekten | 90 |
-| Schwämme & Nesseltiere | Tier | Komplexe Zellen (Vielzeller) | Lichtdurchflutetes Küstenmeer; O₂ ≥ 4 % | Nahrung: Erste Zellen / Komplexe Zellen | 20 |
-| Frühe Zweiseitentiere | Tier | Schwämme & Nesseltiere (Bilateria) | Meeresboden im Küstenmeer; O₂ ≥ 5 % | Nahrung: Erste Zellen / Komplexe Zellen / Meeresalgen | 25 |
-| Gliederfüßer des Meeres | Tier | Frühe Zweiseitentiere | Meeresgrund im Küstenmeer; O₂ ≥ 6 % | Nahrung: Meeresalgen / Frühe Zweiseitentiere | 30 |
-| Weichtiere | Tier | Frühe Zweiseitentiere | Algenreiches Küstenmeer; O₂ ≥ 8 % | Nahrung: Meeresalgen | 30 |
-| Fische | Tier | Frühe Zweiseitentiere (über Chordatiere) | Küstenmeer und Hochsee; O₂ ≥ 10 % | Nahrung: Gliederfüßer des Meeres / Weichtiere / Frühe Zweiseitentiere | 45 |
+| Schwämme & Nesseltiere | Tier | Komplexe Zellen (Vielzeller) | Lichtdurchflutetes Küstenmeer; gelöster O₂ ≥ 19,1 % der heutigen Sättigung | Nahrung: Erste Zellen / Komplexe Zellen | 20 |
+| Frühe Zweiseitentiere | Tier | Schwämme & Nesseltiere (Bilateria) | Meeresboden im Küstenmeer; gelöster O₂ ≥ 23,9 % der heutigen Sättigung | Nahrung: Erste Zellen / Komplexe Zellen / Meeresalgen | 25 |
+| Gliederfüßer des Meeres | Tier | Frühe Zweiseitentiere | Meeresgrund im Küstenmeer; gelöster O₂ ≥ 28,6 % der heutigen Sättigung | Nahrung: Meeresalgen / Frühe Zweiseitentiere | 30 |
+| Weichtiere | Tier | Frühe Zweiseitentiere | Algenreiches Küstenmeer; gelöster O₂ ≥ 38,1 % der heutigen Sättigung | Nahrung: Meeresalgen | 30 |
+| Fische | Tier | Frühe Zweiseitentiere (über Chordatiere) | Küstenmeer und Hochsee; gelöster O₂ ≥ 47,7 % der heutigen Sättigung | Nahrung: Gliederfüßer des Meeres / Weichtiere / Frühe Zweiseitentiere | 45 |
 | Landgliederfüßer | Tier | Gliederfüßer des Meeres (Landgang) | Bewachsenes Ufer in Küstennähe; O₂ ≥ 9 % | Nahrung: Erste Landpflanzen / Moose / Frühe Gefäßpflanzen | 45 |
 | Insekten | Tier | Gliederfüßer des Meeres (krebsartige Vorfahren) | Land mit Gefäßpflanzen in Küstennähe; O₂ ≥ 11 % | Nahrung: Frühe Gefäßpflanzen / Farne & Schachtelhalme / Bärlapppflanzen | 60 |
 | Bienen & Bestäuber | Tier | Insekten (Blüten-Spezialisten) | Offenes Land und Wälder mit Blüten; O₂ ≥ 13 % | Partner: Blütenpflanzen / Laubbäume | 100 |

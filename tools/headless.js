@@ -94,6 +94,7 @@ function step(SE, p, withLife) {
   p.climate.step(world, params);
   p.flora.step(world, params);
   SE.BiomeSystem.step(world);
+  SE.CoalSystem.step(world);
   p.life.stepLife(world, params, p.atmo);
   p.evo.step(world, params);
   p.civ.step(world, params, p.atmo);
@@ -380,7 +381,9 @@ function biomeLines(SE, world) {
   const pol = bandCounts(SE, world, world.landscape, SE.LANDSCAPE_COUNT, 60, 90);
   const polLand = pol.reduce((a, v) => a + v, 0);
   const top3 = (c) => shares(SE.LANDSCAPE_NAMES, c, c.reduce((a, v) => a + v, 0)).split('  ').slice(0, 3).join(', ');
-  lines.push(`    zones      ±10°: Regenwald+Wald ${pct(eq[L.Rainforest] + eq[L.Forest], eqVeg)} of vegetated (target >=40%; Regenwald ${pct(eq[L.Rainforest], eqVeg)}) — ${top3(eq)}`);
+  // Bergregenwald is rainforest of the tropical highlands (docs/hoehe-spec.md §6, E5).
+  const rain = eq[L.Rainforest] + eq[L.Cloudforest];
+  lines.push(`    zones      ±10°: Regenwald+Wald ${pct(rain + eq[L.Forest], eqVeg)} of vegetated (target >=40%; Regenwald ${pct(rain, eqVeg)}) — ${top3(eq)}`);
   lines.push(`               15-35°: Wüste+Halbwüste+Savanne ${pct(sub[L.Desert] + sub[L.Semidesert] + sub[L.Savanna], subLand)} (target >=40%) — ${top3(sub)}`);
   lines.push(`               40-60°: Wald+Steppe+Wiese ${pct(mid[L.Forest] + mid[L.Steppe] + mid[L.Meadow], midLand)} — ${top3(mid)}`);
   lines.push(`               >60°: Nadelwald+Tundra+Eis ${pct(pol[L.Taiga] + pol[L.Tundra] + pol[L.Ice], polLand)} — ${top3(pol)}`);

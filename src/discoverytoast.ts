@@ -96,6 +96,9 @@ namespace SE {
         make('span', 'fauna-toast-title', subspeciesName(c, stage)),
         make('span', 'fauna-toast-sub', `${LIFE[c].name} · Unterart ${stage + 1} von ${SUBSPECIES_PER_CLASS}`),
       );
+      if (c === Life.Prokaryote && stage === CYANOBACTERIA_STAGE) {
+        text.appendChild(make('span', 'fauna-toast-sub', 'Mit Cyanobakterien beginnt die Sauerstoffproduktion im Meer.'));
+      }
       this.present([e], [pic], text, 'Im Arten-Lexikon ansehen', () => this.hooks.open(c, stage));
     }
 
@@ -113,6 +116,9 @@ namespace SE {
         make('span', 'fauna-toast-title', `${events.length} neue Arten entdeckt`),
         make('span', 'fauna-toast-sub', more > 0 ? `${names.join(', ')} und ${more} weitere` : names.join(', ')),
       );
+      if (events.some((e) => e.c === Life.Prokaryote && e.stage === CYANOBACTERIA_STAGE)) {
+        text.appendChild(make('span', 'fauna-toast-sub', 'Mit Cyanobakterien beginnt die Sauerstoffproduktion im Meer.'));
+      }
       this.present(events, pics, text, 'Arten-Lexikon öffnen', () => this.hooks.openLexicon());
     }
 

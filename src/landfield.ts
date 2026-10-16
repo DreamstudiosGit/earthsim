@@ -22,6 +22,20 @@ namespace SE {
     return (h >>> 0) / 4294967296;
   }
 
+  /** Periodic value noise 0..1 over a size × size wrap with `cells` lattice cells across (world-fixed textures of the renderer). */
+  export function landOctave(x: number, y: number, size: number, cells: number, seed: number): number {
+    const fx = (x / size) * cells;
+    const fy = (y / size) * cells;
+    const x0 = Math.floor(fx);
+    const y0 = Math.floor(fy);
+    const tx = (fx - x0) * (fx - x0) * (3 - 2 * (fx - x0));
+    const ty = (fy - y0) * (fy - y0) * (3 - 2 * (fy - y0));
+    const at = (a: number, b: number): number => landHash(a % cells, b % cells, seed);
+    const top = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * tx;
+    const bottom = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * tx;
+    return top + (bottom - top) * ty;
+  }
+
   /** Ordered-dither thresholds, Bayer 4×4 in world pixels, 0..1. */
   export const BAYER4 = Float32Array.from([0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5], (v) => (v + 0.5) / 16);
 
@@ -30,10 +44,33 @@ namespace SE {
    * left. Over a planet's land the slope has a median near 0.09 and a 90th
    * percentile near 0.24 (see render.ts); with the dead zone the median tile
    * stays almost clean and a real flank darkens or lightens by a full step.
+   * In the mountains (MOUNTAIN_START .. + MOUNTAIN_SPAN of elevation) the
+   * gain doubles, the dead zone closes and the limit grows to 3 steps.
    */
   const RELIEF_GAIN = 6;
   const RELIEF_DEAD = 0.45;
   const RELIEF_LIMIT = 2;
+  const MOUNTAIN_START = 0.15;
+  const MOUNTAIN_SPAN = 0.25;
+  /** Amplitude of the crags inside a mountain tile, ramp steps (landcompose.ts), from this elevation on. */
+  const CRAG_STEPS = 0.6;
+  const CRAG_START = 0.35;
+  /** Volcanoes: a local maximum of a volcanic belt within this many tiles, above this elevation. */
+  const VOLCANO_REACH = 2;
+  const VOLCANO_MIN_ELEVATION = 0.06;
+  /**
+   * A coastal range (UpliftKind.Arc) carries cones only over a hot mantle:
+   * belts are typed Arc by their distance from the shore, volcanic or not.
+   * Measured: the 'today' mantle lies at 0.1–0.3 away from its volcanic
+   * belts (which start near 1 and spread over time), random planets' arcs
+   * mostly at 0.35–0.6.
+   */
+  const ARC_VOLCANO_MAGMA = 0.3;
+  /** A dormant cone looks green when its tile, or this many of its 8 neighbours, carry open land or more (LANDSCAPE_LEVEL ≥ 2). */
+  const CONE_GREEN_LEVEL = 2;
+  const CONE_GREEN_NEIGHBOURS = 5;
+  /** Soil (0..255) below which rock counts as unweathered, as succession.ts counts it. */
+  const FRESH_ROCK_SOIL = Math.ceil(SOIL_EARTH * 255);
   /** Highlands a little lighter, lowlands a little darker, in steps per unit of elevation. */
   const ALTITUDE_GAIN = 0.5;
   /** Macro variation: value-noise lattice cells around the planet (8 tiles each). */
@@ -64,6 +101,24 @@ namespace SE {
     return LAND_SHALLOW;
   }
 
+  /**
+   * depthAt quantised to 1/QUANT, by table: the depth only grows with the
+   * elevation, so a table cell whose two ends quantise alike holds that value
+   * throughout; only the cells across a step are worked out per tile.
+   */
+  const DEPTH_CELLS = 4096;
+  const DEPTH_TABLE: Float32Array = (() => {
+    const q = (e: number): number => Math.round(depthAt(e) * QUANT) / QUANT;
+    return Float32Array.from({ length: DEPTH_CELLS }, (_, n) => {
+      const a = q(-1 + n / DEPTH_CELLS);
+      return a === q(-1 + (n + 1) / DEPTH_CELLS) ? a : -1;
+    });
+  })();
+  function seaDepth(e: number): number {
+    const v = e <= -1 ? 0 : DEPTH_TABLE[Math.min(DEPTH_CELLS - 1, Math.floor((e + 1) * DEPTH_CELLS))];
+    return v >= 0 ? v : Math.round(depthAt(e) * QUANT) / QUANT;
+  }
+
   /** Sparse light and dark patches, a few tiles across, so textures never show their period. */
   const MACRO: Float32Array = (() => {
     const out = new Float32Array(TILE_COUNT);
@@ -90,6 +145,11 @@ namespace SE {
     return out;
   })();
 
+  /** 0 on lowland .. 1 in high mountains: how much the relief shading and the crags are strengthened. */
+  function mountainness(e: number): number {
+    return clamp((e - MOUNTAIN_START) / MOUNTAIN_SPAN, 0, 1);
+  }
+
   export class TerrainField {
     /** 0 water, else landKey(rank, density). */
     readonly key = new Uint8Array(TILE_COUNT);
@@ -97,6 +157,12 @@ namespace SE {
     readonly depth = new Float32Array(TILE_COUNT);
     /** Ramp shift of the ground from relief and macro variation. */
     readonly shade = new Float32Array(TILE_COUNT);
+    /** Amplitude of the crags drawn inside the tile, ramp steps (0 on flat land). */
+    readonly rugged = new Float32Array(TILE_COUNT);
+    /** 0 no volcano, else 1 + its variant: 1 dormant and green, 2 fresh (dark basalt), 3 dormant and bare, 4 dormant under snow. */
+    readonly volcano = new Uint8Array(TILE_COUNT);
+    /** The mountain ranges as drawn ridge lines. */
+    readonly ridges = new RidgePaths();
     /** 1 on a river tile (no objects there), else 0. */
     readonly river = new Uint8Array(TILE_COUNT);
     /** The rivers as drawn lines. */
@@ -122,6 +188,8 @@ namespace SE {
       const { elevation: e, biome, landscape, landscapeDensity, substrate, flora, floraTop, vegetation, riverLevel, tech } = world;
       const algae = floraBit(Flora.FreshwaterAlgae);
       const kelp = floraBit(Flora.MarineAlgae);
+      const scars = world.hazards.scar;
+      const shown = mapFloraMask(world);
       for (let i = 0; i < TILE_COUNT; i++) {
         const h = e[i];
         let key = 0;
@@ -129,6 +197,7 @@ namespace SE {
         let density = 0;
         let groups = 0;
         let shade = 0;
+        let rugged = 0;
         let river = 0;
         if (h < 0) {
           if (biome[i] === Biome.Arctic) key = T.seaIceKey;
@@ -137,23 +206,49 @@ namespace SE {
             groups = kelp;
             density = vegetation[i] < 0.3 ? 0 : vegetation[i] < 0.6 ? 1 : 2;
           }
-          this.depth[i] = Math.round(depthAt(h) * QUANT) / QUANT;
+          this.depth[i] = seaDepth(h);
         } else {
           const ls = landscape[i];
           density = Math.min(landscapeDensity[i], T.steps[ls * 4 + substrate[i]] - 1);
           key = T.groundKey(ls, substrate[i], density);
+          // New land of a hotspot or an island arc is fresh basalt until it
+          // weathers; bare rock in the subnival belt is scree (docs/hoehe-spec.md §3.6).
+          if (ls === Landscape.Rock) {
+            const kind = world.upliftKind[i];
+            if ((kind === UpliftKind.Hotspot || kind === UpliftKind.IslandArc) && world.soil[i] < FRESH_ROCK_SOIL) {
+              key = T.materialKey('basalt') || key;
+            } else if (world.landscapeZone[i] !== ZONE_NONE && (world.landscapeZone[i] & ZONE_ROCKBELT) !== 0) {
+              key = T.materialKey('scree') || key;
+            }
+          }
           this.depth[i] = LAND_SHALLOW;
           shade = this.relief(e, i) + MACRO[i];
+          rugged = Math.round(clamp((h - CRAG_START) / MOUNTAIN_SPAN, 0, 1) * CRAG_STEPS * 4) / 4;
           if (riverLevel[i] > 0) river = 1;
           if (river === 0 && tech[i] === Tech.None) {
             scene = ls;
-            groups = flora[i] & T.showable[ls];
+            groups = flora[i] & T.showable[ls] & shown;
+          }
+          // A disaster's scar replaces the ground while it is fresh (docs/ereignisse-spec.md §4).
+          const scar = scars[i];
+          // The vent's cone is drawn by the effect layer.
+          if (scar === ScarKind.Vent) scene = LAND_SCENE_NONE;
+          if (scar !== ScarKind.None && scarShowsGround(world, i)) {
+            // Fresh ground carries none of the landscape's old objects; the
+            // effect layer draws the scar's own (fxscars.ts).
+            scene = LAND_SCENE_NONE;
+            const g = scarGround(scar, T);
+            if (g) {
+              key = g.key;
+              shade += g.shade;
+            }
           }
         }
         if (key !== 0 && h < 0) shade = MACRO[i];
         this.key[i] = key;
         this.rank[i] = key === 0 ? 0 : landKeyRank(key);
         this.shade[i] = Math.round(clamp(shade, -LAND_SHIFT_MAX + 1, LAND_SHIFT_MAX - 1) * QUANT) / QUANT;
+        this.rugged[i] = rugged;
         this.river[i] = river;
         this.algae[i] = h >= 0 && (flora[i] & algae) !== 0 ? 1 : 0;
         this.scene[i] = scene;
@@ -162,25 +257,84 @@ namespace SE {
         this.top[i] = floraTop[i];
       }
       this.edges();
+      this.volcanoes(world);
       this.paths.build(world);
+      this.ridges.build(world);
       const lines = this.paths.sig;
+      const ridges = this.ridges.sig;
       for (let i = 0; i < TILE_COUNT; i++) {
         let s = Math.imul(this.key[i] ^ (this.river[i] << 8) ^ (this.edge[i] << 16) ^ (this.density[i] << 20) ^ (this.algae[i] << 23) ^ (this.scene[i] << 24), 0x9e3779b1);
         s ^= Math.imul(this.groups[i] ^ (this.top[i] << 16), 0x85ebca77) ^ Math.imul(lines[i], 0x27d4eb2d);
         s ^= Math.imul((this.depth[i] * QUANT) ^ (((this.shade[i] + LAND_SHIFT_MAX) * QUANT) << 8), 0xc2b2ae3d);
+        s ^= Math.imul(ridges[i] ^ (this.rugged[i] * 4) ^ (this.volcano[i] << 5), 0x27d4eb2d);
         this.sig[i] = (s ^ (s >>> 15)) >>> 0;
       }
     }
 
-    /** Hillshade in ramp steps: light from the upper left, highlands a little paler. */
+    /**
+     * Hillshade in ramp steps: light from the upper left, so a slope that
+     * rises towards the lower right faces the light; highlands a little paler.
+     */
     private relief(e: Float32Array, i: number): number {
       const x = i % GRID_W;
       const y = (i / GRID_W) | 0;
-      const slope = Math.max(0, e[idx(wrapX(x - 1), y)]) - Math.max(0, e[idx(wrapX(x + 1), y)]) +
-        Math.max(0, e[idx(x, clampY(y - 1))]) - Math.max(0, e[idx(x, clampY(y + 1))]);
-      const raw = slope * RELIEF_GAIN;
-      const s = Math.sign(raw) * Math.max(0, Math.abs(raw) - RELIEF_DEAD);
-      return clamp(s + (e[i] - 0.3) * ALTITUDE_GAIN, -RELIEF_LIMIT, RELIEF_LIMIT);
+      const slope = Math.max(0, e[idx(wrapX(x + 1), y)]) - Math.max(0, e[idx(wrapX(x - 1), y)]) +
+        Math.max(0, e[idx(x, clampY(y + 1))]) - Math.max(0, e[idx(x, clampY(y - 1))]);
+      const m = mountainness(e[i]);
+      const raw = slope * RELIEF_GAIN * (1 + m);
+      const s = Math.sign(raw) * Math.max(0, Math.abs(raw) - RELIEF_DEAD * (1 - m));
+      const limit = RELIEF_LIMIT + m;
+      return clamp(s + (e[i] - 0.3) * ALTITUDE_GAIN, -limit, limit);
+    }
+
+    /**
+     * Cones on volcanic belts (coastal ranges only over a hot mantle): the
+     * highest land tile within VOLCANO_REACH (ties to the lower index), never
+     * on a vent (the effect layer draws its own), a river or a city. Fresh
+     * where basalt still covers it, else under snow on ice and summit snow,
+     * green among plants, bare rock on lifeless ground.
+     */
+    private volcanoes(world: WorldState): void {
+      const { elevation: e, upliftKind, riverLevel, tech, magma, landscape } = world;
+      const scar = world.hazards.scar;
+      const v = this.volcano;
+      v.fill(0);
+      for (let i = 0; i < TILE_COUNT; i++) {
+        if (e[i] < VOLCANO_MIN_ELEVATION || !isVolcanicKind(upliftKind[i]) || riverLevel[i] > 0 || tech[i] !== Tech.None) continue;
+        if (upliftKind[i] === UpliftKind.Arc && magma[i] < ARC_VOLCANO_MAGMA) continue;
+        if (scar[i] === ScarKind.Vent) continue;
+        const x = i % GRID_W;
+        const y = (i / GRID_W) | 0;
+        let top = true;
+        for (let dy = -VOLCANO_REACH; dy <= VOLCANO_REACH && top; dy++) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= GRID_H) continue;
+          for (let dx = -VOLCANO_REACH; dx <= VOLCANO_REACH; dx++) {
+            const j = ny * GRID_W + wrapX(x + dx);
+            if (j !== i && (e[j] > e[i] || (e[j] === e[i] && j < i))) { top = false; break; }
+          }
+        }
+        if (!top) continue;
+        const ls = landscape[i];
+        if (scar[i] === ScarKind.Basalt) v[i] = 2;
+        else if (ls === Landscape.Ice || ls === Landscape.Snow) v[i] = 4;
+        else v[i] = this.green(world, x, y) ? 1 : 3;
+      }
+    }
+
+    /** Whether plants cover a cone's tile, or most of the land around it. */
+    private green(world: WorldState, x: number, y: number): boolean {
+      const { landscape, elevation } = world;
+      if (LANDSCAPE_LEVEL[landscape[y * GRID_W + x]] >= CONE_GREEN_LEVEL) return true;
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const j = clampY(y + dy) * GRID_W + wrapX(x + dx);
+          if (elevation[j] >= 0 && LANDSCAPE_LEVEL[landscape[j]] >= CONE_GREEN_LEVEL) n++;
+        }
+      }
+      return n >= CONE_GREEN_NEIGHBOURS;
     }
 
     /** Chebyshev distance (0, 1, 2+) to a tile of lower material rank — water counts as rank 0. */

@@ -140,6 +140,13 @@ function v4Doc(s) {
       t.push(i); c.push(k); d.push(Math.round(v * 1000) / 1000); st.push(Math.min(2, w.lifeStage[i * SE.LIFE_COUNT + k]));
     }
   }
+  // How green the planet is by now depends on its random history; the
+  // fixture only needs two planted land tiles, so it plants them if needed.
+  for (let i = 0; i < SE.TILE_COUNT && (land < 0 || land2 < 0); i++) {
+    if (w.isWater(i) || i === land || (land >= 0 && i <= land + 40)) continue;
+    w.vegetation[i] = Math.max(w.vegetation[i], 0.4);
+    if (land < 0) land = i; else land2 = i;
+  }
   t.push(land); c.push(15); d.push(0.4); st.push(1);   // a carnifern stand
   t.push(land2); c.push(8); d.push(0.3); st.push(0);   // a trichordate
   const seen = new Array(16).fill(-1);

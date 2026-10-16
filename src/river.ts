@@ -138,10 +138,19 @@ namespace SE {
      */
     private static readonly EPSILON = 1e-5;
 
-    /** Rebuild the network if the terrain has moved since the last one. */
+    /** Plate shifts each world had seen at its last rebuild. */
+    private static readonly builtShifts = new WeakMap<WorldState, number>();
+
+    /**
+     * Rebuild the network if the terrain has moved since the last one: every
+     * REBUILD_INTERVAL ticks for erosion and uplift, at once after a plate
+     * shift — the network does not ride the plates, and until it is rebuilt
+     * the shifted rows drain into tiles that are no longer next to them.
+     */
     static maybeRebuild(world: WorldState): void {
       if (!world.terrainDirty) return;
-      if (world.ticks % RiverSystem.REBUILD_INTERVAL !== 0) return;
+      const shifted = RiverSystem.builtShifts.get(world) !== world.driftShifts;
+      if (!shifted && world.ticks % RiverSystem.REBUILD_INTERVAL !== 0) return;
       RiverSystem.rebuild(world);
     }
 
@@ -150,6 +159,7 @@ namespace SE {
       RiverSystem.route(world);
       RiverSystem.classify(world);
       world.terrainDirty = false;
+      RiverSystem.builtShifts.set(world, world.driftShifts);
     }
 
     /**

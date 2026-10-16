@@ -6,9 +6,11 @@
  * (docs/biomes-spec.md §3). Every SUCCESSION_TARGET_INTERVAL ticks (and
  * at once after an edit, a load or a plate shift):
  *
- *   smoothing  temperature, moisture and plant cover averaged over 7×7 land
- *              tiles, so zone borders follow smooth isolines, not tile noise
- *   soil       roots build it, bare slopes and ice wear it away
+ *   smoothing  temperature (at sea level), moisture and plant cover averaged
+ *              over 7×7 land tiles, so zone borders follow smooth isolines,
+ *              not tile noise, and altitude belts follow the contour lines
+ *   soil       weathering makes regolith of bare rock, roots build soil,
+ *              bare slopes and ice wear it away down to the regolith
  *   targets    climate zone (Schmitt triggers) × plant groups present on the
  *              tile or on ≥ 3 of its 8 neighbours → climax target; lone and
  *              outvoted targets join their neighbours, unnatural neighbours
@@ -52,6 +54,13 @@ namespace SE {
   const tempSm = new Float32Array(TILE_COUNT);
   const moistSm = new Float32Array(TILE_COUNT);
   const coverSm = new Float32Array(TILE_COUNT);
+  /**
+   * The height a land tile's landscape is read at: the mean of its 3×3 land
+   * block. Ranges only one to three tiles wide would otherwise give altitude
+   * belts one tile wide, every tile alone; the renderer draws the crests'
+   * own rock and snow on top.
+   */
+  const landElev = new Float32Array(TILE_COUNT);
   /** Row sums of the box filter, for the 2R+1 rows the column sums currently hold. */
   const RING = 2 * LANDSCAPE_SMOOTH_RADIUS + 1;
   const sumT = new Float64Array(RING * GRID_W);
@@ -76,6 +85,14 @@ namespace SE {
   const colN = new Float64Array(GRID_W);
   const allowedCache = new Int32Array(TILE_COUNT);
   const allowedStamp = new Uint32Array(TILE_COUNT);
+  /**
+   * Climate the allowed landscapes of a land tile are read at: the smoothed
+   * climate, followed only as far as needed to stay within the Schmitt band
+   * of it. A climate wavering inside the bands never moves them back and
+   * forth (altitude belts put a class border on every contour line).
+   */
+  const allowedTemp = new Float32Array(TILE_COUNT).fill(NaN);
+  const allowedMoist = new Float32Array(TILE_COUNT).fill(NaN);
   const lad = new Uint8Array(5);
   const tally = new Uint8Array(LANDSCAPE_COUNT);
   let stamp = 0;
@@ -89,6 +106,7 @@ namespace SE {
   let targetShifts = -1;
 
   const SOIL_EARTH_U8 = Math.ceil(SOIL_EARTH * 255);
+  const SOIL_REGOLITH_U8 = Math.floor(SOIL_REGOLITH * 255);
   const FOREST_DENSITY_BOUNDS = [DENSITY_BOUNDS[1]];
   const CRUST_FLORA = floraBit(Flora.LandPlants) | floraBit(Flora.Mosses);
 
@@ -145,10 +163,60 @@ namespace SE {
     return c;
   }
 
+  /** `last` dragged along by `v` no further than to keep it within `band` of it (`v` itself without a last value). */
+  function lagged(last: number, v: number, band: number): number {
+    return last > v + band ? v + band : last < v - band ? v - band : last === last ? last : v;
+  }
+
   /** The answers a band around a threshold allows: bit 0 = false possible, bit 1 = true possible. */
   function flagOptions(atOneEnd: boolean, atOtherEnd: boolean): number {
     return (atOneEnd ? 2 : 1) | (atOtherEnd ? 2 : 1);
   }
+
+  /** Fresh volcanic rock or an impact crater (hoehe-spec §3.7, E4): it does not weather while the scar lies. */
+  function freshRock(world: WorldState, i: number): boolean {
+    const s = world.hazards.scar[i];
+    return s === ScarKind.Basalt || s === ScarKind.Vent || s === ScarKind.Crater;
+  }
+
+  /** Whether bare rock weathers to regolith yet: not on the young Earth before the first land plants. */
+  function weathering(world: WorldState): boolean {
+    return world.evo.isDeveloped(REGOLITH_AFTER_STEP);
+  }
+
+  /** Weathered ground on land the planet's age has long since broken down, unless it is fresh rock. */
+  function seedRegolithAt(world: WorldState, i: number): void {
+    if (world.soil[i] < SOIL_REGOLITH_U8 && (world.flora[i] & LAND_FLORA_MASK) !== 0 && !freshRock(world, i)) world.soil[i] = SOIL_REGOLITH_U8;
+  }
+
+  /**
+   * Warm start for a planet past REGOLITH_AFTER_STEP whose land has no
+   * regolith yet, such as a save from before the rock rule: every land tile
+   * gets what weathering would have made of it by now. Land that starts
+   * its succession on an old planet gets it on its own (`scanLand`).
+   */
+  export function seedRegolith(world: WorldState): void {
+    if (!weathering(world)) return;
+    for (let i = 0; i < TILE_COUNT; i++) if (world.elevation[i] >= 0) seedRegolithAt(world, i);
+  }
+
+  /** Regolith weathered per tick from bare rock: faster where it is warm and wet. */
+  function weatheringRate(temp: number, moist: number): number {
+    const warmth = clamp((temp - SOIL_WEATHER_COLD) / (SOIL_WEATHER_REF_TEMP - SOIL_WEATHER_COLD), SOIL_WEATHER_MIN, SOIL_WEATHER_MAX);
+    const water = clamp(moist / SOIL_WEATHER_REF_MOIST, SOIL_WEATHER_MIN, SOIL_WEATHER_MAX);
+    return SOIL_WEATHER_RATE * warmth * water;
+  }
+
+  /**
+   * Altitude belt of a mountain tile at temperature `temp` (its own height):
+   * 1 montane, 2 above the tree line, 3 rock belt, 4 summit snow. Belt 0 is
+   * the lowland; BELT_FLAGS are the nested ZONE_ flags of `landscapeZone`.
+   */
+  function mountainBelt(temp: number, snowT: number): number {
+    return temp >= TREELINE_TEMP ? 1 : temp >= ROCKBELT_TEMP ? 2 : temp >= snowT ? 3 : 4;
+  }
+  const BELT_FLAGS = [0, ZONE_MOUNTAIN, ZONE_MOUNTAIN | ZONE_TREELINE, ZONE_MOUNTAIN | ZONE_TREELINE | ZONE_ROCKBELT,
+    ZONE_MOUNTAIN | ZONE_TREELINE | ZONE_ROCKBELT | ZONE_SNOW];
 
   /**
    * The plant cover a tile's zone is judged by: the stand around it, unless
@@ -251,6 +319,10 @@ namespace SE {
       const full = !run || newLand || targetWorld !== world || targetShifts !== world.driftShifts ||
         world.ticks % SUCCESSION_TARGET_INTERVAL === 0;
       if (full) {
+        if (targetWorld !== world || targetShifts !== world.driftShifts) {
+          allowedTemp.fill(NaN);
+          allowedMoist.fill(NaN);
+        }
         targetWorld = world;
         targetShifts = world.driftShifts;
         SuccessionSystem.smooth(world);
@@ -286,9 +358,7 @@ namespace SE {
     /** Plants cleared off a tile: bare soil if there is any, else rock. */
     static clear(world: WorldState, i: number): void {
       if (world.elevation[i] < 0) return;
-      const z = world.landscapeZone[i];
-      const wet = z !== ZONE_NONE && (z & ZONE_WETLAND) !== 0;
-      SuccessionSystem.reset(world, i, !wet && world.soil[i] >= SOIL_EARTH_U8 ? Landscape.Barren : Landscape.Rock);
+      SuccessionSystem.reset(world, i, world.soil[i] >= SOIL_EARTH_U8 ? Landscape.Barren : Landscape.Rock);
     }
 
     /** A fire took the trees: woodland falls back to bare soil, a swamp forest to marsh. */
@@ -315,9 +385,25 @@ namespace SE {
 
     /* ------------------------------------------------------- smoothing -- */
 
-    /** Box mean of temperature, moisture and plant cover over land only, separable in X and Y. */
+    /**
+     * Box mean of temperature, moisture and plant cover over land only,
+     * separable in X and Y. Temperature is averaged at sea level and each
+     * tile's own height taken off again (hoehe-spec §3.5): climate zones stay
+     * broad, altitude belts follow the contour lines.
+     */
     private static smooth(world: WorldState): void {
       const R = LANDSCAPE_SMOOTH_RADIUS;
+      const { elevation } = world;
+      for (let k = 0; k < landCount; k++) {
+        const i = landList[k];
+        let sum = elevation[i];
+        let n = 1;
+        for (let q = 0; q < 8; q++) {
+          const j = NB[i * 8 + q];
+          if (j >= 0 && elevation[j] >= 0) { sum += elevation[j]; n++; }
+        }
+        landElev[i] = sum / n;
+      }
       // Vertical pass row by row: a running sum per column over the row sums
       // of the last 2R+1 rows, all of it small enough to stay in cache.
       colT.fill(0); colM.fill(0); colC.fill(0); colN.fill(0);
@@ -326,7 +412,11 @@ namespace SE {
         const row = y * GRID_W;
         for (let x = 0; x < GRID_W; x++) {
           const n = colN[x];
-          if (n > 0.5) { tempSm[row + x] = colT[x] / n; moistSm[row + x] = colM[x] / n; coverSm[row + x] = Math.max(0, colC[x] / n); }
+          if (n > 0.5) {
+            tempSm[row + x] = colT[x] / n - altitudeCooling(landElev[row + x]);
+            moistSm[row + x] = colM[x] / n;
+            coverSm[row + x] = Math.max(0, colC[x] / n);
+          }
         }
         if (y - R >= 0) SuccessionSystem.addRow(world, y - R, -1);
         if (y + R + 1 < GRID_H) SuccessionSystem.addRow(world, y + R + 1, 1);
@@ -342,6 +432,8 @@ namespace SE {
       if (sign > 0) {
         const { elevation, temperature, moisture, vegetation } = world;
         const R = LANDSCAPE_SMOOTH_RADIUS;
+        // Land only, so the sea-level temperature is T + lapse · elevation.
+        const lapse = LAPSE_RATE * ELEVATION_KM;
         const row = y * GRID_W;
         let st = 0;
         let sm = 0;
@@ -349,7 +441,8 @@ namespace SE {
         let n = 0;
         for (let dx = -R; dx <= R; dx++) {
           const j = row + wrapX(dx);
-          if (elevation[j] >= 0) { st += temperature[j]; sm += moisture[j]; sc += vegetation[j]; n++; }
+          const e = elevation[j];
+          if (e >= 0) { st += temperature[j] + lapse * e; sm += moisture[j]; sc += vegetation[j]; n++; }
         }
         for (let x = 0; x < GRID_W; x++) {
           const k = slot + x;
@@ -358,8 +451,10 @@ namespace SE {
           const xi = x + R + 1;
           const out = row + (xo < 0 ? xo + GRID_W : xo);
           const inn = row + (xi >= GRID_W ? xi - GRID_W : xi);
-          if (elevation[out] >= 0) { st -= temperature[out]; sm -= moisture[out]; sc -= vegetation[out]; n--; }
-          if (elevation[inn] >= 0) { st += temperature[inn]; sm += moisture[inn]; sc += vegetation[inn]; n++; }
+          const eo = elevation[out];
+          const ei = elevation[inn];
+          if (eo >= 0) { st -= temperature[out] + lapse * eo; sm -= moisture[out]; sc -= vegetation[out]; n--; }
+          if (ei >= 0) { st += temperature[inn] + lapse * ei; sm += moisture[inn]; sc += vegetation[inn]; n++; }
         }
       }
       for (let x = 0; x < GRID_W; x++) {
@@ -383,10 +478,17 @@ namespace SE {
       const zones = world.landscapeZone;
       let n = 0;
       let fresh = false;
+      const old = weathering(world);
       for (let i = 0; i < TILE_COUNT; i++) {
         if (elevation[i] >= 0) {
           landList[n++] = i;
-          if (landscapeNext[i] === LANDSCAPE_UNSET) fresh = true;
+          if (landscapeNext[i] === LANDSCAPE_UNSET) {
+            fresh = true;
+            // Land a hotspot or an island arc has just built is fresh lava
+            // (hoehe-spec §3.7, case 3): it weathers from bare rock.
+            const kind = world.upliftKind[i];
+            if (old && kind !== UpliftKind.Hotspot && kind !== UpliftKind.IslandArc) seedRegolithAt(world, i);
+          }
         } else if (landscapeNext[i] !== LANDSCAPE_UNSET || landscape[i] !== Landscape.Rock) {
           landscapeNext[i] = LANDSCAPE_UNSET;
           landscape[i] = Landscape.Rock;
@@ -409,6 +511,7 @@ namespace SE {
     private static classify(world: WorldState): void {
       const { elevation, flora, soil } = world;
       const zones = world.landscapeZone;
+      const woody = woodyFloraMask(world);
       for (let k = 0; k < landCount; k++) {
         const i = landList[k];
         let s1 = 0;
@@ -425,45 +528,57 @@ namespace SE {
         }
         const p = flora[i] | s3;
         present[i] = p;
-        const z = landscapeZone(tempSm[i], moistSm[i], elevation[i], zoneCover(world, i), zones[i]);
+        const z = landscapeZone(tempSm[i], moistSm[i], landElev[i], zoneCover(world, i), zones[i], elevation[i]);
+        allowedTemp[i] = lagged(allowedTemp[i], tempSm[i], SCHMITT_TEMP);
+        allowedMoist[i] = lagged(allowedMoist[i], moistSm[i], SCHMITT_MOISTURE);
         zones[i] = z;
-        target[i] = ladderTarget(fillLadder(z, p, soil[i] >= SOIL_EARTH_U8, lad), lad);
+        target[i] = ladderTarget(fillLadder(z, p, soil[i] >= SOIL_EARTH_U8, lad, woody), lad);
       }
     }
 
     /**
      * A tile's soil after one tick: its own plants and the stand around it build it
-     * (only a crust where mosses and the first land plants grow alone), bare
-     * ground loses it, faster on a slope, and an ice sheet scrapes it off.
+     * (only a crust where mosses and the first land plants grow alone),
+     * weathering turns bare rock into regolith without them, fresh lava and
+     * craters excepted (hoehe-spec §3.7), and bare ground loses what the
+     * plants built, faster on a slope. Under an ice sheet it turns to till:
+     * the plant soil is scraped off, bare rock ground down to regolith.
      * Rates run in real years when ticks are short (SOIL_YEARS). The result
      * is rounded with a tile hash, so rates far below one byte step still
      * accumulate.
      */
-    private static soilAt(world: WorldState, i: number, p: number, timeF: number, seed: number): number {
+    private static soilAt(world: WorldState, i: number, p: number, timeF: number, seed: number, weathers0: boolean): number {
       const { elevation, vegetation, landscape } = world;
       const veg = vegetation[i];
       const byte = world.soil[i];
       const rooted = (p & VASCULAR_FLORA_MASK) !== 0;
-      const cap = rooted ? 1 : (p & CRUST_FLORA) ? SOIL_CRUST_MAX : 0;
+      const grown = rooted ? 1 : (p & CRUST_FLORA) ? SOIL_CRUST_MAX : 0;
       const ice = landscape[i] === Landscape.Ice;
-      // Nothing to build and nothing to lose: most of the planet, most ticks.
-      if (!ice && veg >= BARE_COVER && byte >= Math.floor(cap * 255)) return byte;
-      if (!ice && byte === 0 && cap === 0) return 0;
-      let s = byte / 255;
       if (ice) {
-        s -= SOIL_ICE_SCOUR * timeF;
-      } else {
-        const cover = Math.max(veg, coverSm[i]);
-        if (s < cap && cover > 0) s = Math.min(cap, s + SOIL_BUILD_RATE * cover * (rooted ? 1 : 0.5) * timeF);
-        if (veg < BARE_COVER && s > 0) {
-          const e = elevation[i];
-          let slope = 0;
-          for (let k = 0; k < 8; k++) {
-            const j = NB[i * 8 + k];
-            if (j >= 0 && elevation[j] >= 0) slope = Math.max(slope, Math.abs(elevation[j] - e));
-          }
-          s -= SOIL_EROSION_RATE * (1 - veg / BARE_COVER) * (1 + slope * SOIL_SLOPE_FACTOR) * timeF;
+        if (byte === SOIL_REGOLITH_U8) return byte;
+        const s = byte / 255;
+        const till = s > SOIL_REGOLITH ? Math.max(SOIL_REGOLITH, s - SOIL_ICE_SCOUR * timeF)
+          : Math.min(SOIL_REGOLITH, s + SOIL_ICE_SCOUR * timeF);
+        return clamp(Math.floor(till * 255 + hash32(seed, i) / 4294967296), 0, 255);
+      }
+      // Rock weathers where plants have reached it (on the tile or around it),
+      // so brown Rohboden spreads with them instead of ahead of them.
+      const weathers = weathers0 && (p & LAND_FLORA_MASK) !== 0 && !freshRock(world, i);
+      const cap = weathers ? Math.max(grown, SOIL_REGOLITH) : grown;
+      // Nothing to build and nothing to lose: most of the planet, most ticks.
+      if (byte >= Math.floor(cap * 255) && (veg >= BARE_COVER || byte <= SOIL_REGOLITH_U8)) return byte;
+      let s = byte / 255;
+      const cover = Math.max(veg, coverSm[i]);
+      if (s < grown && cover > 0) s = Math.min(grown, s + SOIL_BUILD_RATE * cover * (rooted ? 1 : 0.5) * timeF);
+      if (weathers && s < SOIL_REGOLITH) s = Math.min(SOIL_REGOLITH, s + weatheringRate(tempSm[i], moistSm[i]) * timeF);
+      if (veg < BARE_COVER && s > SOIL_REGOLITH) {
+        const e = elevation[i];
+        let slope = 0;
+        for (let k = 0; k < 8; k++) {
+          const j = NB[i * 8 + k];
+          if (j >= 0 && elevation[j] >= 0) slope = Math.max(slope, Math.abs(elevation[j] - e));
         }
+        s = Math.max(SOIL_REGOLITH, s - SOIL_EROSION_RATE * (1 - veg / BARE_COVER) * (1 + slope * SOIL_SLOPE_FACTOR) * timeF);
       }
       return clamp(Math.floor(s * 255 + hash32(seed, i) / 4294967296), 0, 255);
     }
@@ -475,16 +590,27 @@ namespace SE {
      */
     private static allowed(world: WorldState, i: number): number {
       if (allowedStamp[i] === stamp) return allowedCache[i];
-      const T = tempSm[i];
-      const m = moistSm[i];
+      const T = allowedTemp[i];
+      const m = allowedMoist[i];
       const c = zoneCover(world, i);
       const e = world.elevation[i];
-      const tLo = classOf(T - SCHMITT_TEMP, LANDSCAPE_TEMP_BOUNDS);
-      const tHi = classOf(T + SCHMITT_TEMP, LANDSCAPE_TEMP_BOUNDS);
+      // Temperature classes the bands reach: tropical by the sea-level
+      // temperature, the others by the tile's own (as in `landscapeZone`).
+      const h = landElev[i];
+      const tSea = T + altitudeCooling(h);
+      const lowland = h - SCHMITT_ELEVATION < ALPINE_MIN_ELEVATION;
+      const mountain = h + SCHMITT_ELEVATION >= ALPINE_MIN_ELEVATION;
+      let tMask = tSea + SCHMITT_TEMP >= TROPICAL_TEMP ? 1 << TempClass.Tropical : 0;
+      if (tSea - SCHMITT_TEMP < TROPICAL_TEMP) {
+        const lo = classOf(T - SCHMITT_TEMP, LANDSCAPE_TEMP_BOUNDS);
+        const hi = classOf(T + SCHMITT_TEMP, LANDSCAPE_TEMP_BOUNDS);
+        for (let t = lo; t <= hi; t++) tMask |= 1 << t;
+        // A mountain frozen by its height alone counts as cold (summit snow, not ice sheet).
+        if (lo === TempClass.Frozen && mountain && tSea + SCHMITT_TEMP >= FROZEN_TEMP) tMask |= 1 << TempClass.Cold;
+        if (!lowland && tSea - SCHMITT_TEMP >= FROZEN_TEMP) tMask &= ~(1 << TempClass.Frozen);
+      }
       const mLo = classOf(m - SCHMITT_MOISTURE, MOISTURE_BOUNDS);
       const mHi = classOf(m + SCHMITT_MOISTURE, MOISTURE_BOUNDS);
-      const tree = flagOptions(e - SCHMITT_ELEVATION > TREE_LINE, e + SCHMITT_ELEVATION > TREE_LINE);
-      const snow = flagOptions(e - SCHMITT_ELEVATION > SNOW_LINE, e + SCHMITT_ELEVATION > SNOW_LINE);
       const wet = flagOptions(
         m - SCHMITT_MOISTURE >= WETLAND_MOISTURE && e + SCHMITT_ELEVATION < WETLAND_MAX_ELEVATION,
         m + SCHMITT_MOISTURE >= WETLAND_MOISTURE && e - SCHMITT_ELEVATION < WETLAND_MAX_ELEVATION);
@@ -492,23 +618,29 @@ namespace SE {
       const soilOk = world.soil[i] >= SOIL_EARTH_U8;
       const p = present[i];
       let mask = 0;
-      for (let t = tLo; t <= tHi; t++) {
+      for (let t = 0; t <= TempClass.Tropical; t++) {
+        if (!((tMask >> t) & 1)) continue;
         for (let mc = mLo; mc <= mHi; mc++) {
-          for (let f = 0; f < 16; f++) {
-            if (!((tree >> (f & 1)) & 1) || !((snow >> ((f >> 1) & 1)) & 1)) continue;
-            if (!((wet >> ((f >> 2) & 1)) & 1) || !((bare >> ((f >> 3) & 1)) & 1)) continue;
-            const z = t | (mc << 3) | ((f & 1) ? ZONE_TREELINE : 0) | ((f & 2) ? ZONE_SNOW : 0) |
-              ((f & 4) ? ZONE_WETLAND : 0) | ((f & 8) ? ZONE_BARE : 0);
-            const climax = fillLadder(z, p, soilOk, lad);
-            let m = ladderMask(climax, lad);
-            // Bare ground is a stage only for land that may be bare: a
-            // planted tile never takes it from its neighbours.
-            if (!(f & 8)) {
-              for (let k = 1; k <= climax; k++) {
-                if (lad[k] !== LADDER_NONE) { m &= ~(1 << lad[0]); break; }
+          const snowT = snowTemp(mc);
+          // The lowland (belt 0) if the tile may count as low, and the
+          // mountain belts its temperature band spans if it may count as high.
+          const low = mountainBelt(T + SCHMITT_TEMP, snowT);
+          const top = mountain ? mountainBelt(T - SCHMITT_TEMP, snowT) : 0;
+          for (let a = lowland ? 0 : low; a <= top; a = a === 0 ? low : a + 1) {
+            for (let f = 0; f < 4; f++) {
+              if (!((wet >> (f & 1)) & 1) || !((bare >> ((f >> 1) & 1)) & 1)) continue;
+              const z = t | (mc << 3) | BELT_FLAGS[a] | ((f & 1) ? ZONE_WETLAND : 0) | ((f & 2) ? ZONE_BARE : 0);
+              const climax = fillLadder(z, p, soilOk, lad, woodyFloraMask(world));
+              let m = ladderMask(climax, lad);
+              // Bare ground is a stage only for land that may be bare: a
+              // planted tile never takes it from its neighbours.
+              if (!(f & 2)) {
+                for (let k = 1; k <= climax; k++) {
+                  if (lad[k] !== LADDER_NONE) { m &= ~(1 << lad[0]); break; }
+                }
               }
+              mask |= m;
             }
-            mask |= m;
           }
         }
       }
@@ -552,6 +684,13 @@ namespace SE {
         if (best < 0) continue;
         if (!((sameCnt[i] <= 1 && bestN >= 2) || bestN >= 5)) continue;
         if (oneStep && Math.abs(LANDSCAPE_LEVEL[best] - LANDSCAPE_LEVEL[own]) > 1) continue;
+        // A landscape joins its neighbours only on its own way to its target: else stepping pulls
+        // it straight back, and the next sweep of its row pushes it over again.
+        if (oneStep && best !== target[i]) {
+          const lo = LANDSCAPE_LEVEL[own];
+          const lb = LANDSCAPE_LEVEL[best];
+          if (lb === lo || (lb - lo) * (LANDSCAPE_LEVEL[target[i]] - lb) < 0) continue;
+        }
         if (!(SuccessionSystem.allowed(world, i) & (1 << best))) continue;
         pendingTile[n] = i;
         pendingValue[n] = best;
@@ -645,15 +784,22 @@ namespace SE {
       const soilTick = run && world.ticks % SUCCESSION_TARGET_INTERVAL === 0;
       const timeF = Math.min(1, world.yearsPerTick / SOIL_YEARS) * SUCCESSION_TARGET_INTERVAL;
       const seed = world.seed ^ Math.imul(world.ticks, 0x2545f491);
+      const weathers = soilTick && weathering(world);
       snapshot.set(landscape);
       for (let k = 0; k < landCount; k++) {
         const i = landList[k];
-        if (soilTick) soil[i] = SuccessionSystem.soilAt(world, i, present[i], timeF, seed);
+        if (soilTick) soil[i] = SuccessionSystem.soilAt(world, i, present[i], timeF, seed, weathers);
         if (full) {
-          const e = elevation[i];
-          substrate[i] = (zones[i] & ZONE_WETLAND) ? Substrate.Mire
-            : soil[i] >= SOIL_EARTH_U8 ? Substrate.Soil
-              : moistSm[i] < SAND_MOISTURE && e < SAND_MAX_ELEVATION ? Substrate.Sand : Substrate.Rock;
+          // Dry, low land that is not cold is sand, blown by the wind with or
+          // without plants; polar deserts stay gravel. Soil the plants built
+          // stays Erde.
+          const z = zones[i];
+          const s = soil[i];
+          substrate[i] = (z & ZONE_WETLAND) ? Substrate.Mire
+            : (z & ZONE_ROCKBELT) ? Substrate.Rock
+              : s <= SOIL_REGOLITH_U8 && moistSm[i] < SAND_MOISTURE && elevation[i] < SAND_MAX_ELEVATION &&
+                zoneTemp(z) >= TempClass.Cool ? Substrate.Sand
+                : s < SOIL_EARTH_U8 ? Substrate.Rock : Substrate.Soil;
         }
         // Most tiles rest at their target: nothing to step.
         const cur = landscape[i];
@@ -689,11 +835,11 @@ namespace SE {
       if (cur === tgt && landscapeNext[i] === cur && landscapeHold[i] === 0) return;
       const z = zones[i];
       // The tile's ladder again, only for the few tiles on the move.
-      fillLadder(z, present[i], world.soil[i] >= SOIL_EARTH_U8, lad);
-      const wetTarget = tgt === Landscape.Marsh || tgt === Landscape.Swampforest || tgt === Landscape.Rock;
+      fillLadder(z, present[i], world.soil[i] >= SOIL_EARTH_U8, lad, woodyFloraMask(world));
+      const wetTarget = tgt === Landscape.Marsh || tgt === Landscape.Swampforest || tgt === lad[0];
       if ((z & ZONE_WETLAND) && wetTarget && cur !== Landscape.Marsh && cur !== Landscape.Swampforest && LANDSCAPE_LEVEL[cur] >= 1) {
         const marsh = lad[2] === Landscape.Marsh && !(z & ZONE_BARE);
-        SuccessionSystem.reset(world, i, marsh ? Landscape.Marsh : Landscape.Rock);
+        SuccessionSystem.reset(world, i, marsh ? Landscape.Marsh : lad[0] as Landscape);
         return;
       }
       const next = stepToward(cur, tgt, lad);

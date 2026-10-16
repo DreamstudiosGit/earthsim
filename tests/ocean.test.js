@@ -39,8 +39,11 @@ test('O02: the mantle field does not move with the sea share', () => {
 });
 
 test('O03: the default share still makes the same planet as before', () => {
-  // Fingerprints taken before the share became a parameter.
-  const before = { 1234: [1514392851, 2939624411], 12345: [3682870883, 412929661] };
+  // Fingerprints taken before the share became a parameter; the elevation
+  // ones again when the typed mountain ranges, with water gaps through them,
+  // replaced the ridge-noise belts (docs/hoehe-spec.md §3.3). The mantle
+  // field is unchanged.
+  const before = { 1234: [2197787808, 2939624411], 12345: [1458496211, 412929661] };
   for (const [seed, [elevation, magma]] of Object.entries(before)) {
     const w = new SE.WorldState();
     w.reset(Number(seed));

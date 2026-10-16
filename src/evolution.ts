@@ -104,16 +104,16 @@ namespace SE {
       life: Life.Prokaryote, parent: null,
       habitat: { tags: ['coastalsea'], text: 'Lichtdurchflutetes Küstenmeer' },
       eco: [], cost: 0, col: 0, row: 0,
-      description: 'Einfache Zellen ohne Zellkern. Cyanobakterien unter ihnen nutzen Sonnenlicht und setzen dabei Sauerstoff frei.',
-      ecosystem: 'Sie sind die Grundlage aller Nahrungsketten im Meer. Ihr Sauerstoff macht anspruchsvollere Lebensformen erst möglich.',
+      description: 'Frühe Bakterien und Archaeen ohne Zellkern. Ihre ersten Vertreter besiedelten das junge Meer ohne freien Sauerstoff.',
+      ecosystem: 'Sie bilden die Grundlage der Nahrungsketten im Meer. Erst wenn sich Cyanobakterien innerhalb dieser Gruppe entwickeln, setzen sie durch Photosynthese Sauerstoff frei.',
       benefits: [
         'Leben im Küstenmeer – der Planet beginnt zu leben',
-        'Plankton erzeugt Sauerstoff für die Atmosphäre',
+        'Anfangs ohne Sauerstoffproduktion – bis Cyanobakterien auftreten',
         'Ab jetzt sammelst du Evolutionspunkte',
       ],
       event: {
         title: 'Leben entsteht',
-        text: 'In den warmen, lichtdurchfluteten Küstengewässern teilen sich die ersten Zellen. Cyanobakterien beginnen, Sauerstoff freizusetzen.',
+        text: 'Im jungen Meer teilen sich die ersten Zellen. Bakterien und Archaeen besiedeln eine Welt ohne freien Sauerstoff.',
         change: 'Erste Zellen besiedeln das Küstenmeer. Ab jetzt sammelst du Evolutionspunkte.',
         major: true,
       },
@@ -237,10 +237,12 @@ namespace SE {
       flora: Flora.Clubmosses, parent: 'vascular', lineageNote: 'Bärlapp-Linie',
       habitat: { tags: ['wetland'], text: 'Warme Sümpfe und nasse Niederungen' },
       eco: [], cost: 60, col: 6, row: -3,
-      description: 'Bärlappe und die baumhohen Schuppenbäume. Ihre Sumpfwälder bedeckten einst weite Niederungen.',
+      description: 'Bärlappe und die baumhohen Schuppenbäume. Ihre Sumpfwälder bedeckten einst weite Niederungen. ' +
+        'Nadelbäume und später Laubbäume verdrängten die Schuppenbäume; heute leben nur noch kleine, krautige Bärlappe in feuchten Nischen.',
       ecosystem: 'Sumpfwälder binden viel Kohlenstoff und bieten Amphibien und Insekten Lebensraum.',
       benefits: [
         'Warme Sümpfe werden zu dichten Sumpfwäldern',
+        'Ihre Sumpfwälder werden über Jahrmillionen zu Kohle',
         'Viel Pflanzendecke: mehr Sauerstoff, weniger CO₂',
         'Nahrung für Insekten und Dinosaurier',
       ],
@@ -403,7 +405,7 @@ namespace SE {
     {
       id: 'earlyAnimals', kingdom: 'animal', name: 'Schwämme & Nesseltiere', short: 'erste Tiere',
       life: Life.Radiate, parent: 'eukaryotes', lineageNote: 'Vielzeller',
-      habitat: { tags: ['coastalsea', 'atmosphere'], text: 'Lichtdurchflutetes Küstenmeer' },
+      habitat: { tags: ['coastalsea'], text: 'Lichtdurchflutetes Küstenmeer' },
       eco: [{ kind: 'food', label: 'Plankton', any: ['cells', 'eukaryotes'] }],
       cost: 20, col: 2, row: 1,
       description: 'Schwämme, Quallen und Korallen gehören zu den ältesten Tierlinien. Sie filtern Plankton aus dem Wasser.',
@@ -422,7 +424,7 @@ namespace SE {
     {
       id: 'bilaterians', kingdom: 'animal', name: 'Frühe Zweiseitentiere', short: 'Würmer',
       life: Life.Bilateria, parent: 'earlyAnimals', lineageNote: 'Bilateria',
-      habitat: { tags: ['coastalsea', 'atmosphere'], text: 'Meeresboden im Küstenmeer' },
+      habitat: { tags: ['coastalsea'], text: 'Meeresboden im Küstenmeer' },
       eco: [{ kind: 'food', label: 'Nahrung', any: ['cells', 'eukaryotes', 'marineAlgae'] }],
       cost: 25, col: 3, row: 1,
       description: 'Würmer mit Vorder- und Hinterende, Mund und Darm. Aus frühen Zweiseitentieren gehen Gliederfüßer, Weichtiere und Chordatiere hervor.',
@@ -441,7 +443,7 @@ namespace SE {
     {
       id: 'arthropods', kingdom: 'animal', name: 'Gliederfüßer des Meeres', short: 'Trilobiten, Krebstiere',
       life: Life.Arthropod, parent: 'bilaterians',
-      habitat: { tags: ['coastalsea', 'atmosphere'], text: 'Meeresgrund im Küstenmeer' },
+      habitat: { tags: ['coastalsea'], text: 'Meeresgrund im Küstenmeer' },
       eco: [{ kind: 'food', label: 'Nahrung', any: ['marineAlgae', 'bilaterians'] }],
       cost: 30, col: 4, row: 1,
       description: 'Trilobiten, Seeskorpione und Krebstiere mit Außenskelett und gegliederten Beinen.',
@@ -460,7 +462,7 @@ namespace SE {
     {
       id: 'molluscs', kingdom: 'animal', name: 'Weichtiere', short: 'Schnecken, Ammoniten',
       life: Life.Mollusc, parent: 'bilaterians',
-      habitat: { tags: ['coastalsea', 'atmosphere'], text: 'Algenreiches Küstenmeer' },
+      habitat: { tags: ['coastalsea'], text: 'Algenreiches Küstenmeer' },
       eco: [{ kind: 'food', label: 'Algenwiesen zum Abweiden', any: ['marineAlgae'] }],
       cost: 30, col: 4, row: 2,
       description: 'Schnecken, Ammoniten und Kopffüßer. Viele Schnecken raspeln mit ihrer Reibezunge (Radula) Algenbeläge ab.',
@@ -479,7 +481,7 @@ namespace SE {
     {
       id: 'fish', kingdom: 'animal', name: 'Fische', short: 'erste Wirbeltiere',
       life: Life.Fish, parent: 'bilaterians', lineageNote: 'über Chordatiere',
-      habitat: { tags: ['coastalsea', 'opensea', 'atmosphere'], text: 'Küstenmeer und Hochsee' },
+      habitat: { tags: ['coastalsea', 'opensea'], text: 'Küstenmeer und Hochsee' },
       eco: [{ kind: 'food', label: 'Beute', any: ['arthropods', 'molluscs', 'bilaterians'] }],
       cost: 45, col: 4, row: 3,
       description: 'Die ersten Wirbeltiere: kieferlose Fische, Panzerfische und schließlich Knochenfische. Sie stammen nicht von Gliederfüßern oder Weichtieren ab.',
@@ -717,8 +719,17 @@ namespace SE {
     // One point above the class's own floor: at the floor itself the oxygen
     // gate in LifeSystem is still zero, so promising "4 %" and then finding no
     // room at 4.0 % would be exactly the mismatch the player cannot debug.
-    if (n.life !== undefined && LIFE[n.life].o2Min > 0) return LIFE[n.life].o2Min + 1;
+    if (n.life !== undefined) {
+      const oxygen = lifeOxygen(n.life);
+      if (oxygen.medium === 'air') return oxygen.establish;
+    }
     return 0;
+  }
+
+  export function nodeOceanO2(n: EvoNode): number {
+    if (n.life === undefined) return 0;
+    const oxygen = lifeOxygen(n.life);
+    return oxygen.medium === 'water' ? oxygen.establish : 0;
   }
 
   /* ---------------------------------------------------------------- state -- */
@@ -780,7 +791,7 @@ namespace SE {
 
   /* ------------------------------------------------------------ conditions -- */
 
-  export type CondKind = 'lineage' | 'atmosphere' | 'habitat' | 'food' | 'partner' | 'soil' | 'cost';
+  export type CondKind = 'lineage' | 'atmosphere' | 'ocean' | 'habitat' | 'food' | 'partner' | 'soil' | 'cost';
   export type NodeState = 'locked' | 'partial' | 'available' | 'developed';
 
   export interface CondResult {
@@ -1022,6 +1033,17 @@ namespace SE {
         });
       }
 
+      const oceanO2 = nodeOceanO2(n);
+      if (oceanO2 > 0) {
+        conds.push({
+          kind: 'ocean',
+          label: `Meer: mindestens ${fmtPct(oceanO2)} % der heutigen Sauerstoffsättigung`,
+          need: `${fmtPct(oceanO2)} % Sauerstoffsättigung im Meer`,
+          met: world.oceanO2 >= oceanO2,
+          detail: `jetzt ${fmtPct(world.oceanO2)} % der heutigen Sättigung`,
+        });
+      }
+
       // --- ecology ---
       for (const need of n.eco) {
         const present = need.any.filter((id) => this.presence(world, evoNode(id)) >= ECO_MIN_TILES);
@@ -1043,7 +1065,7 @@ namespace SE {
       let sites = 0;
       if (withSites) {
         const lineageOk = !n.parent || (evo.isDeveloped(n.parent) && this.presence(world, evoNode(n.parent)) > 0);
-        const o2Ok = o2 <= 0 || world.o2 >= o2;
+        const o2Ok = world.o2 >= o2 && world.oceanO2 >= oceanO2;
         if (lineageOk && o2Ok) sites = this.foundingSites(world, params, n, 60).length;
         const near = n.parent ? ` nahe ${evoNode(n.parent).name}` : '';
         conds.push({
@@ -1347,6 +1369,7 @@ namespace SE {
       }
 
       for (const e of oxygenMilestones(world)) this.record(world, e);
+      for (const e of lycopsidMilestones(world)) this.record(world, e);
 
       // Statuses are cheap to read and moderately costly to build: rebuild a
       // few times a second of fast play, and on demand after any action.

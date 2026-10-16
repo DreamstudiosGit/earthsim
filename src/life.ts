@@ -149,7 +149,8 @@ namespace SE {
       const tolerance = clamp(mul(params.bio.tolerance), 0.2, 2);
       for (let c = 1; c < LIFE_COUNT; c++) {
         const def = LIFE[c as Life];
-        this.o2Gates[c] = def.o2Min <= 0 ? 1 : clamp((world.o2 - def.o2Min) / 3, 0, 1);
+        const oxygen = lifeOxygen(c as Life);
+        this.o2Gates[c] = oxygen.min <= 0 ? 1 : clamp((oxygenLevel(world, oxygen.medium) - oxygen.min) / (oxygen.full - oxygen.min), 0, 1);
         const mid = (def.temp[0] + def.temp[1]) / 2;
         const half = ((def.temp[1] - def.temp[0]) / 2) * tolerance;
         this.tempLo[c] = mid - half;
@@ -411,8 +412,8 @@ namespace SE {
     private evolve(world: WorldState, params: ModelParams): void {
       const rng = world.rng;
       const stageAdvance = LifeSystem.STAGE_ADVANCE * mul(params.bio.mutationRate);
+      const microbialAdvance = MICROBIAL_STAGE_ADVANCE * mul(params.bio.mutationRate);
       const density = world.lifeDensity;
-      const last = SUBSPECIES_PER_CLASS - 1;
 
       for (let i = 0; i < TILE_COUNT; i++) {
         if (!this.occupied[i]) continue;
@@ -423,8 +424,9 @@ namespace SE {
           const k = this.headroom[base + c];
           if (k <= 0 || d / k < LifeSystem.STAGE_MATURITY) continue;
           const stage = world.lifeStage[base + c];
-          if (stage >= last) continue;
-          if (this.stageHasRoom(world, c as Life, stage + 1) && rng.chance(stageAdvance)) {
+          if (stage >= SUBSPECIES_PER_CLASS - 1) continue;
+          const rate = c === Life.Prokaryote && stage < CYANOBACTERIA_STAGE ? microbialAdvance : stageAdvance;
+          if (this.stageHasRoom(world, c as Life, stage + 1) && rng.chance(rate)) {
             world.lifeStage[base + c] = stage + 1;
           }
         }
@@ -451,14 +453,23 @@ namespace SE {
       world.refreshDerived();
 
       let seaConsumers = 0;
+      let airConsumers = world.landLifeCoverage;
       for (let c = 1; c < LIFE_COUNT; c++) {
-        if (c === Life.Prokaryote || c === Life.Eukaryote) continue;
-        if (LIFE[c as Life].realm === 'sea') seaConsumers += world.lifeBiomass[c] / TILE_COUNT;
+        if (c === Life.Prokaryote) continue;
+        if (LIFE[c as Life].realm !== 'sea') continue;
+        const biomass = world.lifeBiomass[c] / TILE_COUNT;
+        if (c === Life.Cetacean) airConsumers += biomass;
+        else seaConsumers += biomass;
       }
-      const consumers = world.landLifeCoverage + seaConsumers;
+      const consumers = airConsumers + seaConsumers;
 
-      const plankton = (world.lifeBiomass[Life.Prokaryote] + world.lifeBiomass[Life.Eukaryote]) / TILE_COUNT;
-      const oceanProductivity = world.oceanFraction * clamp(plankton / 0.15, 0, 1);
+      let producers = 0;
+      for (let i = 0; i < TILE_COUNT; i++) {
+        const li = i * LIFE_COUNT + Life.Prokaryote;
+        if (world.lifeStage[li] === CYANOBACTERIA_STAGE) producers += world.lifeDensity[li];
+      }
+      producers /= TILE_COUNT;
+      const oceanProductivity = world.oceanFraction * clamp(producers / CYANO_PRODUCTIVITY_BIOMASS, 0, 1);
 
       const carbon = world.co2 / (world.co2 + 150);
       const absorption = mul(params.bio.co2Absorption);
@@ -474,7 +485,7 @@ namespace SE {
       atmo.oceanO2Delta +=
         fixing * (oceanProductivity * PLANKTON_O2_YIELD + world.algaeCoverage * ALGAE_O2_YIELD) -
         seaConsumers * RESPIRATION_O2;
-      atmo.o2Delta += fixing * world.vegetationCoverage * LAND_O2_YIELD - world.landLifeCoverage * RESPIRATION_O2;
+      atmo.o2Delta += fixing * world.vegetationCoverage * LAND_O2_YIELD - airConsumers * RESPIRATION_O2;
       atmo.co2Delta += CHEM_RATE * (-photosynthesis * 2.0 * absorption + consumers * 0.5);
     }
 
@@ -507,7 +518,9 @@ namespace SE {
       }
       this.prepare(world, params);
       if (this.o2Gates[c] <= 0) {
-        return `brauchen mehr als ${def.o2Min.toLocaleString('de-DE')} % Sauerstoff – die Luft enthält ${world.o2.toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
+        const oxygen = lifeOxygen(c);
+        const fmt = (v: number): string => v.toLocaleString('de-DE', { maximumFractionDigits: 1 });
+        return `brauchen mehr als ${fmt(oxygen.min)} ${oxygenUnit(oxygen.medium)} – jetzt ${fmt(oxygenLevel(world, oxygen.medium))} %`;
       }
       if (def.suit[world.biome[i]] <= 0) return `können im Lebensraum ${BIOME_NAMES[world.biome[i]]} nicht leben`;
       const t = world.temperature[i];

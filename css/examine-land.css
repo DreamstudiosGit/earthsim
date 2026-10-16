@@ -1,53 +1,90 @@
-/* =============================================================================
-   Examine window — the landscape card: a pixel-exact cut of the map and the
-   plant groups of the tile as the map draws them (docs/biomes-spec.md §4.9).
-   ========================================================================== */
+/* Compact Examine panel, adjacent to the tool dock. */
+.win.win-examine {
+  position: absolute !important; left: 100px !important; top: 12px !important;
+  right: auto !important; bottom: auto !important; width: 398px !important; height: auto !important;
+  min-width: 0; min-height: 0; max-width: calc(100% - 112px); max-height: calc(100% - 24px);
+  resize: none; border-radius: 14px; background: rgba(11, 24, 22, .97);
+}
+.win-examine .win-head { min-height: 45px; cursor: default; padding-left: 15px; gap: 9px; }
+.win-examine .win-icon { width: 19px; height: 19px; }
+.win-examine .win-title { font-size: 14px; }
+.win-examine .win-body { padding: 0; overscroll-behavior: contain; scrollbar-width: thin; }
+.win-examine .examine-body { display: flex; flex-direction: column; gap: 0; }
+.stage.examining .dock-panel { display: none; }
+.stage.examining .dock-collapse { visibility: hidden; }
+.ex-tile { display: grid; grid-template-columns: 144px minmax(0, 1fr); gap: 10px; padding: 14px 14px 12px; align-items: center; }
+.ex-picture { width: 144px; height: 152px; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, #243a29, #14251f 75%); border-radius: 9px; }
+.ex-picture canvas { image-rendering: pixelated; flex: none; }
+.ex-place { font-size: 17px; line-height: 1.15; letter-spacing: -.02em; }
+.ex-state { font-size: 12px; color: var(--accent); margin-top: 3px; }
+.ex-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 7px; margin: 11px 0 0; }
+.ex-facts div { min-width: 0; }
+.ex-facts dt { font-size: 10px; color: var(--ink-3); }
+.ex-facts dd { margin: 1px 0 0; font-size: 12px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ex-wind { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; color: var(--water); margin-right: 3px; }
+.ex-section { margin: 0 14px; padding: 10px 0; border-top: 1px solid var(--line); }
+.ex-section-title { display: flex; align-items: center; gap: 6px; color: var(--ink-3); font-size: 10px; letter-spacing: .07em; text-transform: uppercase; margin-bottom: 6px; }
+.ex-section-title img { width: 15px; height: 15px; }
+.ex-section-title span { margin-left: auto; font-size: 10px; text-transform: none; letter-spacing: 0; }
+.win-examine .ex-empty { color: var(--ink-3); font-size: 12px; padding: 3px 0; }
+.ex-entry { border: 1px solid transparent; border-radius: 9px; margin: 2px 0; }
+.ex-entry[open] { border-color: rgba(143, 220, 154, .24); background: rgba(143, 220, 154, .035); margin: 5px 0; }
+.ex-entry summary { display: flex; gap: 9px; align-items: center; cursor: pointer; list-style: none; padding: 3px 7px 3px 3px; min-height: 38px; border-radius: 8px; }
+.ex-entry summary::-webkit-details-marker { display: none; }
+.ex-entry summary:hover { background: rgba(255,255,255,.04); }
+.ex-entry summary::after { content: ''; width: 6px; height: 6px; border: solid var(--ink-3); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); margin-left: 3px; margin-right: 3px; flex: none; }
+.ex-entry[open] summary::after { transform: rotate(45deg); }
+.ex-entry summary > img, .ex-entry summary > .fauna-pic { width: 28px; height: 28px; flex: none; border-radius: 7px; padding: 0; }
+.ex-entry summary > .fauna-pic { padding: 3px; }
+.ex-entry-name { flex: 1; min-width: 0; font-size: 12px; font-weight: 600; line-height: 1.2; }
+.ex-stock { font-size: 11px; color: var(--ink-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ex-entry-body { padding: 0 10px 10px; }
+.ex-group { color: var(--ink-3); font-size: 11px; padding-top: 1px; }
+.ex-detail-facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 6px; margin: 9px 0; font-size: 11px; }
+.ex-detail-facts dt { color: var(--ink-3); }
+.ex-detail-facts dd { text-align: right; margin: 0; color: var(--ink-2); }
+.ex-links { display: flex; gap: 6px; margin: 8px 0 12px; }
+.ex-links .btn { min-height: 29px; font-size: 10.5px; padding: 3px 7px; flex: 1; justify-content: center; }
+.ex-links img { width: 14px; height: 14px; }
+.ex-habitats-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--ink-3); margin-bottom: 6px; }
+.ex-current-key { display: flex; align-items: center; gap: 4px; }
+.ex-current-key::before { content: ''; width: 6px; height: 6px; border: 1px solid var(--accent); border-radius: 2px; }
+.ex-habitats { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 3px; }
+.ex-habitat { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; border: 1px solid transparent; padding: 3px 0 2px; border-radius: 5px; cursor: help; }
+.ex-habitat > .ex-habitat-art { width: 23px; height: 23px; border-radius: 4px; }
+.ex-habitat.is-current { border-color: var(--accent); background: rgba(143,220,154,.09); }
+.ex-habitat:focus-visible { outline-offset: 1px; }
+.ex-notes { padding: 0 14px 10px; color: var(--ink-3); font-size: 11px; }
 
-.ex-land-body { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-start; padding: 12px; }
-.ex-land-crop {
-  position: relative;
-  flex: 0 0 auto;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: inset 0 0 0 1px var(--line), 0 6px 18px rgba(0, 0, 0, 0.35);
+.ex-habitat { background: none; color: inherit; font: inherit; min-width: 0; }
+.ex-habitat > .ex-verdict { width: 18px; height: 18px; }
+.ex-habitat-tip { display: none; position: absolute; z-index: 2; bottom: calc(100% + 5px); left: 0; width: 170px; padding: 6px 8px; background: #071612; color: var(--ink); border: 1px solid var(--line-2); border-radius: 6px; text-align: left; font-size: 11px; font-weight: 400; pointer-events: none; }
+.ex-habitat:nth-child(n+6) .ex-habitat-tip { left: auto; right: 0; }
+.ex-habitat:is(:hover, :focus-visible) .ex-habitat-tip { display: block; }
+.ex-habitat:focus:not(:focus-visible) .ex-habitat-tip { display: block; }
+.ex-habitats { padding-top: 1px; }
+.ex-picture-fallback { width: 96px; height: 96px; }
+.ex-event { color: var(--warn); font-weight: 650; }
+.ex-notes p + p { margin-top: 4px; }
+.ex-notes .chip-dot { display: inline-block; margin-right: 6px; }
+.ex-plant-habitats { margin-top: 6px; }
+@media (max-width: 760px) {
+  .stage.examining .world-canvas { height: calc(100% - 82px); }
+  .stage.examining .goal { display: none; }
+  .win.win-examine { left: 8px !important; right: 8px !important; top: auto !important; bottom: 82px !important; width: auto !important; max-width: none; max-height: 58%; }
+  .win.win-examine.examine-top { top: 8px !important; bottom: auto !important; }
+  .ex-tile { grid-template-columns: 136px minmax(0, 1fr); gap: 8px; padding: 10px 12px; }
+  .ex-picture { width: 136px; }
+  .ex-place { font-size: 16px; }
+  .ex-section { margin-left: 12px; margin-right: 12px; }
+  .ex-entry summary { min-height: 44px; }
+  .ex-links .btn { min-height: 36px; }
+  .ex-habitat > .ex-habitat-art { width: 21px; height: 21px; }
 }
-/* Whole-number enlargement of a 1× canvas: every art pixel stays square. */
-.ex-land-crop canvas,
-.ex-land-plants canvas { display: block; image-rendering: pixelated; }
-.ex-land-crop canvas { width: 100%; height: 100%; }
-.ex-land-frame {
-  position: absolute;
-  box-sizing: border-box;
-  border: 2px solid #ffe9a6;
-  border-radius: 2px;
-  box-shadow: 0 0 0 1px rgba(6, 14, 12, 0.6), inset 0 0 0 1px rgba(6, 14, 12, 0.6);
-  pointer-events: none;
+@media (max-width: 359px) {
+  .ex-tile { grid-template-columns: 1fr; }
+  .ex-picture { width: 100%; }
+  .ex-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ex-habitats { gap: 1px; }
+  .ex-habitat > .ex-habitat-art { width: 19px; height: 19px; }
 }
-.ex-land-info { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-.ex-land-plants {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 6px;
-}
-.ex-land-plants li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px 4px 4px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--line);
-  font-size: 12.5px;
-  line-height: 1.2;
-  color: var(--ink-2);
-}
-/* A pale specimen card, so dark crowns and pale lichens alike stand out. */
-.ex-land-plants li canvas {
-  flex: 0 0 auto;
-  border-radius: 6px;
-  background: radial-gradient(circle at 50% 40%, #e3e6d3, #a9b39a 80%);
-}
-.ex-land-plants li.lead { border-color: rgba(143, 220, 154, 0.55); color: var(--ink); }

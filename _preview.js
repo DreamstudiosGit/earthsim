@@ -1,16 +1,17 @@
 /* Fast-forward a fresh planet to a living one, for screenshots.
- * URL parameters (all optional): ticks=3000, seed=<n>, zoom=<px per tile>,
- * x=<tile> y=<tile> (centre), terrain=legacy (read by the renderer).
+ * URL parameters (all optional): ticks=3000, seed=<n>, epoch=<id> (see
+ * src/epochs.ts), zoom=<px per tile>, x=<tile> y=<tile> (centre),
+ * terrain=legacy (read by the renderer).
  * `previewAdvance(n)` plays n more ticks the same way, for an age series. */
 window.addEventListener('load', () => {
   const app = SE.app;
   const q = new URLSearchParams(location.search);
   // Straight to the planet: the title screen would cover the screenshot.
   if (app.title) app.title.close();
-  if (q.has('seed')) {
-    app.world.seed = Number(q.get('seed')) >>> 0;
-    app.newPlanet({ quiet: true, keepSeed: true });
-  }
+  if (q.has('seed')) app.world.seed = Number(q.get('seed')) >>> 0;
+  // Not saved: the settings only reach storage when the player changes one.
+  if (SE.isEpochId(q.get('epoch'))) app.settings.epoch = q.get('epoch');
+  if (q.has('seed') || q.has('epoch')) app.newPlanet({ quiet: true, keepSeed: true });
   // Play the evolution tree the way an eager player would: develop the
   // cheapest available step every few ticks.
   window.previewAdvance = (n) => {

@@ -23,15 +23,16 @@ function climax(temp, moist, groups, { elev = 0.1, cover = 0.7, soil = true } = 
 }
 
 /**
- * A real planet's terrain with one uniform climate and plant cover on all
- * land, every land tile set back to bare rock. Climate and flora are not
- * stepped, so only succession moves.
+ * A real planet's terrain with one uniform climate at sea level (each tile
+ * as much colder as its height makes it) and plant cover on all land, every
+ * land tile set back to bare rock. Climate and flora are not stepped, so
+ * only succession moves.
  */
 function uniformPlanet(seed, { temp = 16, moist = 0.45, veg = 0.8, flora = ALL_PLANTS } = {}) {
   const s = makeSim(seed);
   const w = s.world;
   for (let i = 0; i < SE.TILE_COUNT; i++) {
-    w.temperature[i] = temp;
+    w.temperature[i] = temp - SE.altitudeCooling(w.elevation[i]);
     w.moisture[i] = w.isWater(i) ? 1 : moist;
     if (w.isWater(i)) continue;
     w.vegetation[i] = veg;
@@ -52,7 +53,7 @@ function advance(w) {
   w.ticks++;
 }
 
-/** A land tile in flat lowland, three tiles from any coast, mountain or wetland. */
+/** A land tile in flat lowland (below the mountain belts), three tiles from any coast, mountain or wetland. */
 function interiorTile(w) {
   for (let y = 10; y < SE.GRID_H - 10; y++) {
     for (let x = 0; x < SE.GRID_W; x++) {
@@ -60,7 +61,7 @@ function interiorTile(w) {
       for (let dy = -3; dy <= 3 && ok; dy++) {
         for (let dx = -3; dx <= 3 && ok; dx++) {
           const e = w.elevation[SE.idx(SE.wrapX(x + dx), y + dy)];
-          ok = e >= 0.16 && e <= 0.4;
+          ok = e >= 0.02 && e < SE.ALPINE_MIN_ELEVATION - SE.SCHMITT_ELEVATION;
         }
       }
       if (ok) return SE.idx(x, y);
@@ -71,9 +72,9 @@ function interiorTile(w) {
 
 test('climax table: climate × plant groups (spec §3.4)', () => {
   assert.equal(climax(-20, 0.4, ALL_PLANTS), L.Ice);
-  assert.equal(climax(10, 0.4, ALL_PLANTS, { elev: 0.85 }), L.Snow, 'summit snow');
+  assert.equal(climax(SE.SNOW_TEMP - 2, 0.4, ALL_PLANTS, { elev: 0.85 }), L.Snow, 'summit snow');
   assert.equal(climax(SE.TROPICAL_TEMP + 3, 0.6, ALL_PLANTS), L.Rainforest);
-  assert.equal(climax(SE.TROPICAL_TEMP - 1, 0.6, ALL_PLANTS), L.Forest, 'warm but not tropical');
+  assert.equal(climax(SE.TROPICAL_TEMP - 1, 0.6, ALL_PLANTS, { elev: 0 }), L.Forest, 'warm but not tropical');
   assert.equal(climax(10, 0.45, ALL_PLANTS), L.Forest, 'cool and humid: broadleaf and mixed forest');
   assert.equal(climax(0, 0.45, ALL_PLANTS), L.Taiga, 'cold and humid: conifers');
   assert.equal(climax(0, 0.2, ALL_PLANTS), L.Tundra, 'cold and semi-arid');
@@ -83,7 +84,7 @@ test('climax table: climate × plant groups (spec §3.4)', () => {
   assert.equal(climax(16, 0.3, ALL_PLANTS), L.Savanna);
   assert.equal(climax(16, 0.2, ALL_PLANTS), L.Semidesert);
   assert.equal(climax(16, 0.1, ALL_PLANTS), L.Desert);
-  assert.equal(climax(10, 0.45, ALL_PLANTS, { elev: 0.6 }), L.Tundra, 'above the tree line no forest');
+  assert.equal(climax(SE.TREELINE_TEMP - 1, 0.45, ALL_PLANTS, { elev: 0.6 }), L.Alpine, 'above the tree line no forest');
   assert.equal(climax(20, 0.8, bit(F.Mosses, F.Ferns), { elev: 0.05 }), L.Marsh);
   assert.equal(climax(20, 0.8, bit(F.Clubmosses, F.Ferns), { elev: 0.05 }), L.Swampforest, 'Carboniferous swamp forest');
   // Bare ground, by soil and dryness.
@@ -151,24 +152,34 @@ test('Schmitt triggers: an input wavering around a threshold does not flip the c
 });
 
 test('a wavering climate does not make the landscape flicker', { timeout: 120000 }, () => {
-  const s = uniformPlanet(4242, { temp: 10, moist: 0.42 });
+  const s = uniformPlanet(4242, { temp: 14, moist: 0.42 });
   const w = s.world;
   for (let k = 0; k < 80; k++) advance(w);
-  const before = Uint8Array.from(w.landscape);
-  let flips = 0;
+  // Every landscape a tile has held while the climate wavers; holding one again is a flicker.
+  const held = Array.from(w.landscape, (l) => [l]);
+  let flickers = 0;
+  let land = 0;
+  for (let i = 0; i < SE.TILE_COUNT; i++) if (!w.isWater(i)) land++;
   for (let k = 0; k < 40; k++) {
-    // Moisture around the humid boundary (0.38) and temperature around 14 °C, inside the bands.
+    // Moisture around the humid boundary (0.38) and the sea-level temperature around 14 °C, inside the bands.
     const m = k % 2 ? 0.36 : 0.40;
     const t = k % 3 ? 13 : 15;
-    for (let i = 0; i < SE.TILE_COUNT; i++) if (!w.isWater(i)) { w.moisture[i] = m; w.temperature[i] = t; }
-    const prev = Uint8Array.from(w.landscape);
+    for (let i = 0; i < SE.TILE_COUNT; i++) {
+      if (!w.isWater(i)) { w.moisture[i] = m; w.temperature[i] = t - SE.altitudeCooling(w.elevation[i]); }
+    }
     advance(w);
-    for (let i = 0; i < SE.TILE_COUNT; i++) if (w.landscape[i] !== prev[i]) flips++;
+    for (let i = 0; i < SE.TILE_COUNT; i++) {
+      const h = held[i];
+      if (w.landscape[i] === h[h.length - 1]) continue;
+      if (h.includes(w.landscape[i])) flickers++;
+      h.push(w.landscape[i]);
+    }
   }
-  let changed = 0;
-  for (let i = 0; i < SE.TILE_COUNT; i++) if (w.landscape[i] !== before[i]) changed++;
-  assert.equal(flips, 0, `${flips} landscape changes while the climate wavered inside the bands`);
-  assert.equal(changed, 0);
+  const changed = held.filter((h) => h.length > 1).length;
+  assert.equal(flickers, 0, `${flickers} landscapes went back and forth while the climate wavered inside the bands`);
+  // Altitude belts put a class border on every contour line; the few tiles whose swing crosses
+  // the far side of a band move on once, as a Schmitt trigger should.
+  assert.ok(changed <= land * 0.02, `${changed} of ${land} land tiles changed at all`);
 });
 
 test('succession: rock to forest climbs at least four stages, each held for ticks', { timeout: 120000 }, () => {
@@ -226,14 +237,18 @@ test('majority filter: a lone stage joins its neighbours', { timeout: 120000 }, 
       if (w.isWater(j)) continue;
       land++;
       let same = 0;
+      let summit = true;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const k = SE.idx(SE.wrapX(x + dx), y + dy);
-        if ((dx || dy) && !w.isWater(k) && w.landscape[k] === w.landscape[j]) same++;
+        if (!(dx || dy) || w.isWater(k)) continue;
+        if (w.landscape[k] === w.landscape[j]) same++;
+        if (w.elevation[k] >= w.elevation[j]) summit = false;
       }
-      if (same === 0) lone++;
+      // A single summit above the tree line stays alone, as it should.
+      if (same === 0 && !(summit && w.elevation[j] >= SE.ALPINE_MIN_ELEVATION)) lone++;
     }
   }
-  // What stays alone are single summits under snow and specks of coast.
+  // What stays alone besides single summits are specks of coast.
   assert.ok(lone <= land * 0.002, `${lone} lone tiles of ${land} on a uniform planet`);
 });
 
@@ -277,12 +292,12 @@ test('disturbances reset at once and the land regrows stage by stage', { timeout
   // An ice age arrives with the next refresh of the targets, all at once,
   // and scrapes the soil off.
   const j = SE.idx(SE.wrapX(x + 20), y);
-  for (let k = 0; k < SE.TILE_COUNT; k++) if (!w.isWater(k)) w.temperature[k] = -25;
+  for (let k = 0; k < SE.TILE_COUNT; k++) if (!w.isWater(k)) w.temperature[k] = -25 - SE.altitudeCooling(w.elevation[k]);
   for (let k = 0; k < SE.SUCCESSION_TARGET_INTERVAL; k++) advance(w);
   if (!w.isWater(j)) assert.equal(w.landscape[j], L.Ice);
   const iced = w.soil[j];
   for (let k = 0; k < 10; k++) advance(w);
-  assert.ok(w.soil[j] < iced || iced === 0, 'ice scours the soil');
+  assert.ok(w.soil[j] < iced || iced <= Math.floor(SE.SOIL_REGOLITH * 255), 'ice scours the soil down to the till');
 });
 
 test('succession is deterministic', { timeout: 120000 }, () => {
@@ -342,7 +357,7 @@ test('format 7 keeps landscape, next stage, hold and soil exactly', { timeout: 1
   assert.ok(holding > 0, 'some tiles are mid-way through a stage');
   const text = await SE.SaveSystem.encode(SE.SaveSystem.serialize(ctx(a)));
   const doc = await SE.SaveSystem.decode(text);
-  assert.equal(doc.version, 7);
+  assert.equal(doc.version, SE.SAVE_FORMAT);
   const b = makeSim(1);
   SE.SaveSystem.load(doc, ctx(b), b.life, b.flora);
   for (const f of ['landscape', 'landscapeNext', 'landscapeHold', 'soil']) {

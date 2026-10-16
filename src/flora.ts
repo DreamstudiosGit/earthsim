@@ -155,7 +155,8 @@ namespace SE {
           if (wetF <= 0) return 0;
           const waterF = 1 - def.needsWater * (1 - this.waterAccess[i]);
           const altF = e <= def.maxElevation ? 1 : clamp(1 - (e - def.maxElevation) / 0.15, 0, 1);
-          return tempF * wetF * waterF * altF;
+          const s = tempF * wetF * waterF * altF;
+          return g === Flora.Clubmosses ? s * clubmossCompetition(world, i) : s;
         }
       }
     }
@@ -176,7 +177,10 @@ namespace SE {
         if (def.needsWater >= 0.6 && this.waterAccess[i] < 0.5) return 'braucht Wasser in der Nähe (Ufer, Fluss oder Feuchtgebiet)';
         if (e > def.maxElevation + 0.1) return 'das Gelände liegt zu hoch';
       }
-      if (this.suit(world, g, i) < SPREAD_MIN) return 'die Bedingungen sind dort zu ungünstig';
+      if (this.suit(world, g, i) < SPREAD_MIN) {
+        if (g === Flora.Clubmosses && clubmossCompetition(world, i) < 1) return 'Nadel- und Laubbäume verdrängen dort die Bärlappe';
+        return 'die Bedingungen sind dort zu ungünstig';
+      }
       return null;
     }
 
@@ -190,7 +194,7 @@ namespace SE {
       const bit = 1 << g;
       const had = (world.flora[i] & bit) !== 0;
       world.flora[i] |= bit;
-      const start = this.suit(world, g, i) * FLORA[g].stature * strength;
+      const start = this.suit(world, g, i) * floraStature(world, g) * strength;
       const before = world.vegetation[i];
       if (start > world.vegetation[i]) world.vegetation[i] = start;
       return !had || world.vegetation[i] > before + 1e-6;
@@ -199,7 +203,7 @@ namespace SE {
     /** Would `plant` change this tile? (Not already there at that cover.) */
     wouldPlant(world: WorldState, g: Flora, i: number, strength: number): boolean {
       if ((world.flora[i] & (1 << g)) === 0) return true;
-      return this.suit(world, g, i) * FLORA[g].stature * strength > world.vegetation[i] + 1e-6;
+      return this.suit(world, g, i) * floraStature(world, g) * strength > world.vegetation[i] + 1e-6;
     }
 
     /**
@@ -255,7 +259,7 @@ namespace SE {
             if (rng.chance(0.06)) mask &= ~(1 << g);
             continue;
           }
-          let stature = FLORA[g as Flora].stature;
+          let stature = floraStature(world, g as Flora);
           if (pollinated && ((1 << g) & POLLINATED_MASK)) stature *= POLLINATION_COVER;
           if (g === Flora.Carnivorous) stature *= insects ? 1.4 : 0.7;
           const k = s * stature;
@@ -335,6 +339,8 @@ namespace SE {
       }
 
       this.globalDispersal(world, present);
+      clubmossSpores(world, this, present);
+      updateLycopsidEra(world, present);
     }
 
     /**

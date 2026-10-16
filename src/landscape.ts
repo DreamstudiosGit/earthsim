@@ -31,25 +31,30 @@ namespace SE {
     Rainforest = 16,
     Marsh = 17,
     Swampforest = 18,
+    /** Alpine meadow above the tree line (docs/hoehe-spec.md §3.6). */
+    Alpine = 19,
+    /** Montane rainforest of the humid tropical highlands: rainforest for the animals. */
+    Cloudforest = 20,
   }
-  export const LANDSCAPE_COUNT = 19;
+  export const LANDSCAPE_COUNT = 21;
   /** `landscapeNext` of a tile without succession state (water, or land not yet started). */
   export const LANDSCAPE_UNSET = 255;
 
   export const LANDSCAPE_IDS: readonly string[] = [
     'ice', 'snow', 'rock', 'barren', 'desert', 'lichen', 'moss', 'tundra', 'fernland', 'steppe',
     'meadow', 'savanna', 'semidesert', 'shrubland', 'forest', 'taiga', 'rainforest', 'marsh', 'swampforest',
+    'alpine', 'cloudforest',
   ];
 
   export const LANDSCAPE_NAMES: readonly string[] = [
     'Eis', 'Gipfelschnee', 'Fels', 'Rohboden', 'Wüste', 'Flechten & Moos auf Fels', 'Moosteppich', 'Tundra',
     'Farnflur', 'Steppe', 'Wiese', 'Savanne', 'Halbwüste', 'Gebüsch', 'Wald', 'Nadelwald', 'Regenwald',
-    'Sumpf', 'Sumpfwald',
+    'Sumpf', 'Sumpfwald', 'Alpine Matte', 'Bergregenwald',
   ];
 
   /** Density steps each landscape distinguishes (1: none; forests 2; open land 3). */
   export const LANDSCAPE_DENSITIES: readonly number[] = [
-    1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 3, 2,
+    1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 3, 2, 3, 2,
   ];
 
   /** What a land tile is made of beneath its plants (spec §3.2). */
@@ -69,12 +74,12 @@ namespace SE {
    * A tile climbs or falls one level-step at a time (spec §3.5).
    */
   export const LANDSCAPE_LEVEL: readonly number[] = [
-    0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 1, 3, 4, 4, 4, 2, 4,
+    0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 1, 3, 4, 4, 4, 2, 4, 2, 4,
   ];
 
   /** Drawing rank (spec §5.1): who wins at a border, and who yields to a neighbour. */
   export const LANDSCAPE_RANK: readonly number[] = [
-    21, 22, 1, 4, 2, 7, 9, 8, 10, 11, 13, 12, 6, 15, 18, 17, 19, 14, 16,
+    21, 22, 1, 4, 2, 7, 9, 8, 10, 11, 13, 12, 6, 15, 18, 17, 19, 14, 16, 9.5, 19.5,
   ];
 
   /**
@@ -83,18 +88,24 @@ namespace SE {
    * geologic scales every stage takes the minimum hold of a few ticks.
    */
   export const LANDSCAPE_STAGE_YEARS: readonly number[] = [
-    0, 0, 20, 2, 50, 50, 40, 50, 10, 10, 10, 15, 30, 15, 60, 80, 60, 10, 60,
+    0, 0, 20, 2, 50, 50, 40, 50, 10, 10, 10, 15, 30, 15, 60, 80, 60, 10, 60, 30, 60,
   ];
+
+  /** What ice and summit snow never border: woodland, warm open land and desert (rock, tundra or alpine meadow lie between). */
+  const FROST_CLASHES: readonly Landscape[] = [Landscape.Taiga, Landscape.Forest, Landscape.Rainforest, Landscape.Desert,
+    Landscape.Semidesert, Landscape.Savanna, Landscape.Steppe, Landscape.Meadow, Landscape.Fernland, Landscape.Shrubland,
+    Landscape.Swampforest, Landscape.Cloudforest];
 
   /** Landscapes that never border each other in nature (spec §3.7, point 5). */
   const CLASHES: readonly (readonly [Landscape, readonly Landscape[]])[] = [
-    [Landscape.Ice, [Landscape.Taiga, Landscape.Forest, Landscape.Rainforest, Landscape.Desert, Landscape.Semidesert,
-      Landscape.Savanna, Landscape.Steppe, Landscape.Meadow, Landscape.Fernland, Landscape.Shrubland, Landscape.Swampforest]],
+    [Landscape.Ice, FROST_CLASHES],
+    [Landscape.Snow, FROST_CLASHES],
     [Landscape.Rainforest, [Landscape.Tundra, Landscape.Taiga, Landscape.Desert, Landscape.Semidesert,
-      Landscape.Steppe, Landscape.Meadow]],
+      Landscape.Steppe, Landscape.Meadow, Landscape.Alpine]],
     [Landscape.Desert, [Landscape.Taiga, Landscape.Forest, Landscape.Savanna, Landscape.Meadow, Landscape.Moss,
       Landscape.Marsh, Landscape.Swampforest]],
     [Landscape.Semidesert, [Landscape.Taiga, Landscape.Forest, Landscape.Moss, Landscape.Marsh, Landscape.Swampforest]],
+    [Landscape.Cloudforest, [Landscape.Tundra, Landscape.Taiga, Landscape.Desert, Landscape.Semidesert]],
     [Landscape.Taiga, [Landscape.Savanna]],
     [Landscape.Tundra, [Landscape.Savanna]],
   ];
@@ -111,11 +122,14 @@ namespace SE {
     return out;
   })();
 
-  /** Habitat of each landscape before the climate refines it (spec §3.3). */
+  /**
+   * Habitat of each landscape before the climate refines it (spec §3.3).
+   * Summit snow is Arctic, so peaks reflect like ice (docs/hoehe-spec.md §3.5).
+   */
   const HABITAT: readonly Biome[] = [
-    Biome.Arctic, Biome.Rock, Biome.Rock, Biome.Rock, Biome.Desert, Biome.Grass, Biome.Grass, Biome.Tundra,
+    Biome.Arctic, Biome.Arctic, Biome.Rock, Biome.Rock, Biome.Desert, Biome.Grass, Biome.Grass, Biome.Tundra,
     Biome.Grass, Biome.Grass, Biome.Grass, Biome.Grass, Biome.Desert, Biome.Grass, Biome.Forest, Biome.Boreal,
-    Biome.Jungle, Biome.Swamp, Biome.Swamp,
+    Biome.Jungle, Biome.Swamp, Biome.Swamp, Biome.Tundra, Biome.Jungle,
   ];
 
   /* ----------------------------------------------------- climate zones -- */
@@ -124,15 +138,24 @@ namespace SE {
    * A zone packs what the landscape rules read about a tile's climate into
    * one number: temperature class (bits 0-2: frozen, cold, cool, warm,
    * tropical), moisture class (bits 3-5: dry, semi-arid, moderate,
-   * moderate-moist, humid, wet) and four flags. Stored per tile it is the
-   * memory of the Schmitt triggers: every threshold has a band in favour of
-   * the class the tile was in.
+   * moderate-moist, humid, wet) and the flags below. Stored per tile it is
+   * the memory of the Schmitt triggers: every threshold has a band in favour
+   * of the class the tile was in.
+   *
+   * Altitude belts (docs/hoehe-spec.md §3.6) are nested flags of mountain
+   * tiles, read off the tile's own temperature: mountain ⊃ above the tree
+   * line ⊃ rock belt ⊃ summit snow.
    */
   export const ZONE_NONE = 0xffff;
+  /** Above the tree line: alpine meadow, no trees ("high mountains"). */
   export const ZONE_TREELINE = 1 << 6;
   export const ZONE_SNOW = 1 << 7;
   export const ZONE_WETLAND = 1 << 8;
   export const ZONE_BARE = 1 << 9;
+  /** Subnival rock belt between alpine meadow and snow (docs/hoehe-spec.md §3.6). */
+  export const ZONE_ROCKBELT = 1 << 10;
+  /** Mountain tile (elevation ≥ ALPINE_MIN_ELEVATION): its altitude belts apply, humid tropics carry cloud forest. */
+  export const ZONE_MOUNTAIN = 1 << 11;
   export const enum TempClass { Frozen = 0, Cold = 1, Cool = 2, Warm = 3, Tropical = 4 }
   export const enum MoistClass { Dry = 0, Semi = 1, Moderate = 2, Moist = 3, Humid = 4, Wet = 5 }
 
@@ -156,23 +179,57 @@ namespace SE {
     return prev === ZONE_NONE ? 0 : (prev & bit) ? -1 : 1;
   }
 
-  /** Temperature class boundaries: frozen | cold | cool | warm | tropical. */
-  export const LANDSCAPE_TEMP_BOUNDS: readonly number[] = [FROZEN_TEMP, COLD_TEMP, COOL_TEMP, TROPICAL_TEMP];
+  /** Temperature class boundaries below the tropics: frozen | cold | cool | warm. */
+  export const LANDSCAPE_TEMP_BOUNDS: readonly number[] = [FROZEN_TEMP, COLD_TEMP, COOL_TEMP];
+
+  /** Degrees a tile at elevation `elev` is colder than sea level below it. */
+  export function altitudeCooling(elev: number): number {
+    return elev > 0 ? LAPSE_RATE * ELEVATION_KM * elev : 0;
+  }
+
+  /** Summit snow threshold (°C): in dry air the snow line lies higher. */
+  export function snowTemp(m: MoistClass): number {
+    return m === MoistClass.Dry ? SNOW_TEMP - SNOW_DRY_SHIFT : SNOW_TEMP;
+  }
 
   /**
-   * Climate zone of a land tile from its smoothed temperature, moisture and
-   * plant cover and its own elevation. `prev` is the tile's last zone, or
+   * Climate zone of a land tile from its smoothed temperature (at height
+   * `elev`), moisture and plant cover, its height `elev` and, for standing
+   * water, its own elevation `wetElev`. `prev` is the tile's last zone, or
    * ZONE_NONE for no memory.
+   *
+   * Whether a tile is tropical follows its sea-level temperature, so humid
+   * tropical highland stays tropical up to the tree line (hoehe-spec E5);
+   * every other class and the altitude belts follow the tile's own. A
+   * mountain is frozen (ice sheet) only where the sea-level climate is
+   * frozen as well; frozen by its height alone it carries summit snow.
    */
-  export function landscapeZone(temp: number, moist: number, elev: number, cover: number, prev: number): number {
+  export function landscapeZone(temp: number, moist: number, elev: number, cover: number, prev: number, wetElev = elev): number {
     const known = prev !== ZONE_NONE;
-    const t = bandClass(temp, LANDSCAPE_TEMP_BOUNDS, known ? zoneTemp(prev) : -1, SCHMITT_TEMP);
+    const pt = known ? zoneTemp(prev) : -1;
+    const tSea = temp + altitudeCooling(elev);
+    const mountain = elev >= ALPINE_MIN_ELEVATION + flagBand(prev, ZONE_MOUNTAIN) * SCHMITT_ELEVATION;
+    const tb = pt < 0 ? 0 : pt === TempClass.Tropical ? -1 : 1;
+    let t: number = tSea >= TROPICAL_TEMP + tb * SCHMITT_TEMP ? TempClass.Tropical
+      : bandClass(temp, LANDSCAPE_TEMP_BOUNDS, pt === TempClass.Tropical ? TempClass.Warm : pt, SCHMITT_TEMP);
+    if (t === TempClass.Frozen && mountain) {
+      const fb = pt < 0 ? 0 : pt === TempClass.Frozen ? -1 : 1;
+      if (tSea >= FROZEN_TEMP - fb * SCHMITT_TEMP) t = TempClass.Cold;
+    }
     const m = bandClass(moist, MOISTURE_BOUNDS, known ? zoneMoist(prev) : -1, SCHMITT_MOISTURE);
     let z = t | (m << 3);
-    if (elev > TREE_LINE + flagBand(prev, ZONE_TREELINE) * SCHMITT_ELEVATION) z |= ZONE_TREELINE;
-    if (elev > SNOW_LINE + flagBand(prev, ZONE_SNOW) * SCHMITT_ELEVATION) z |= ZONE_SNOW;
+    if (mountain) {
+      z |= ZONE_MOUNTAIN;
+      if (temp < TREELINE_TEMP - flagBand(prev, ZONE_TREELINE) * SCHMITT_TEMP) {
+        z |= ZONE_TREELINE;
+        if (temp < ROCKBELT_TEMP - flagBand(prev, ZONE_ROCKBELT) * SCHMITT_TEMP) {
+          z |= ZONE_ROCKBELT;
+          if (temp < snowTemp(m) - flagBand(prev, ZONE_SNOW) * SCHMITT_TEMP) z |= ZONE_SNOW;
+        }
+      }
+    }
     const wb = flagBand(prev, ZONE_WETLAND);
-    if (moist >= WETLAND_MOISTURE + wb * SCHMITT_MOISTURE && elev < WETLAND_MAX_ELEVATION - wb * SCHMITT_ELEVATION) z |= ZONE_WETLAND;
+    if (moist >= WETLAND_MOISTURE + wb * SCHMITT_MOISTURE && wetElev < WETLAND_MAX_ELEVATION - wb * SCHMITT_ELEVATION) z |= ZONE_WETLAND;
     if (cover < BARE_COVER - flagBand(prev, ZONE_BARE) * SCHMITT_COVER) z |= ZONE_BARE;
     return z;
   }
@@ -198,6 +255,8 @@ namespace SE {
   const SEMIDESERT_GROUPS = GR | BL | SA | NA;
   /** Dwarf shrubs, sedges and herbs of the tundra (the mosses join them where they grow). */
   const TUNDRA_GROUPS = GP | FA | BL | GR;
+  /** Grasses, sedges and flowering herbs make an alpine meadow; before them the heights carry tundra. */
+  const ALPINE_GROUPS = GR | BL;
   /** Open land before the grasses: ferns, early vascular plants, seed ferns and flowering herbs. */
   const FERN_GROUPS = GP | FA | SA | BL;
   const MARSH_GROUPS = LP | MO | GP | floraBit(Flora.Clubmosses) | FA | floraBit(Flora.Carnivorous) | GR | BL;
@@ -214,20 +273,30 @@ namespace SE {
    * moss or lichen. Land that carries plants never falls back to bare
    * ground: any land plant can be the pioneer crust, and woody plants
    * without herbs make Gebüsch.
+   *
+   * Bare rock stands only where no soil has formed (young Earth, fresh
+   * lava) and in the rock belt (hoehe-spec §3.7); weathered ground is
+   * Rohboden, or desert where it is dry and not cold.
    */
-  export function fillLadder(z: number, present: number, soilOk: boolean, ladder: Uint8Array | number[]): number {
+  export function fillLadder(
+    z: number, present: number, soilOk: boolean, ladder: Uint8Array | number[], woodyMask = WOODY_FLORA_MASK,
+  ): number {
     const t = zoneTemp(z);
     const m = zoneMoist(z);
     if (t === TempClass.Frozen) return -1;
     if (z & ZONE_SNOW) return -2;
+    if (z & ZONE_ROCKBELT) {
+      ladder[0] = Landscape.Rock;
+      ladder[1] = ladder[2] = ladder[3] = ladder[4] = LADDER_NONE;
+      return 0;
+    }
     const wet = (z & ZONE_WETLAND) !== 0;
     const high = (z & ZONE_TREELINE) !== 0;
     const dryWarm = m <= MoistClass.Semi && t >= TempClass.Cool;
 
-    // Bare ground in a dry or semi-arid climate that is not cold is desert.
-    ladder[0] = wet ? Landscape.Rock
-      : dryWarm ? Landscape.Desert
-        : soilOk ? Landscape.Barren : Landscape.Rock;
+    // A dry, warm climate makes desert of bare ground, weathered or not; elsewhere
+    // bare ground is Rohboden once it has weathered, else rock.
+    ladder[0] = dryWarm ? Landscape.Desert : soilOk ? Landscape.Barren : Landscape.Rock;
 
     ladder[1] = LADDER_NONE;
     if (!wet) {
@@ -239,7 +308,9 @@ namespace SE {
     if (wet) {
       if (present & MARSH_GROUPS) ladder[2] = Landscape.Marsh;
     } else if (soilOk) {
-      if (high || t === TempClass.Cold) {
+      if (high && (present & ALPINE_GROUPS)) {
+        ladder[2] = Landscape.Alpine;
+      } else if (high || t === TempClass.Cold) {
         if (present & TUNDRA_GROUPS) ladder[2] = Landscape.Tundra;
         else if (present & MO) ladder[2] = Landscape.Moss;
       } else if (present & GR) {
@@ -257,15 +328,16 @@ namespace SE {
 
     ladder[3] = LADDER_NONE;
     ladder[4] = LADDER_NONE;
-    const woody = (present & WOODY_FLORA_MASK) !== 0;
+    const woody = (present & woodyMask) !== 0;
     if (wet) {
       if (woody) ladder[4] = Landscape.Swampforest;
     } else if (soilOk && !high && woody) {
       ladder[3] = Landscape.Shrubland;
       if (t === TempClass.Cold) ladder[4] = (present & NA) ? Landscape.Taiga : Landscape.Forest;
       else if (t === TempClass.Cool) ladder[4] = (present & LB) || !(present & NA) ? Landscape.Forest : Landscape.Taiga;
-      else if (t === TempClass.Tropical && m === MoistClass.Wet && (present & LB)) ladder[4] = Landscape.Rainforest;
-      else ladder[4] = Landscape.Forest;
+      else if (t === TempClass.Tropical && m >= MoistClass.Humid && (present & LB)) {
+        ladder[4] = (z & ZONE_MOUNTAIN) ? Landscape.Cloudforest : Landscape.Rainforest;
+      } else ladder[4] = Landscape.Forest;
     }
 
     let climax: number;
@@ -347,7 +419,7 @@ namespace SE {
         return cold ? Biome.Tundra : Biome.Grass;
       case Landscape.Forest:
         if (cold) return Biome.Boreal;
-        return t === TempClass.Tropical && zoneMoist(z) === MoistClass.Wet ? Biome.Jungle : Biome.Forest;
+        return t === TempClass.Tropical && zoneMoist(z) >= MoistClass.Humid ? Biome.Jungle : Biome.Forest;
       default:
         return HABITAT[l];
     }

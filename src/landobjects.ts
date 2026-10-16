@@ -10,7 +10,10 @@
  *
  * Position, jitter, size and variant all come from hashes of the tile, never
  * per frame. Objects are drawn row by row from the top, so crowns overlap into
- * a closed canopy, each over a small ramp-shift shadow on the ground.
+ * a closed canopy, each over a small ramp-shift shadow on the ground. On a
+ * lifted mountain range (landridgedraw.ts) an object stands as high as the
+ * ground under its foot and hides behind nearer ground; plants stop at the
+ * crest's tree line. Volcanic cones stand on their tiles like any object.
  * ========================================================================== */
 
 namespace SE {
@@ -42,6 +45,17 @@ namespace SE {
   /** Shadow: fraction of the sprite width, and ramp steps. */
   const SHADOW_WIDTH = 0.35;
   const SHADOW_SHIFT = -2;
+  /** Foot row of a volcanic cone in its tile: its 16 rows reach 1 px into the tile above. */
+  const VOLCANO_FOOT = 14;
+  /** Ground rows a shadow may lie from its object's foot on lifted ground. */
+  const SHADOW_DEPTH = 2;
+  /**
+   * Ground rows in front of its foot that still leave an object in view. A
+   * cone stands on the highest tile around: nothing in front of it rises
+   * high enough to hide it, except the noise of the crests, so it is never hidden.
+   */
+  const DEPTH_SLACK = 1;
+  const CONE_DEPTH_SLACK = Infinity;
 
   /** Objects of tiles [x0, x1] × [y0, y1] (inclusive, x unwrapped), sorted for drawing. */
   export function placeLandObjects(f: TerrainField, art: LandArt, x0: number, y0: number, x1: number, y1: number, out: LandPlacement[]): void {
@@ -55,6 +69,15 @@ namespace SE {
   function placeTile(f: TerrainField, art: LandArt, x: number, y: number, out: LandPlacement[]): void {
     const xw = wrapX(x);
     const i = y * GRID_W + xw;
+    const cone = f.volcano[i];
+    if (cone > 0) {
+      const vars = art.sprites.volcano;
+      // On a range the cone stands on its crest, else low in its tile.
+      const crest = f.ridges.crest[i] !== 0;
+      const fx = x * 16 + (crest ? crestOffset(xw, y, 0) : 8);
+      const fy = y * 16 + (crest ? crestOffset(xw, y, 1) : VOLCANO_FOOT);
+      out.push({ sprite: vars[Math.min(cone, vars.length) - 1], fx, fy, water: false, seq: (y * GRID_W + xw) * 16 + 15 });
+    }
     const scene = f.scene[i];
     if (scene === LAND_SCENE_NONE) return;
     const T = LandTables.shared();
@@ -126,50 +149,135 @@ namespace SE {
   /**
    * Draw placements into an index buffer of width `w` whose pixel (0, 0) is
    * world pixel (ox, oy): first each shadow on bare ground (never on water,
-   * never twice), then the sprite.
+   * never twice), then the sprite. With `rise`, objects stand on the lifted
+   * ground and every pixel whose screen shows nearer ground stays hidden.
+   * `lifts`, when given, is the lift under each foot (the caller has dropped
+   * the plants above their line); else it is read from `rise`.
    */
   export function drawLandObjects(
     list: readonly LandPlacement[], art: LandArt,
     px: Uint8Array, water: Uint8Array, occupied: Uint8Array, w: number, h: number, ox: number, oy: number,
+    rise: LandRise | null = null, lifts: Float32Array | null = null,
   ): void {
     const shadow = art.shift[LAND_SHIFT_MAX + SHADOW_SHIFT];
-    for (const p of list) {
+    const top = rise ? rise.top : null;
+    const bottom = rise ? rise.bottom : null;
+    const depth = rise ? rise.depth : null;
+    for (let q = 0; q < list.length; q++) {
+      const p = list[q];
       const t = p.sprite;
+      const look = spriteLook(art, t);
       const fx = p.fx - ox;
-      const fy = p.fy - oy;
+      const ground = p.fy - oy;
+      let fy = ground;
+      if (lifts) {
+        if (lifts[q] > 0) fy = ground - ((lifts[q] + 0.5) | 0);
+      } else if (rise && fx >= 0 && fx < w && ground >= 0 && ground < h) {
+        const k = ground * w + fx;
+        const z = rise.z[k];
+        if (z > 0) {
+          // Trees end at the crest's tree line, every other plant at its rock line.
+          const s = rise.seg[k];
+          if (look.plant && z >= (look.tree ? rise.ridges.zTree[s] : rise.ridges.zRock[s])) continue;
+          fy = ground - ((z + 0.5) | 0);
+        }
+      }
+      const slack = look.cone ? CONE_DEPTH_SLACK : DEPTH_SLACK;
       if (!p.water) {
-        const rx = Math.max(2, t.w * SHADOW_WIDTH);
-        const reach = Math.ceil(rx);
-        for (let dy = -1; dy <= 1; dy++) {
-          const y = fy + dy;
-          if (y < 0 || y >= h) continue;
-          for (let dx = -reach; dx <= reach; dx++) {
-            if ((dx / rx) ** 2 + (dy / 1.5) ** 2 > 1) continue;
-            const x = fx + 1 + dx;
-            if (x < 0 || x >= w) continue;
-            const k = y * w + x;
-            if (occupied[k] !== 0 || water[k] !== 0) continue;
-            px[k] = shadow[px[k]];
-            occupied[k] = 2;
-          }
+        const sx = look.shadowX;
+        const sy = look.shadowY;
+        for (let n = 0; n < sx.length; n++) {
+          const y = fy + sy[n];
+          const x = fx + 1 + sx[n];
+          if (y < 0 || y >= h || x < 0 || x >= w) continue;
+          const k = y * w + x;
+          if (occupied[k] !== 0 || water[k] !== 0) continue;
+          if (depth && y >= (top as Int16Array)[x] && y <= (bottom as Int32Array)[x] && Math.abs(depth[k] - ground) > SHADOW_DEPTH) continue;
+          px[k] = shadow[px[k]];
+          occupied[k] = 2;
         }
       }
       const left = fx - t.ax;
-      const top = fy - t.ay;
-      for (let sy = 0; sy < t.h; sy++) {
-        const y = top + sy;
-        if (y < 0 || y >= h) continue;
-        for (let sx = 0; sx < t.w; sx++) {
-          const v = t.px[sy * t.w + sx];
-          if (v === 0) continue;
-          const x = left + sx;
-          if (x < 0 || x >= w) continue;
-          const k = y * w + x;
-          if (p.water && water[k] !== 1) continue;
-          px[k] = v;
-          occupied[k] = 1;
+      const up = fy - t.ay;
+      const ux = look.x;
+      const uy = look.y;
+      const uv = look.v;
+      // The whole sprite inside the buffer, on plain land, no lifted ground in front: no test per pixel.
+      let clear = !p.water && left >= 0 && up >= 0 && left + t.w <= w && up + t.h <= h;
+      if (clear && depth) {
+        const low = up + t.h - 1;
+        for (let x = left; x < left + t.w; x++) {
+          if ((top as Int16Array)[x] <= low && (bottom as Int32Array)[x] >= up) { clear = false; break; }
         }
       }
+      if (clear) {
+        const base = up * w + left;
+        for (let n = 0; n < uv.length; n++) {
+          const k = base + uy[n] * w + ux[n];
+          px[k] = uv[n];
+          occupied[k] = 1;
+        }
+        continue;
+      }
+      for (let n = 0; n < uv.length; n++) {
+        const y = up + uy[n];
+        const x = left + ux[n];
+        if (y < 0 || y >= h || x < 0 || x >= w) continue;
+        const k = y * w + x;
+        if (p.water && water[k] !== 1) continue;
+        // Nearer ground shows here (riseDepth, inlined: this runs for every sprite pixel).
+        if (depth && y >= (top as Int16Array)[x] && y <= (bottom as Int32Array)[x] && depth[k] > ground + slack) continue;
+        px[k] = uv[n];
+        occupied[k] = 1;
+      }
     }
+  }
+
+  /** Whether a plant stands above its line on a crest of segment `seg` at lift z: trees end at the tree line, other plants at the rock line. */
+  export function landObjectAboveLine(art: LandArt, t: LandSprite, ridges: RidgePaths, seg: number, z: number): boolean {
+    const look = spriteLook(art, t);
+    return look.plant && z >= (look.tree ? ridges.zTree[seg] : ridges.zRock[seg]);
+  }
+
+  /** What drawing needs of a sprite, worked out once: its opaque pixels, its shadow, its kind. */
+  interface SpriteLook {
+    readonly x: Uint8Array; readonly y: Uint8Array; readonly v: Uint8Array;
+    readonly shadowX: Int8Array; readonly shadowY: Int8Array;
+    readonly plant: boolean; readonly tree: boolean; readonly cone: boolean;
+  }
+  const LOOKS = new WeakMap<LandSprite, SpriteLook>();
+
+  function spriteLook(art: LandArt, t: LandSprite): SpriteLook {
+    const known = LOOKS.get(t);
+    if (known) return known;
+    const xs: number[] = [];
+    const ys: number[] = [];
+    const vs: number[] = [];
+    for (let sy = 0; sy < t.h; sy++) {
+      for (let sx = 0; sx < t.w; sx++) {
+        const v = t.px[sy * t.w + sx];
+        if (v === 0) continue;
+        xs.push(sx); ys.push(sy); vs.push(v);
+      }
+    }
+    // The shadow: an ellipse of a third of the sprite's width, three rows high, at the foot.
+    const rx = Math.max(2, t.w * SHADOW_WIDTH);
+    const reach = Math.ceil(rx);
+    const dxs: number[] = [];
+    const dys: number[] = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -reach; dx <= reach; dx++) {
+        if ((dx / rx) ** 2 + (dy / 1.5) ** 2 > 1) continue;
+        dxs.push(dx); dys.push(dy);
+      }
+    }
+    const ob = art.manifest.objects[t.id];
+    const look: SpriteLook = {
+      x: Uint8Array.from(xs), y: Uint8Array.from(ys), v: Uint8Array.from(vs),
+      shadowX: Int8Array.from(dxs), shadowY: Int8Array.from(dys),
+      plant: ob.group !== null, tree: ob.kind === 'tree', cone: ob.kind === 'mountain',
+    };
+    LOOKS.set(t, look);
+    return look;
   }
 }

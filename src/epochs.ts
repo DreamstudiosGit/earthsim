@@ -17,6 +17,8 @@ namespace SE {
     /** Where on Earth's timeline, for the picker. Empty for the random planet. */
     readonly when: string;
     readonly blurb: string;
+    /** The first line of the toast that greets a new planet. */
+    readonly greeting: string;
     /** The sea share is the player's choice; otherwise the epoch brings its own sea. */
     readonly playerSea: boolean;
     /** "Anderer Planet" can make another one — the real Earth exists only once. */
@@ -29,11 +31,13 @@ namespace SE {
     {
       id: 'random', name: 'Zufälliger Planet', when: '',
       blurb: 'Ein neuer Planet aus Staub und Gas, jedes Mal anders. Du bestimmst, wie viel davon Meer ist.',
+      greeting: 'Ein neuer Planet verdichtet sich aus Staub und Gas.',
       playerSea: true, varies: true, geo: {},
     },
     {
       id: 'youngEarth', name: 'Junge Erde', when: 'Hadaikum · vor über 4 Mrd. Jahren',
       blurb: 'Die Ozeane sind gerade entstanden, Leben gibt es noch nicht. Kleine Urkontinente und Vulkaninseln, viel Vulkanismus, schnelle Platten.',
+      greeting: 'Die junge Erde: Urozeane, Vulkaninseln und noch kein Leben.',
       playerSea: false, varies: true,
       // Volcanoes and drift only: core heat would also lift the mountains and
       // saturate the mantle field until volcanoes lose their belts.
@@ -42,6 +46,7 @@ namespace SE {
     {
       id: 'today', name: 'Heute', when: 'Die Kontinente von heute',
       blurb: 'Die echten Kontinente, Gebirge und Vulkangürtel, aus Höhendaten der NOAA auf die Karte gerechnet. Das Leben beginnt hier noch einmal von vorn.',
+      greeting: 'Die Erde mit den Kontinenten von heute, noch ganz ohne Leben.',
       playerSea: false, varies: false,
       // The plates are horizontal bands that part at the equator and at 45°:
       // at the default speed they would tear the real continents apart by 20°

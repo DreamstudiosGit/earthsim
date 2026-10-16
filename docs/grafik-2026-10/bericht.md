@@ -20,6 +20,44 @@ Vorher/nachher: `vorher-karte.png` ↔ `nachher-karte.png`, `vorher-modell.png` 
 - **Lebendige Atmosphäre** (`src/ambient.ts`): ziehende Pixelwolken mit Schatten (Dichte folgt dem
   Wasserdampf, dünnen beim Hineinzoomen aus) und gelegentliches Sonnenglitzern auf offenem Wasser.
   Neue Kartenebene **„Wolken“** zum Abschalten; „Bewegung reduzieren“ hält beides still.
+- **Brandung und Strömung** (`src/watermotion.ts`, Daten aus `src/landsurf.ts`, 15. 10. 2026):
+  - Die Schaumlinie an Küsten und Seeufern atmet: Kommt eine Welle, wird die äußere Wasserreihe eine
+    Stufe heller, dann füllt sich die Reihe hinter dem Schaum mit Schaum. Im Wellental dünnt die
+    Schaumlinie aus.
+  - Auf dem Wellenkamm wird die Schaumlinie weiß (die hellen Stufen der Eisrampe). Je größer die Welle,
+    desto weißer.
+  - Gischt (`src/waterspray.ts`, 16. 10.):
+    - 1,5 % der Schaumpixel an offener See sind Gischtpunkte.
+    - Offene See heißt: binnen 4 Feldern liegt Wasser, das tiefer als 360 m ist. Seen und Lagunen
+      bekommen deshalb keine Gischt.
+    - Bricht dort eine große Welle (Kamm der Hauptdünung, während die zweite Dünung hoch ist), steigen
+      weiße Tropfen auf und verblassen nach 0,9 s.
+    - Wahrscheinlichkeit, Tropfenzahl und Höhe wachsen mit der Höhe des Ufers:
+      - Steilküste: bis 9 Pixel hoch, 12 Tropfen, 65 % der großen Wellen.
+      - Flachküste: 3 Tropfen, 12 % der großen Wellen.
+    - Häufigkeit:
+      - In einer Bildschirmansicht der Erde bei 32 px je Feld etwa 1–2 Gischtstöße pro Sekunde, an den
+        Anden etwa 0,8 pro Sekunde auf 27 × 16 Feldern.
+      - Auf Zufallsplaneten mit flacheren Küsten seltener und kleiner.
+  - Zwei Dünungen mit 2,7 s und 3,9 s Periode überlagern sich, der Takt liegt also zwischen 2 und 4 s.
+    Die Phase wandert sanft die Küste entlang (Gitter 4 Kacheln), so pulsieren Abschnitte nie im
+    Gleichtakt.
+  - In Flüssen ziehen helle 2-Pixel-Striche mit 4 Kunstpixeln/s flussabwärts.
+  - Eis- und Schneeküsten haben keine Brandung, Stadtkacheln keine Bewegung.
+  - Nur Palettenfarben, ein Kunstpixel je Punkt, am Gelände-Raster.
+  - Eigene Bildrate von 7 Bildern/s, unabhängig vom Spieltempo; gezeichnet nur im sichtbaren Bereich.
+    Alles folgt aus Hash und Uhrzeit, nichts wird pro Pixel gespeichert.
+  - Sichtbar ab 16 px je Feld, also bei Zoom 10 und 13 aus. „Effekte reduzieren“ schaltet beides ab.
+  - Die zwischengespeicherten Kartenteile bleiben unverändert. Beim Zusammensetzen eines Kartenteils
+    werden Küstenringe und Flusspixel einmal ausgelesen; das kostet im Mittel 0,2 ms pro Kartenteil
+    (Erde heute, Node).
+  - Kosten in headless Chrome, 1920 × 1080, Software-Rendering:
+    - 0,14 ms Hauptthread pro Bild bei 16 px je Feld, mit Gischt und weißen Kämmen.
+    - Im Bild mit Neuaufbau p95 0,8 ms. Einmalig bis 3 ms, wenn die Gischtpunkte neu sichtbarer
+      Kartenteile bestimmt werden.
+    - 0,09 ms bei 32 px je Feld.
+    - Mit „Effekte reduzieren“ fast 0.
+    - Der Bildabstand blieb bei 16,7 ms.
 - Eckklammern als Cursor, leichte Vignette.
 - **Leistung**: Alle Kacheln werden einmal fertig zusammengesetzt und über Zahlen gefunden
   (`src/tilecache.ts`); Relief und Wellen sind eingebacken. Beim Zoomen wird das letzte Bild skaliert und
@@ -31,6 +69,10 @@ Vorher/nachher: `vorher-karte.png` ↔ `nachher-karte.png`, `vorher-modell.png` 
 - Globus mit Atmosphärensaum, Sonnenlicht und Sternen.
 - Legenden für fließende Größen (Höhe, Temperatur, Niederschlag) als Farbverlauf mit benannten Enden,
   eigene Legenden für Wind und Meeresströmung (`src/maplegend.ts`). Alle zwölf Modi in einer Zeile.
+- Temperatur (Luft, Meer, Überlagerung „Wärme“) als zweiseitige Skala um 12 °C (16.10.2026): blau bis −36 °C,
+  bernstein bis rot bis 36 °C, in jedem Arm gleichmäßig dunkler. Die alte Regenbogenskala hatte Grün und
+  Gelb gleich hell; 15–35 °C, die halbe Karte, sah dadurch einfarbig aus. In der Legende nimmt jeder Arm die
+  halbe Breite ein.
 
 ## 3. Fenster, die vorher nur Regler oder Zahlen zeigten
 
@@ -45,6 +87,7 @@ Vorher/nachher: `vorher-karte.png` ↔ `nachher-karte.png`, `vorher-modell.png` 
 | Verlauf | Linien | Flächen unter den Kurven, **Fadenkreuz mit Werten** beim Überfahren, aktuelle Werte an den Schaltern |
 | Bericht | Kennzahlenraster | **Lebenszeichen mit Mini-Verlauf und Trend**, Fortschritt (Planetenalter, Evolutionsbaum, Gaia), Oberfläche als ein Balken |
 | Glossar | Textliste | Karten mit Symbol je Begriff |
+| Untersuchen | Großes Fenster mit Kartenausschnitt und drei Spalten | Schmales Randpanel mit einzelnem, ganzzahlig vergrößertem Feldbild, sechs Werten und aufklappbaren Artenlisten. Elf Lebensraum-Icons mit Gesichtern oder rotem X ersetzen die Eignungsbalken; auf dem Handy bleibt ein Teil der Karte frei. |
 | Chronik | Karten | Karten an einer Zeitleiste |
 | Datei › Spielstände | Textzeilen | Karten mit **Planeten-Vorschaubild**, Fortschrittsbalken und Datum |
 

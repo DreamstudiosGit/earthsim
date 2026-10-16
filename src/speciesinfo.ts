@@ -210,7 +210,8 @@ namespace SE {
       if (best.length > 0) list.push(['Bevorzugt', biomeChips(best)]);
       if (more.length > 0) list.push(['Auch', biomeChips(more)]);
       list.push(['Temperatur', `${fmt.int(lo)} bis ${fmt.int(hi)} °C (Regler „Toleranz“ ${tolerance} %)`]);
-      list.push(['Sauerstoff', def.o2Min > 0 ? `ab ${faunaNum(def.o2Min)} % in der Luft, volle Stärke ab ${faunaNum(def.o2Min + 3)} %` : 'braucht keinen']);
+      const oxygen = lifeOxygen(c);
+      list.push(['Sauerstoff', oxygen.min > 0 ? `über ${faunaNum(oxygen.min)} ${oxygenUnit(oxygen.medium)}, volle Stärke ab ${faunaNum(oxygen.full)} %` : 'braucht keinen']);
       list.push(['Nahrung', faunaFoodText(c)]);
       if (def.diet.prey?.length) list.push(['Beute', faunaLifeNames(def.diet.prey)]);
       const enemies = faunaPredators(c);

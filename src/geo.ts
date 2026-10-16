@@ -54,11 +54,28 @@ namespace SE {
       return this.velocities[Math.min(PLATE_COUNT - 1, Math.floor(y / rows))];
     }
 
+    /** Erosion and deposition; public so tests can read its mass balance. */
+    readonly erosion = new Erosion();
+    /** What raises the crust: the generator's belts and the hotspots, a plate model later. */
+    private readonly sources: UpliftSource[] = [new BeltUplift(), new Hotspots()];
+
     step(world: WorldState, params: ModelParams): void {
       this.drift(world, mul(params.geo.drift));
-      this.erode(world, mul(params.geo.erosion));
-      this.uplift(world, mul(params.geo.coreHeat));
-      this.updateMagma(world, mul(params.geo.coreHeat));
+      const coreHeat = mul(params.geo.coreHeat);
+      if (world.ticks % EROSION_INTERVAL === 0) this.vertical(world, params, coreHeat);
+      this.updateMagma(world, coreHeat);
+    }
+
+    /**
+     * Erosion and uplift, every EROSION_INTERVAL ticks with that many ticks'
+     * worth of rate. Both are calibrated per geological tick (`geoTimeFactor`):
+     * in human time scales the relief stands still.
+     */
+    private vertical(world: WorldState, params: ModelParams, coreHeat: number): void {
+      const span = geoTimeFactor(world) * EROSION_INTERVAL;
+      const erosion = mul(params.geo.erosion);
+      if (erosion > 0) this.erosion.pass(world, erosion * span);
+      if (coreHeat > 0) for (const source of this.sources) source.apply(world, span * coreHeat);
     }
 
     /** Advance each plate, rolling its rows by one tile when it trips. */
@@ -90,6 +107,7 @@ namespace SE {
           // The orogenic belt belongs to the crust, not to the latitude: a
           // range has to travel with the continent carrying it.
           this.rollF32(world.uplift, y, shift);
+          this.rollU8(world.upliftKind, y, shift);
           this.rollU8(world.tech, y, shift);
           // A landscape and its soil belong to the ground they grow on.
           this.rollU8(world.landscape, y, shift);
@@ -152,48 +170,6 @@ namespace SE {
       const buf = this.rowU8;
       for (let x = 0; x < GRID_W; x++) buf[x] = data[base + x];
       for (let x = 0; x < GRID_W; x++) data[base + x] = buf[wrapX(x - shift)];
-    }
-
-    /**
-     * Relax land toward the local mean elevation. Wet tiles erode faster, so
-     * rainy highlands wear down while deserts keep their relief.
-     */
-    private erode(world: WorldState, rate: number): void {
-      if (rate <= 0) return;
-      const { elevation, moisture } = world;
-      const scratch = this.scratch;
-      scratch.set(elevation);
-
-      for (let y = 0; y < GRID_H; y++) {
-        for (let x = 0; x < GRID_W; x++) {
-          const i = idx(x, y);
-          if (scratch[i] <= 0) continue; // submerged crust is left alone
-          const k = EROSION_RATE_BASE * rate * (0.25 + 0.75 * moisture[i]);
-          elevation[i] = scratch[i] + (neighborMean(scratch, x, y) - scratch[i]) * k;
-        }
-      }
-      world.terrainDirty = true;
-    }
-
-    /**
-     * Tectonic uplift along the belts `TerrainGenerator.orogeny` laid down.
-     *
-     * Erosion alone is a one-way process: left to itself it planes every range
-     * flat over geological time, and the rivers lose their headwaters with it.
-     * A crest instead settles where uplift and erosion balance, which is what
-     * real mountains do. Capped just below 1 so a belt under a summit that has
-     * already maxed out cannot keep pressing against the ceiling.
-     */
-    private uplift(world: WorldState, coreHeat: number): void {
-      if (coreHeat <= 0) return;
-      const { elevation, uplift } = world;
-      const rate = UPLIFT_RATE_BASE * coreHeat;
-
-      for (let i = 0; i < TILE_COUNT; i++) {
-        const u = uplift[i];
-        if (u <= 0 || elevation[i] <= 0) continue;
-        elevation[i] = Math.min(1, elevation[i] + u * rate);
-      }
     }
 
     /** Mantle upwelling drifts slowly and is what volcanoes erupt out of. */

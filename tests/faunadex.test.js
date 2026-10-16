@@ -138,7 +138,7 @@ test('a brief gap is not extinction; a long one is, silently; a return is counte
 });
 
 test('a whole group dying out marks its known sub-species extinct at once', () => {
-  const { w, dex } = played();
+  const { w, dex } = played(80);
   const known = [];
   for (let st = 0; st < N; st++) if (dex.isDiscovered(CELLS, st)) known.push(st);
   assert.ok(known.length >= 2 && known.length < N, `known stages ${known}`);
@@ -161,7 +161,7 @@ test('a whole group dying out marks its known sub-species extinct at once', () =
 });
 
 test('adopting a save without lexicon data is silent and fills the ladder', () => {
-  const { w } = played();
+  const { w } = played(80);
   const gone = 1;
   hide(w, CELLS, gone);
   const counts = livingStages(w, CELLS);

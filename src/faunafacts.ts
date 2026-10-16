@@ -72,9 +72,10 @@ namespace SE {
     if (c === Life.Prokaryote || c === Life.Eukaryote) {
       const eaters: Life[] = [];
       for (let k = 1; k < LIFE_COUNT; k++) if (LIFE[k as Life].diet.plankton) eaters.push(k as Life);
-      out.push(`Bildet das Plankton: Grundlage der Fotosynthese im Meer, die Sauerstoff liefert, und Nahrung der Planktonfresser (${faunaLifeNames(eaters)}).`);
+      out.push(`Bildet einen Teil des Planktons und ernährt Planktonfresser (${faunaLifeNames(eaters)}).`);
+      out.push(c === Life.Prokaryote ? 'Erst die Cyanobakterien innerhalb dieser Gruppe produzieren Sauerstoff im Meer. Die Stärke hängt von ihrer lebenden Biomasse ab.' : 'Erzeugt keinen Sauerstoff; Photosynthese betreiben die getrennt entwickelten Algen.');
     } else {
-      out.push(LIFE[c].realm === 'sea' ? 'Atmet den im Meerwasser gelösten Sauerstoff und gibt CO₂ ab.' : 'Atmet Sauerstoff aus der Luft und gibt CO₂ ab.');
+      out.push(lifeOxygen(c).medium === 'water' ? 'Atmet den im Meerwasser gelösten Sauerstoff und gibt CO₂ ab.' : 'Atmet Sauerstoff aus der Luft und gibt CO₂ ab.');
     }
     if (c === Life.Pollinator) {
       out.push(`Bestäubung: Wo sie leben, wachsen ${faunaPlantNames(POLLINATED_MASK)} dichter (×${faunaNum(POLLINATION_COVER)}) und breiten sich häufiger aus (×${faunaNum(POLLINATION_SPREAD)}).`);
