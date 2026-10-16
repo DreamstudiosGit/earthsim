@@ -3,8 +3,7 @@
  * -----------------------------------------------------------------------------
  * Sand, stony desert, semi-desert on sand and on rock, savanna and the
  * rainforest floor; cycads, rainforest giants, umbrella trees, tree ferns,
- * columnar cacti, thorn bushes, succulents and tall grass. Ids and ranks are
- * fixed in catalog.js.
+ * columnar, barrel and prickly-pear cacti, thorn bushes and tall grass. Ids and ranks are fixed in catalog.js.
  *
  *   materials[id](t, d)   paint the seamless texture `t` (Tex, wraps) for density d
  *   objects[id](v)        return a sprite; v = { index, size, form } (trees) or { index }
@@ -675,52 +674,139 @@ const TREE_FERN = [
   ],
 ];
 
-// Columnar cactus (a flowering plant): ribbed column, elbowed arms, a blossom on top.
-const CACTUS_KEY = { 0: 'moss0', 1: 'moss1', 2: 'moss2', 3: 'moss3', w: 'white0', y: 'yellow0', p: 'blossom1', r: 'red1' };
-const CACTUS = [
+// Cacti, the flowering plants' desert form (src/cacti.ts): no slot of their own; the renderer
+// sets one on some desert tiles once cacti exist. Variant 2 of each blooms.
+
+// Columnar cactus (saguaro): ribbed column, elbowed arms; white flowers on the tips.
+const COLUMN_KEY = { 0: 'moss0', 1: 'moss1', 2: 'moss2', 3: 'moss3', w: 'white0', y: 'yellow0' };
+const COLUMN = [
   [
-    '......rr........',
-    '.......30.......',
-    '......1320......',
-    '......1320......',
-    '...30.1320......',
-    '..13201320......',
-    '..13222320......',
-    '..00001320......',
-    '......1320......',
+    '.130.',
+    '13120',
+    '13120',
+    '13120',
+    '13120',
+    '13120',
+    '13120',
+    '13120',
+    '13120',
+    '13120',
   ],
   [
-    '.......pp.......',
-    '.......30.......',
-    '......1320......',
-    '......1320..30..',
-    '......1320.1320.',
-    '......1320.1320.',
-    '......132222220.',
-    '......13200000..',
-    '......1320......',
-    '......1320......',
-    '......1320......',
-    '......1320......',
-    '......1320......',
+    '......130...',
+    '.....13120..',
+    '.....13120..',
+    '.....13120..',
+    '.30..13120..',
+    '1320.13120..',
+    '1320.13120..',
+    '1320.13120..',
+    '1322223120..',
+    '.000013120..',
+    '.....13120..',
+    '.....13120..',
+    '.....13120..',
+    '.....13120..',
+    '.....13120..',
+    '.....13120..',
   ],
   [
-    '.......wyw......',
-    '.......130......',
-    '......13320.....',
-    '......13320.....',
-    '......13320..30.',
-    '......13320.1320',
-    '.30...13320.1320',
-    '1320..13320.1320',
-    '1320..13320.1320',
-    '1320..1332222220',
-    '1320..133200000.',
-    '13222223320.....',
-    '.0000013320.....',
-    '......13320.....',
-    '......13320.....',
-    '......13320.....',
+    '......wyw.......',
+    '......1330......',
+    '.....132120.....',
+    '.....132120.....',
+    '.....132120..w..',
+    '.....132120..30.',
+    '.....132120.1320',
+    '.30..132120.1320',
+    '1320.132120.1320',
+    '1320.132120.1320',
+    '1320.13212222220',
+    '1320.1321200000.',
+    '13222232120.....',
+    '.0000132120.....',
+    '.....132120.....',
+    '.....132120.....',
+    '.....132120.....',
+    '.....132120.....',
+    '.....132120.....',
+    '.....132120.....',
+  ],
+];
+
+// Barrel cactus: a ribbed globe, darker below; a crown of yellow flowers.
+const BARREL_KEY = { 0: 'leaf0', 1: 'leaf1', 2: 'leaf2', 3: 'leaf3', y: 'yellow0', r: 'red1' };
+const BARREL = [
+  [
+    '.1330.',
+    '132320',
+    '132320',
+    '122210',
+    '.1100.',
+  ],
+  [
+    '..1330..',
+    '.133220.',
+    '13232320',
+    '13232320',
+    '13232220',
+    '12222210',
+    '.110010.',
+  ],
+  [
+    '...yryy...',
+    '..1yy3y0..',
+    '.13332220.',
+    '1323232320',
+    '1323232320',
+    '1323232220',
+    '1222222210',
+    '.12212210.',
+    '..110010..',
+  ],
+];
+
+// Prickly pear (Opuntia): flat, glaucous oval pads growing out of each other; red fruit or yellow flowers on the rims.
+const OPUNTIA_KEY = { 0: 'pine1', 1: 'pine2', 2: 'pine3', 3: 'pine4', y: 'yellow0', r: 'red1' };
+const OPUNTIA = [
+  [
+    '..130..',
+    '.13320.',
+    '.13320.',
+    '13220..',
+    '13320..',
+    '13220..',
+    '12210..',
+    '.110...',
+  ],
+  [
+    '.r.....r...',
+    '.130..130..',
+    '13320133220',
+    '13320132220',
+    '13220132210',
+    '1221012210.',
+    '.110131100.',
+    '...13320...',
+    '...13220...',
+    '...12210...',
+    '....110....',
+  ],
+  [
+    '.y......yr...',
+    '.130....130..',
+    '13320..13320.',
+    '13320.r13220.',
+    '13220.133210.',
+    '12210.13220..',
+    '.1101.1221...',
+    '...131.11....',
+    '..1332220....',
+    '..1332220.y..',
+    '..13222101330',
+    '..12222113220',
+    '...111013220.',
+    '.......1221..',
   ],
 ];
 
@@ -756,44 +842,6 @@ const THORN = [
     '.......ggg......',
     '........G.......',
     '.......GGG......',
-  ],
-];
-
-// Succulent: a glaucous agave rosette; one with a pink bloom, one with a tall aloe-like flower spike.
-const SUCCULENT_KEY = { 0: 'pine0', 1: 'pine1', 2: 'pine2', 3: 'pine3', f: 'blossom1', F: 'blossom0', o: 'orange0', r: 'red1', k: 'moss1' };
-const SUCCULENT = [
-  [
-    '.......3........',
-    '....3..32..1....',
-    '.....333211.....',
-    '...2333221110...',
-    '....22221110....',
-  ],
-  [
-    '........f.......',
-    '.......fFf......',
-    '....3...k..1....',
-    '.....3.32.1.....',
-    '..3..332211.1...',
-    '...333222111.0..',
-    '..22222111100...',
-  ],
-  [
-    '........o.......',
-    '.......ror......',
-    '.......oro......',
-    '........r.......',
-    '........k.......',
-    '........k.......',
-    '........k.......',
-    '.......2k.......',
-    '...3...32...1...',
-    '....3..32..1....',
-    '....32231.21....',
-    '.3...333221...1.',
-    '..333332221111..',
-    '.2.2222111110...',
-    '..222221111100..',
   ],
 ];
 
@@ -852,9 +900,10 @@ const objects = {
   jungle_giant: (v) => sprite(GIANT[`${v.size}${v.form}`], GIANT_KEY),
   acacia: (v) => sprite(ACACIA[`${v.size}${v.form}`], ACACIA_KEY),
   tree_fern: (v) => sprite(TREE_FERN[v.index], TREE_FERN_KEY),
-  cactus: (v) => sprite(CACTUS[v.index], CACTUS_KEY),
+  cactus_column: (v) => sprite(COLUMN[v.index], COLUMN_KEY),
+  cactus_barrel: (v) => sprite(BARREL[v.index], BARREL_KEY),
+  cactus_opuntia: (v) => sprite(OPUNTIA[v.index], OPUNTIA_KEY),
   thorn_bush: (v) => sprite(THORN[v.index], THORN_KEY),
-  succulent: (v) => sprite(SUCCULENT[v.index], SUCCULENT_KEY),
   tall_grass: (v) => sprite(TALL_GRASS[v.index], TALL_GRASS_KEY),
 };
 

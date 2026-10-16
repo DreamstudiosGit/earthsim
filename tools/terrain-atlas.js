@@ -13,7 +13,7 @@
  *     --sheet   write contact sheets (one PNG per part) to dir
  *               (default: <OS temp>/simearth-terrain); parts: palette,
  *               materials, transitions, masks, objects, objects-light,
- *               scenes — pick some with --part
+ *               scenes, desert — pick some with --part
  *     --family  build and show only cold | temperate | warm | wet
  *               (sheets that need other families are skipped)
  *     --write   write assets/terrain/atlas.png, assets/terrain/manifest.json
@@ -50,7 +50,7 @@ function parseArgs(argv) {
 
 function writeSheets(art, dir, parts, family) {
   fs.mkdirSync(dir, { recursive: true });
-  const needAll = new Set(['transitions', 'scenes']);
+  const needAll = new Set(['transitions', 'scenes', 'desert']);
   for (const name of parts || Object.keys(PARTS)) {
     if (!PARTS[name]) throw new Error(`unknown part ${name}`);
     if (family && needAll.has(name)) { console.log(`skip ${name} (needs every family)`); continue; }

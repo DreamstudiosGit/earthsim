@@ -45,6 +45,8 @@ namespace SE {
   /** Shadow: fraction of the sprite width, and ramp steps. */
   const SHADOW_WIDTH = 0.35;
   const SHADOW_SHIFT = -2;
+  /** A cactus's slot: on the 2×2 pattern a quarter apart from the first two slots and from the rock (slot 9). */
+  const CACTUS_SLOT = 10;
   /** Foot row of a volcanic cone in its tile: its 16 rows reach 1 px into the tile above. */
   const VOLCANO_FOOT = 14;
   /** Ground rows a shadow may lie from its object's foot on lifted ground. */
@@ -97,6 +99,10 @@ namespace SE {
         if (!id && mantle) id = pick(f, T, i, scene, kind, xw, y, slot);
         if (id) out.push(spot(art, id, xw, x, y, slot, edge, mantle));
       }
+    }
+    const cacti = T.cactusIds;
+    if (f.cactus[i] && cacti.length > 0) {
+      out.push(spot(art, cacti[Math.floor(landHash(xw, y, 821) * cacti.length)], xw, x, y, CACTUS_SLOT, 2, false));
     }
     const rate = T.abioticRate[scene];
     if (rate > 0 && landHash(xw, y, 800) < rate) {

@@ -13,7 +13,8 @@
  *   the first land plants need a wet shore or a river bank next door,
  *   mosses need damp ground but tolerate cold,
  *   vascular plants follow the rivers inland,
- *   only seed plants, conifers and grasses reach the dry interior.
+ *   only seed plants, conifers and grasses reach the dry interior,
+ *   the flowering plants the deserts once they grow as cacti (cacti.ts).
  *
  * Groups spread tile by tile into suitable neighbours, with a little long
  * range dispersal on top, and die back where the climate turns against them.
@@ -63,6 +64,8 @@ namespace SE {
     private readonly tempCore = new Float32Array(FLORA_COUNT);
     private preparedTick = -1;
     private preparedWorld: WorldState | null = null;
+    /** Cacti exist: flowering plants reach drier desert ground (cacti.ts). */
+    private cacti = false;
     /** Groups present anywhere on the planet, refreshed each step. */
     private presentMask = 0;
 
@@ -77,6 +80,7 @@ namespace SE {
       if (!force && this.preparedWorld === world && this.preparedTick === world.ticks) return;
       this.preparedWorld = world;
       this.preparedTick = world.ticks;
+      this.cacti = cactiArrived(world);
 
       const tolerance = clamp(mul(params.bio.tolerance), 0.2, 2);
       for (let g = 1; g < FLORA_COUNT; g++) {
@@ -151,7 +155,8 @@ namespace SE {
         case 'land': {
           if (e < 0) return 0;
           const w = this.wetness[i];
-          const wetF = clamp((w - def.wet[0]) / Math.max(0.01, def.wet[1] - def.wet[0]), 0, 1);
+          let wetF = clamp((w - def.wet[0]) / Math.max(0.01, def.wet[1] - def.wet[0]), 0, 1);
+          if (this.cactusGround(world, g, i)) wetF = Math.max(wetF, cactusWetFactor(w));
           if (wetF <= 0) return 0;
           const waterF = 1 - def.needsWater * (1 - this.waterAccess[i]);
           const altF = e <= def.maxElevation ? 1 : clamp(1 - (e - def.maxElevation) / 0.15, 0, 1);
@@ -159,6 +164,11 @@ namespace SE {
           return g === Flora.Clubmosses ? s * clubmossCompetition(world, i) : s;
         }
       }
+    }
+
+    /** Flowering plants on desert ground once cacti exist. */
+    private cactusGround(world: WorldState, g: Flora, i: number): boolean {
+      return g === Flora.Flowering && this.cacti && isCactusLandscape(world.landscape[i]);
     }
 
     /** Why a group cannot grow on a tile, in plain German, or null. */
@@ -173,7 +183,7 @@ namespace SE {
       if (t >= this.tempHi[g]) return 'es ist dort zu heiß';
       if (def.realm === 'fresh' && this.suit(world, g, i) <= 0) return 'braucht einen Fluss oder ein Feuchtgebiet';
       if (def.realm === 'land') {
-        if (this.wetness[i] <= def.wet[0]) return 'es ist dort zu trocken';
+        if (this.wetness[i] <= (this.cactusGround(world, g, i) ? CACTUS_WET_MIN : def.wet[0])) return 'es ist dort zu trocken';
         if (def.needsWater >= 0.6 && this.waterAccess[i] < 0.5) return 'braucht Wasser in der Nähe (Ufer, Fluss oder Feuchtgebiet)';
         if (e > def.maxElevation + 0.1) return 'das Gelände liegt zu hoch';
       }

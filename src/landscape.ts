@@ -277,9 +277,12 @@ namespace SE {
    * Bare rock stands only where no soil has formed (young Earth, fresh
    * lava) and in the rock belt (hoehe-spec §3.7); weathered ground is
    * Rohboden, or desert where it is dry and not cold.
+   *
+   * With `cacti` the flowering plants of a desert climate are cacti
+   * (cacti.ts): they make semi-desert, not Farnflur.
    */
   export function fillLadder(
-    z: number, present: number, soilOk: boolean, ladder: Uint8Array | number[], woodyMask = WOODY_FLORA_MASK,
+    z: number, present: number, soilOk: boolean, ladder: Uint8Array | number[], woodyMask = WOODY_FLORA_MASK, cacti = false,
   ): number {
     const t = zoneTemp(z);
     const m = zoneMoist(z);
@@ -317,7 +320,7 @@ namespace SE {
         ladder[2] = t === TempClass.Cool
           ? ((present & BL) && m >= MoistClass.Moist ? Landscape.Meadow : Landscape.Steppe)
           : Landscape.Savanna;
-      } else if (present & FERN_GROUPS) {
+      } else if (present & (dryWarm && cacti ? FERN_GROUPS & ~BL : FERN_GROUPS)) {
         ladder[2] = Landscape.Fernland;
       } else if (present & MO) {
         // Mosses only grow where it stays damp, so where they do, the

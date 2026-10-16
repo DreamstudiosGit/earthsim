@@ -975,6 +975,22 @@ namespace SE {
   export const COAL_EST_LYCOPSID_YEAR = 6e-5;
   export const COAL_EST_LATER_YEAR = 3.5e-5;
 
+  /* ---------------------------------------------------------------- cacti -- */
+  // src/cacti.ts: the flowering plants' desert form.
+
+  /**
+   * Years after the flowering plants before the first cacti: on the Earth
+   * calendar 130 → 35 million years ago, the molecular dating of the cactus
+   * family (Arakaki et al. 2011).
+   */
+  export const CACTUS_DELAY_YEARS = 95e6;
+  /** Relative wetness down to which flowering plants grow on desert tiles once cacti exist (0.26 before). */
+  export const CACTUS_WET_MIN = 0.10;
+  /** Highest suitability cacti give flowering plants on a desert tile: a sparse stand. */
+  export const CACTUS_SUIT = 0.5;
+  /** Share of desert tiles with flowering plants that show a cactus on the map. */
+  export const CACTUS_SHARE = 0.5;
+
   /* ----------------------------------------------------------- time scale -- */
 
   export enum TimeScale {

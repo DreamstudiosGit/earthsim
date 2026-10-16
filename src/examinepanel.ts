@@ -29,7 +29,7 @@ namespace SE {
       const sig = [tileSig, fmt.pct(world.vegetation[i]), city, river, event, scar,
         species.map(c => `${c}:${world.stage(i, c)}:${fmt.int(world.density(i, c) * 100)}:${LifeSystem.habitatLabel(world.density(i, c))}:${fmt.pct(world.lifeCounts[c] / TILE_COUNT)}:${examineAge(world, world.lifeFirstSeen[c])}`).join(','),
         plants.map(g => `${g}:${fmt.pct(world.floraCounts[g] / TILE_COUNT)}:${examineAge(world, world.evo.developed.get(FLORA[g].id)?.years ?? -1)}`).join(','),
-        world.floraTop[i],
+        world.floraTop[i], growsAsCacti(world, i) ? 'cacti' : '',
       ].join('|');
       if (sig === this.signature) return;
       this.signature = sig;

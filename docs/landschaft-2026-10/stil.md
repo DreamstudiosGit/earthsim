@@ -68,6 +68,7 @@ Spezifikation: `docs/biomes-spec.md`. Verbindliche IDs: `tools/terrain/catalog.j
 - **Boxen:**
   - Bäume: Größe s 10 × 13, m 13 × 17, l 16 × 20, je 2 Formen (Index = Größe × 2 + Form).
   - Büsche und Kleinpflanzen: höchstens 16 × 16, 3 Varianten.
+  - Kakteen: höchstens 16 × 20, 3 Varianten (jung, alt, alt mit Blüten).
   - Felsen: höchstens 16 × 16, 2–3 Varianten.
 - **Fuß:** Das Objekt steht auf seiner **letzten Zeile**, unten mittig verankert. Bäume ragen höchstens 4 px in die Kachel darüber.
 - **Selektive Kontur:**
@@ -94,7 +95,9 @@ Spezifikation: `docs/biomes-spec.md`. Verbindliche IDs: `tools/terrain/catalog.j
 | Laubstrauch, Dornbusch | Laubbäume | runder Busch; Dornbusch sparrig und olivgrau |
 | Blumen, Blütenstrauch | Blütenpflanzen | farbige Blüten-Tupfer (2 px) |
 | Heide | Blütenpflanzen | niedrige Polster, violette Tupfer |
-| Säulenkaktus, Sukkulente | Blütenpflanzen | Säule mit Armen; Rosette mit Blüte |
+| Säulenkaktus | Blütenpflanzen (Wüste) | gerippte Oliv-Säule mit abgewinkelten Armen, weiße Blüten an den Spitzen |
+| Kugelkaktus | Blütenpflanzen (Wüste) | gerippte grüne Kugel, unten dunkler, Kranz gelber Blüten |
+| Feigenkaktus | Blütenpflanzen (Wüste) | bereifte, blaugrüne ovale Glieder, rote Früchte oder gelbe Blüten am Rand |
 | Farnwedel | Farne | gebogene, gefiederte Wedel |
 | Schachtelhalm | Farne | aufrechte gegliederte Stängel mit Quirlen |
 | Baumfarn | Farne | kleiner Stamm mit Wedelkrone, buschhoch |
@@ -111,7 +114,7 @@ Spezifikation: `docs/biomes-spec.md`. Verbindliche IDs: `tools/terrain/catalog.j
 
 Bei Zweifeln gilt `docs/ueberarbeitung-2026-10/quellenpruefung.md`.
 
-- **Kakteen** sind Blütenpflanzen. Sie erscheinen nur, wenn Blütenpflanzen entwickelt sind. Vorher zeigt die Halbwüste Samenpflanzen-Büsche und Gräser.
+- **Kakteen** sind Blütenpflanzen, aber keine eigene Gruppe: Sie sind deren Form auf Wüsten- und Halbwüstenfeldern und erscheinen erst 95 Mio. Jahre nach ihnen (`src/cacti.ts`). Vorher zeigen diese Felder keine Blütenpflanzen-Objekte, die Halbwüste also Samenpflanzen-Büsche und Gräser.
 - **Schilf** ist ein Gras, **Sumpfzypresse** ein Nadelbaum, **Schirmbaum** und Tropenriese sind Laubbäume (Bedecktsamer).
 - **Offenland vor den Gräsern** ist Farnflur, keine Wiese.
 

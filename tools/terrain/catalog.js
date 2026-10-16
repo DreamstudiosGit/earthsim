@@ -149,7 +149,9 @@ function m(all, except = {}) {
 /**
  * Plant and rock objects. kind: tree (≤ 16×20, 3 sizes × 2 forms), bush and
  * low (≤ 16×16, 3 variants), rock (≤ 16×16), water (≤ 16×16, drawn in the
- * sea). Anchored bottom centre; a tree may reach 4 px into the tile above.
+ * sea), cactus (≤ 16×20, 3 variants; no slot of its own: the renderer sets
+ * one on some desert tiles once cacti exist, src/cacti.ts). Anchored bottom
+ * centre; a tree may reach 4 px into the tile above.
  * `group` is the flora id the object belongs to (null for rocks and ice).
  */
 const OBJECTS = [
@@ -167,7 +169,6 @@ const OBJECTS = [
   { id: 'seed_fern', name: 'Samenfarn-Busch', group: 'seedPlants', kind: 'bush', family: 'temperate' },
   { id: 'juniper', name: 'Wacholder', group: 'conifers', kind: 'bush', family: 'cold' },
   { id: 'flower_bush', name: 'Blütenstrauch', group: 'flowering', kind: 'bush', family: 'temperate' },
-  { id: 'cactus', name: 'Säulenkaktus', group: 'flowering', kind: 'bush', family: 'warm' },
   { id: 'shrub', name: 'Laubstrauch', group: 'broadleaf', kind: 'bush', family: 'temperate' },
   { id: 'thorn_bush', name: 'Dornbusch', group: 'broadleaf', kind: 'bush', family: 'warm' },
   // --- low plants ---
@@ -178,11 +179,14 @@ const OBJECTS = [
   { id: 'horsetail', name: 'Schachtelhalm', group: 'ferns', kind: 'low', family: 'temperate' },
   { id: 'flowers', name: 'Blumen', group: 'flowering', kind: 'low', family: 'temperate' },
   { id: 'dwarf_shrub', name: 'Heide', group: 'flowering', kind: 'low', family: 'cold' },
-  { id: 'succulent', name: 'Sukkulente', group: 'flowering', kind: 'low', family: 'warm' },
   { id: 'grass_tuft', name: 'Grasbüschel', group: 'grasses', kind: 'low', family: 'temperate' },
   { id: 'tall_grass', name: 'Hochgras', group: 'grasses', kind: 'low', family: 'warm' },
   { id: 'reed', name: 'Schilf', group: 'grasses', kind: 'low', family: 'wet' },
   { id: 'sundew', name: 'Sonnentau', group: 'carnivorous', kind: 'low', family: 'wet' },
+  // --- cacti: the flowering plants' desert form ---
+  { id: 'cactus_column', name: 'Säulenkaktus', group: 'flowering', kind: 'cactus', family: 'warm' },
+  { id: 'cactus_barrel', name: 'Kugelkaktus', group: 'flowering', kind: 'cactus', family: 'warm' },
+  { id: 'cactus_opuntia', name: 'Feigenkaktus', group: 'flowering', kind: 'cactus', family: 'warm' },
   // --- water ---
   { id: 'kelp', name: 'Tang', group: 'marineAlgae', kind: 'water', family: 'wet' },
   // --- rocks and ice ---
@@ -200,7 +204,7 @@ const OBJECTS = [
 const TREE_SIZES = { s: [10, 13], m: [13, 17], l: [16, 20] };
 const TREE_FORMS = 2;
 /** Largest box per kind, [w, h]. */
-const KIND_BOX = { tree: [16, 20], bush: [16, 16], low: [16, 16], water: [16, 16], rock: [16, 16], mountain: [20, 16] };
+const KIND_BOX = { tree: [16, 20], bush: [16, 16], low: [16, 16], water: [16, 16], rock: [16, 16], mountain: [20, 16], cactus: [16, 20] };
 /** Largest box of each mountain variant, [w, h]; a cone may reach 8 px into the tile above. */
 const MOUNTAIN_SIZES = {
   volcano: [[20, 16], [20, 16], [20, 16], [20, 16]],
@@ -254,8 +258,9 @@ const GROUPS = {
   flowering: {
     name: 'Blütenpflanzen',
     objects: [
-      { id: 'cactus', where: ['semidesert', 'desert'] },
-      { id: 'succulent', where: ['semidesert', 'desert'] },
+      { id: 'cactus_column', where: ['semidesert', 'desert'] },
+      { id: 'cactus_barrel', where: ['semidesert', 'desert'] },
+      { id: 'cactus_opuntia', where: ['semidesert', 'desert'] },
       { id: 'dwarf_shrub', where: ['tundra', 'alpine', 'lichen', 'moss'] },
       { id: 'flower_bush', where: ['shrubland', 'forest', 'meadow'] },
       { id: 'flowers', where: '*' },

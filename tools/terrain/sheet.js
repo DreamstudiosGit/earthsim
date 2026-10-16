@@ -2,7 +2,7 @@
  * SimEarth 2.0 — terrain contact sheets
  * -----------------------------------------------------------------------------
  * One PNG per part, so each stays small enough to look at:
- *   palette · materials · transitions · masks · objects · scenes
+ *   palette · materials · transitions · masks · objects · scenes · desert
  * Labels use a 3×5 pixel font; everything is drawn with nearest-neighbour
  * scaling, exactly as the map shows it.
  * ========================================================================== */
@@ -224,6 +224,7 @@ const SCENES = [
     name: 'warm gradient: sea - sand - desert - semidesert - savanna - rainforest',
     bands: [['water', 3], ['desert', 2, 'sand'], ['desert', 2], ['semidesert', 3, 'sand'], ['savanna', 5], ['rainforest', 7]],
     groups: ['marineAlgae', 'grasses', 'flowering', 'broadleaf', 'seedPlants', 'ferns'],
+    cacti: true,
   },
   {
     name: 'cold gradient: sea ice - ice - lichen - tundra - taiga - mixed forest - meadow - steppe',
@@ -249,9 +250,41 @@ function partScenes(art) {
     w: W * 16 * 2, h: LABEL + H * 16 * 2,
     draw(s, x, y) {
       s.text(sc.name, x, y, DIM);
-      s.blit(V.bandScene(art, W, H, sc.bands, sc.groups, 31 + n), x, y + LABEL, 2);
+      s.blit(V.bandScene(art, W, H, sc.bands, sc.groups, 31 + n, sc.cacti), x, y + LABEL, 2);
     },
   }));
+  return flow(W * 32 + 24, cells, 12);
+}
+
+/** Desert to grassland before and after the first cacti, at the map's two typical zooms (×2, ×4). */
+const DESERT_BANDS = [['desert', 3, 'sand'], ['desert', 3, 'rock'], ['semidesert', 4, 'sand'], ['semidesert', 3, 'rock'], ['steppe', 3], ['savanna', 4]];
+const DESERT_GROUPS = ['grasses', 'flowering', 'broadleaf', 'seedPlants', 'conifers'];
+
+function partDesert(art) {
+  const W = 20;
+  const H = 8;
+  const cells = [];
+  for (const [cacti, name] of [[false, 'before the first cacti'], [true, 'with cacti']]) {
+    cells.push({
+      w: W * 16 * 2, h: LABEL + H * 16 * 2,
+      draw(s, x, y) {
+        s.text(`desert - semidesert - steppe - savanna, ${name}, x2`, x, y, DIM);
+        s.blit(V.bandScene(art, W, H, DESERT_BANDS, DESERT_GROUPS, 47, cacti), x, y + LABEL, 2);
+      },
+    });
+  }
+  for (const [cacti, name] of [[false, 'before'], [true, 'with cacti']]) {
+    const tex = V.bandScene(art, W, H, DESERT_BANDS, DESERT_GROUPS, 47, cacti);
+    const part = new Tex(10 * 16, 5 * 16);
+    part.each((px, py) => tex.get(px + 2 * 16, py + 2 * 16));
+    cells.push({
+      w: part.w * 4, h: LABEL + part.h * 4,
+      draw(s, x, y) {
+        s.text(`close-up ${name}, x4`, x, y, DIM);
+        s.blit(part, x, y + LABEL, 4);
+      },
+    });
+  }
   return flow(W * 32 + 24, cells, 12);
 }
 
@@ -263,6 +296,7 @@ const PARTS = {
   objects: (art) => partObjects(art, BG),
   'objects-light': (art) => partObjects(art, BG_LIGHT),
   scenes: (art) => partScenes(art),
+  desert: (art) => partDesert(art),
 };
 
 module.exports = { PARTS, Sheet };

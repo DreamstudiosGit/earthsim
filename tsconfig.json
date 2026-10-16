@@ -114,6 +114,7 @@
     "src/oceanchem.ts",
     "src/flora.ts",
     "src/lycopsids.ts",
+    "src/cacti.ts",
     "src/succession.ts",
     "src/biome.ts",
     "src/coal.ts",

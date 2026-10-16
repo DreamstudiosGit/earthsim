@@ -89,9 +89,16 @@ function composeGround(art, W, H, cellAt) {
   return { tex: out, water };
 }
 
+/** Landscapes where flowering plants grow as cacti, and the share of those tiles that shows one (src/constants.ts). */
+const CACTUS_LANDSCAPES = ['desert', 'semidesert'];
+const CACTUS_SHARE = 0.5;
+const CACTUS_IDS = C.OBJECTS.filter((o) => o.kind === 'cactus').map((o) => o.id);
+
 /**
- * Pick and place objects for every tile. `tileAt(x, y)` → { landscape, d, groups: Set, sea? }.
- * Returns placements { sprite, fx, fy, kind } sorted for drawing.
+ * Pick and place objects for every tile. `tileAt(x, y)` → { landscape, d, groups: Set, sea?, cacti? }.
+ * `cacti` false or true: before or after the first cacti (src/cacti.ts).
+ * Flowering plants take no slot on desert ground; once cacti exist, some of
+ * those tiles carry a cactus. Returns placements { sprite, fx, fy, kind } sorted for drawing.
  */
 function placeObjects(art, W, H, tileAt, cellAt) {
   const placed = [];
@@ -102,8 +109,10 @@ function placeObjects(art, W, H, tileAt, cellAt) {
   };
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
-      const tile = tileAt(x, y);
+      let tile = tileAt(x, y);
       if (!tile) continue;
+      const desert = tile.cacti !== undefined && CACTUS_LANDSCAPES.includes(tile.landscape) && tile.groups.has('flowering');
+      if (desert) tile = { ...tile, groups: new Set([...tile.groups].filter((g) => g !== 'flowering')) };
       // Distance in tiles to a lower-ranked neighbour, up to 2.
       const own = rankAt(x, y);
       let edge = 2;
@@ -123,6 +132,9 @@ function placeObjects(art, W, H, tileAt, cellAt) {
           const pick = choose(tile, kind, hash(x, y, 700 + s));
           if (pick) placed.push(spot(art, pick, kind, x, y, s, edge));
         }
+      }
+      if (desert && tile.cacti && hash(x, y, 820) < CACTUS_SHARE) {
+        placed.push(spot(art, CACTUS_IDS[Math.floor(hash(x, y, 821) * CACTUS_IDS.length)], 'cactus', x, y, 10, 2));
       }
       const ab = LANDSCAPE[tile.landscape]?.abiotic ?? 0;
       if (ab > 0 && hash(x, y, 800) < ab) {
@@ -226,9 +238,10 @@ function drawObjects(ground, placed) {
 
 /**
  * Bands of landscapes across a strip, with frayed borders, like a slice
- * along a climate gradient. `bands` = [[landscape | 'water', widthInTiles, substrate?]].
+ * along a climate gradient. `bands` = [[landscape | 'water', widthInTiles, substrate?]];
+ * `cacti` as in placeObjects (undefined: no cactus rule).
  */
-function bandScene(art, W, H, bands, groups, seed) {
+function bandScene(art, W, H, bands, groups, seed, cacti) {
   const starts = [];
   let acc = 0;
   for (const b of bands) { starts.push(acc); acc += b[1]; }
@@ -253,7 +266,7 @@ function bandScene(art, W, H, bands, groups, seed) {
     const l = LANDSCAPE[ls];
     const mat = l.materials[substrate || 'soil'];
     const max = C.MATERIALS.find((m) => m.id === mat).densities - 1;
-    return { landscape: ls, mat, d: Math.min(max, distToBorder(x, y)), groups: new Set(groups) };
+    return { landscape: ls, mat, d: Math.min(max, distToBorder(x, y)), groups: new Set(groups), cacti };
   };
   const cellAt = (x, y) => {
     const t = tileAt(x, y);

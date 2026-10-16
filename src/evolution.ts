@@ -1370,6 +1370,7 @@ namespace SE {
 
       for (const e of oxygenMilestones(world)) this.record(world, e);
       for (const e of lycopsidMilestones(world)) this.record(world, e);
+      for (const e of cactusMilestones(world)) this.record(world, e);
 
       // Statuses are cheap to read and moderately costly to build: rebuild a
       // few times a second of fast play, and on demand after any action.

@@ -106,6 +106,12 @@ Besondere Wechselwirkungen mit echter Spielwirkung:
   entwickelbar – die ersten Blüten bestäubten Käfer, Fliegen und Thripse.
 - **Fleischfressende Pflanzen** (im Original „Carnifern“) wachsen dichter, wo Insekten leben.
 - **Vögel** verdoppeln die Fernverbreitung von Samenpflanzen, Nadelbäumen, Blütenpflanzen und Laubbäumen.
+- **Kakteen** sind keine eigene Gruppe und kein Knoten, sondern die Wüstenform der Blütenpflanzen
+  (`src/cacti.ts`). Sie erscheinen 95 Mio. Jahre nach den Blütenpflanzen, mit der Chronik-Meldung
+  „In den Wüsten wachsen die ersten Kakteen.“ Ab dann wachsen Blütenpflanzen auf Wüsten- und
+  Halbwüstenfeldern schon ab einer relativen Feuchte von 0,10 statt 0,26, mit höchstens halber Eignung.
+  Das extrem trockene Wüsteninnere bleibt leer. In Wüstenklima machen die Kakteen aus Wüste Halbwüste,
+  keine Farnflur.
 - **Moose oder Farne** sind als Bodenbildner Voraussetzung für die Urbäume.
 
 ## Der Baum (aus den Spieldaten)

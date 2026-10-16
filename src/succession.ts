@@ -512,6 +512,7 @@ namespace SE {
       const { elevation, flora, soil } = world;
       const zones = world.landscapeZone;
       const woody = woodyFloraMask(world);
+      const cacti = cactiArrived(world);
       for (let k = 0; k < landCount; k++) {
         const i = landList[k];
         let s1 = 0;
@@ -532,7 +533,7 @@ namespace SE {
         allowedTemp[i] = lagged(allowedTemp[i], tempSm[i], SCHMITT_TEMP);
         allowedMoist[i] = lagged(allowedMoist[i], moistSm[i], SCHMITT_MOISTURE);
         zones[i] = z;
-        target[i] = ladderTarget(fillLadder(z, p, soil[i] >= SOIL_EARTH_U8, lad, woody), lad);
+        target[i] = ladderTarget(fillLadder(z, p, soil[i] >= SOIL_EARTH_U8, lad, woody, cacti), lad);
       }
     }
 
@@ -630,7 +631,7 @@ namespace SE {
             for (let f = 0; f < 4; f++) {
               if (!((wet >> (f & 1)) & 1) || !((bare >> ((f >> 1) & 1)) & 1)) continue;
               const z = t | (mc << 3) | BELT_FLAGS[a] | ((f & 1) ? ZONE_WETLAND : 0) | ((f & 2) ? ZONE_BARE : 0);
-              const climax = fillLadder(z, p, soilOk, lad, woodyFloraMask(world));
+              const climax = fillLadder(z, p, soilOk, lad, woodyFloraMask(world), cactiArrived(world));
               let m = ladderMask(climax, lad);
               // Bare ground is a stage only for land that may be bare: a
               // planted tile never takes it from its neighbours.
@@ -835,7 +836,7 @@ namespace SE {
       if (cur === tgt && landscapeNext[i] === cur && landscapeHold[i] === 0) return;
       const z = zones[i];
       // The tile's ladder again, only for the few tiles on the move.
-      fillLadder(z, present[i], world.soil[i] >= SOIL_EARTH_U8, lad, woodyFloraMask(world));
+      fillLadder(z, present[i], world.soil[i] >= SOIL_EARTH_U8, lad, woodyFloraMask(world), cactiArrived(world));
       const wetTarget = tgt === Landscape.Marsh || tgt === Landscape.Swampforest || tgt === lad[0];
       if ((z & ZONE_WETLAND) && wetTarget && cur !== Landscape.Marsh && cur !== Landscape.Swampforest && LANDSCAPE_LEVEL[cur] >= 1) {
         const marsh = lad[2] === Landscape.Marsh && !(z & ZONE_BARE);

@@ -58,6 +58,8 @@ namespace SE {
     /** Rocks and ice blocks: expected per tile, and which. */
     readonly abioticRate: number[] = [];
     readonly abioticIds: string[][] = [];
+    /** The cacti: no slot of their own, landobjects.ts sets one on some desert tiles. */
+    readonly cactusIds: readonly string[];
 
     private constructor(private readonly manifest: TerrainManifest) {
       const m = manifest;
@@ -77,6 +79,7 @@ namespace SE {
       this.abioticRate.push(0);
       this.abioticIds.push([]);
       this.seaIceKey = landKey(m.materials.sea_ice.rank, 0);
+      this.cactusIds = Object.keys(m.objects).filter((id) => m.objects[id].kind === 'cactus');
 
       const scenes = [...LANDSCAPE_IDS, 'sea'];
       scenes.forEach((scene, s) => {
